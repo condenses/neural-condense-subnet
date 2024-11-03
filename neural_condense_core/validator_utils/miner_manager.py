@@ -3,10 +3,10 @@ import os
 import bittensor as bt
 import numpy as np
 from ..common import build_rate_limit
-from ..protocol import Metadata
+from ..protocol import Metadata, Information
 from ..constants import constants
 import threading
-
+import requests
 
 class ServingCounter:
     """
@@ -159,3 +159,38 @@ class MinerManager:
             tier_group[tier][uid] = ServingCounter(rate_limit_per_tier[tier])
 
         return tier_group
+
+    def get_miner_info(self):
+        """
+        1. Query model_name of available uids
+        """
+        self.all_uids = [int(uid) for uid in self.validator.metagraph.uids]
+        uid_to_axon = dict(zip(self.all_uids, self.validator.metagraph.axons))
+        query_axons = [uid_to_axon[int(uid)] for uid in self.all_uids]
+        synapse = Information()
+        bt.logging.info("Requesting miner info using synapse Information")
+        responses = self.validator.dendrite.query(
+            query_axons,
+            synapse,
+            deserialize=False,
+            timeout=10,
+        )
+        responses = {
+            uid: response.response_dict
+            for uid, response in zip(self.all_uids, responses)
+        }
+        
+        responses = {k: v for k, v in responses.items() if v}
+        return responses
+
+    def store_miner_info(self):
+        try:
+            requests.post(
+                self.validator.config.storage_url + "/store_miner_info",
+                json={
+                    "uid": self.validator.uid,
+                    "info": self.metadata,
+                },
+            )
+        except Exception as e:
+            bt.logging.error(f"Failed to store miner info: {e}")

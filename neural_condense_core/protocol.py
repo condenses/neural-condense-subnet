@@ -5,6 +5,9 @@ from typing import List
 class Metadata(Synapse):
     metadata: dict = {}
 
+class Information(Synapse):
+    request_dict: dict = {}
+    response_dict: dict = {}
 
 class TextCompressProtocol(Synapse):
     r"""
