@@ -1,8 +1,7 @@
-from .icae_modeling import ICAE, ModelArguments, TrainingArguments, AdditionalArguments
+from .icae_modeling import ICAE, ModelArguments,  AdditionalArguments
 
 __all__ = [
     "ICAE",
     "ModelArguments",
-    "TrainingArguments",
     "AdditionalArguments",
 ]

@@ -32,6 +32,13 @@ def add_validator_config(parser: ArgumentParser):
         default=8089,
         help="The port of the score backend server.",
     )
+    parser.add_argument(
+    "--storage_url",
+    type=str,
+    help="The url to store the image.",
+    default="https://localhost:10000",
+    )
+
     return parser
 
 
