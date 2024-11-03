@@ -1,5 +1,5 @@
 from .base import BaseMiner, BaseValidator
-from .protocol import TextCompressProtocol
+from .protocol import TextCompressProtocol,Information
 from .miner_utils import RateLimitCounter
 from .constants import constants
 from .validator_utils import MinerManager, Challenger, OrganicGate, ServingCounter
@@ -17,6 +17,7 @@ __all__ = [
     "BaseMiner",
     "BaseValidator",
     "TextCompressProtocol",
+    "Information",
     "RateLimitCounter",
     "MinerManager",
     "build_rate_limit",

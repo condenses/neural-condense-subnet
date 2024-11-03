@@ -5,7 +5,7 @@ import bittensor as bt
 import numpy as np
 import time
 import traceback
-from neural_condense_core.protocol import Information
+from neural_condense_core import Information
 
 class Miner(ncc.BaseMiner):
     def __init__(self):
