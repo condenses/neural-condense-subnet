@@ -5,7 +5,7 @@ import bittensor as bt
 import numpy as np
 import time
 import traceback
-from neural_condense_core import Information
+
 
 class Miner(ncc.BaseMiner):
     def __init__(self):
@@ -101,12 +101,6 @@ class Miner(ncc.BaseMiner):
             return True, "Rate limit exceeded."
         return False, ""
 
-    async def forward_info(self, synapse: Information) -> Information:
-        synapse.response_dict = self.miner_info
-        return synapse
-
-    async def blacklist_info(self, synapse: Information) -> Tuple[bool, str]:
-        return False, "All passed!"
 
 if __name__ == "__main__":
     miner = Miner()

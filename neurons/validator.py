@@ -29,7 +29,6 @@ class Validator(ncc.BaseValidator):
     def forward(self):
         bt.logging.info("Running epoch.")
         self.miner_manager.sync()
-        self.miner_manager.get_miner_info()
         threads = []
         for tier in self.tier_config:
             thread = threading.Thread(target=self._forward_tier, args=(tier,))
