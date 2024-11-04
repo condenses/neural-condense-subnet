@@ -7,6 +7,11 @@ from ..protocol import Metadata
 from ..constants import constants
 import threading
 import requests
+import pydantic
+import httpx
+from fastapi import Request
+import random 
+
 
 class ServingCounter:
     """
@@ -34,18 +39,26 @@ class MinerManager:
     Manages the metadata and serving counter of miners.
     """
 
-    def __init__(self, validator):
+    def __init__(self, validator,wallet):
         self.validator = validator
         self.dendrite: bt.dendrite = validator.dendrite
         self.metagraph = validator.metagraph
         self.default_metadata_items = [
             ("tier", "unknown"),
         ]
+        self.wallet = wallet
+        self.message = "".join(random.choices("0123456789abcdef", k=16))
         self.metadata = self._init_metadata()
         bt.logging.info(f"Metadata: {self.metadata}")
         self.load_state()
         self.state_path = self.validator.config.full_path + "/state.json"
         self.sync()
+
+    def _authenticate(self, request: Request):
+        message = request.headers["message"]
+        if message != self.message:
+            raise Exception("Authentication failed.")
+
 
     def update_scores(self, scores: list[float], uids: list[int]):
         r"""
@@ -161,14 +174,24 @@ class MinerManager:
         return tier_group
 
 
-    def store_miner_info(self):
+    def store_miner_info(self, request: Request):
+
         try:
+            signature = f"0x{self.dendrite.keypair.sign(self.message).hex()}"
+            headers = {
+                "Content-Type": "application/json",
+                "message": self.message,
+                "ss58_address": self.wallet.hotkey.ss58_address,
+                "signature": signature,
+            }
+            self._authenticate(request)
             requests.post(
-                self.validator.config.storage_url + "/store_miner_info",
+                url=self.validator.config.storage_url + "/store_miner_info",
                 json={
                     "uid": self.validator.uid,
                     "info": self.metadata,
                 },
+                headers=headers,
             )
         except Exception as e:
             bt.logging.error(f"Failed to store miner info: {e}")

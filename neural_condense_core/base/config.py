@@ -19,6 +19,12 @@ def add_validator_config(parser: ArgumentParser):
         default=12345,
         help="The port of the validator gate server.",
     )
+    parser.add_argument(
+        "--validator.proxy_port",
+        type=int,
+        default=12345,
+        help="The port of the validator proxy server.",
+    )
 
     parser.add_argument(
         "--validator.score_backend.host",
@@ -33,10 +39,10 @@ def add_validator_config(parser: ArgumentParser):
         help="The port of the score backend server.",
     )
     parser.add_argument(
-    "--storage_url",
-    type=str,
-    help="The url to store the image.",
-    default="https://localhost:10000",
+        "--storage_url",
+        type=str,
+        help="The url to store the image.",
+        default="http://localhost:10000",
     )
 
     return parser

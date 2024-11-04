@@ -15,7 +15,7 @@ class Validator(ncc.BaseValidator):
     def __init__(self):
         super().__init__()
         self.tier_config = ncc.constants.TIER_CONFIG
-        self.miner_manager = ncc.MinerManager(self)
+        self.miner_manager = ncc.MinerManager(self,wallet=self.wallet)
         self.challenger = ncc.Challenger()
         if self.config.validator.gate_port:
             self.organic_gate = ncc.OrganicGate(
@@ -156,7 +156,7 @@ class Validator(ncc.BaseValidator):
             }
             payload["ground_truth_request"]["model_name"] = model_name
             payload["ground_truth_request"]["criterias"] = task_config.criterias
-
+            bt.logging.info(f"http://{self.config.validator.score_backend.host}:{self.config.validator.score_backend.port}/scoring")
             scoring_response = requests.post(
                 f"http://{self.config.validator.score_backend.host}:{self.config.validator.score_backend.port}/scoring",
                 json=payload,
@@ -181,7 +181,7 @@ class Validator(ncc.BaseValidator):
                 f"Scores: {scores}\nFactors: {factors_list}\nPenalized scores: {penalized_scores}"
             )
 
-            self.miner_manager.update_scores(valid_uids, penalized_scores)
+            self.miner_manager.update_scores(penalized_scores,valid_uids )
 
     def set_weights(self):
         r"""
