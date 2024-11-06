@@ -6,7 +6,7 @@ from ..common import build_rate_limit
 from ..protocol import Metadata
 from ..constants import constants
 import threading
-
+import requests
 
 class ServingCounter:
     """
@@ -57,6 +57,13 @@ class MinerManager:
                 + (1 - constants.SCORE_MOVING_AVERAGE) * self.metadata[uid]["score"]
             )
 
+    def update_ptime(self,process_time: list[float], uids: list[int]):
+        """
+        Update processtime
+        """
+        for ptime, uid in zip(process_time, uids):
+            self.metadata[uid]["process_time"] = ptime
+
     def get_normalized_scores(self, eps: float = 1e-6) -> np.ndarray:
         scores = np.zeros(len(self.metagraph.hotkeys))
         for uid, metadata in self.metadata.items():
@@ -88,6 +95,8 @@ class MinerManager:
             uid: {
                 "score": 0.0,
                 "tier": "unknown",
+                "process_time":"",
+                "compress_rate":""
             }
             for uid in self.metagraph.uids
         }
@@ -136,6 +145,9 @@ class MinerManager:
             if "score" not in metadata[uid]:
                 metadata[uid]["score"] = 0.0
 
+            if "process_time" not in metadata[uid]:
+                metadata[uid]["process_time"] = 0.0
+
         bt.logging.info(f"Metadata: {metadata}")
         bt.logging.success(f"Updated metadata for {len(uids)} uids.")
         return metadata
@@ -161,3 +173,24 @@ class MinerManager:
             tier_group[tier][uid] = ServingCounter(rate_limit_per_tier[tier])
 
         return tier_group
+
+    def store_miner_info(self):
+
+        try:
+            signature = f"0x{self.dendrite.keypair.sign(self.message).hex()}"
+            headers = {
+                "Content-Type": "application/json",
+                "message": self.message,
+                "ss58_address": self.wallet.hotkey.ss58_address,
+                "signature": signature,
+            }
+            requests.post(
+                url=self.validator.config.storage_url + "/store_miner_info",
+                json={
+                    "uid": self.validator.uid,
+                    "info": self.metadata,
+                },
+                headers=headers,
+            )
+        except Exception as e:
+            bt.logging.error(f"Failed to store miner info: {e}")

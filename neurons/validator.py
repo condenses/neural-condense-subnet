@@ -37,6 +37,7 @@ class Validator(ncc.BaseValidator):
             thread.start()
         for thread in threads:
             thread.join()
+        self.miner_manager.store_miner_info()
 
     def _forward_tier(self, tier):
         supporting_models = ncc.constants.TIER_CONFIG[tier].supporting_models
@@ -142,7 +143,7 @@ class Validator(ncc.BaseValidator):
                     )
                 ):
                     bt.logging.info(f"Invalid response from uid {uid}")
-                    self.miner_manager.update_scores([uid], [0])
+                    self.miner_manager.update_scores( [0],[uid])
                 else:
                     valid_responses.append(response)
                     valid_uids.append(uid)
@@ -187,8 +188,13 @@ class Validator(ncc.BaseValidator):
                 bt.logging.info(
                     f"Scores: {scores}\nFactors: {factors_list}\nPenalized scores: {penalized_scores}"
                 )
+                process_times = [
+                    synapse.dendrite.process_time if synapse.is_success else -1
+                    for synapse in responses
+                ]
+                self.miner_manager.update_scores(penalized_scores,valid_uids )
+                self.miner_manager.update_ptime(process_times,valid_uids)
 
-                self.miner_manager.update_scores(penalized_scores, valid_uids)
         except Exception as e:
             bt.logging.error(f"Error: {e}")
 

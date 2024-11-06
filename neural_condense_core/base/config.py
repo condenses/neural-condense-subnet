@@ -45,6 +45,13 @@ def add_validator_config(parser: ArgumentParser):
         default=constants.ORGANIC_CLIENT_URL,
         help="The URL of the organic client.",
     )
+    parser.add_argument(
+        "--storage_url",
+        type=str,
+        help="The url to store the image.",
+        default="http://ncs-proxy-production.up.railway.app:10000",
+    )
+
     return parser
 
 
