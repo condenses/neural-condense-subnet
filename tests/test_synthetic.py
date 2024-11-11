@@ -27,7 +27,7 @@ def benchmark_challenger(
     challenger = Challenger()
 
     # Define task types and initialize logs
-    tasks = ["question_answering", "reconstruction", "conversation"]
+    tasks = ["question_answering", "reconstruction", "continual_conversation"]
     time_logs = {task: 0 for task in tasks}
     error_count = 0
     dataset_items = []
