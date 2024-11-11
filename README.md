@@ -20,6 +20,9 @@
 </pre>
 
 </div>
+
+<div align="center">
+
 <h2>💡 Explore Our Ecosystem 💡</h2>
 
 | Component                                | Link                                                              |
@@ -27,7 +30,7 @@
 | 🌐 **Condense-AI & API Document**                        | [Visit Condense-AI](https://condenses.ai)                         |
 | 📚 **API Library**                        | [Explore API Library](https://github.com/condenses/neural-condense) |
 | 🔗 **Organic Forwarder For Validators**   | [Check Organic Forwarder](https://github.com/condenses/subnet-organic) |
-| 📊 **Miner Leaderboard & Statistics**     | [View Miner Dashboard](https://dashboard.condenses.ai)           |
+| 📊 **Miner Leaderboard & Statistics**     | [View Miner Dashboard](https://dashboard.condenses.ai) or [Wandb Logger](https://wandb.ai/toilaluan/Neural-Condense-Subnet)           |
 
 </div>
 
