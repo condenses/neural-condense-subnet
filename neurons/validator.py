@@ -262,8 +262,16 @@ class Validator(ncc.BaseValidator):
     def _log_wandb(self, logs: dict, uids: list[int], tier=""):
         try:
             for metric, values in logs.items():
-                for uid, value in zip(uids, values):
-                    wandb.log({f"{tier}/{metric}/{uid}": value})
+                if metric == "accuracy":
+                    # Plot table for accuracy
+                    table = wandb.Table(columns=["uid", "accuracy"])
+                    for uid, value in zip(uids, values):
+                        table.add_data(uid, value)
+                    wandb.log({f"{tier}/accuracy": table})
+
+                if metric == "losses":
+                    for uid, value in zip(uids, values):
+                        wandb.log({f"{tier}/losses/{uid}": value})
         except Exception as e:
             bt.logging.error(f"Error logging to wandb: {e}")
 
