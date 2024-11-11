@@ -7,6 +7,7 @@ from transformers.utils.logging import disable_propagation, disable_default_hand
 import numpy as np
 import time
 import requests
+import wandb
 
 disable_default_handler()
 disable_propagation()
@@ -29,6 +30,12 @@ class Validator(ncc.BaseValidator):
             except Exception as e:
                 bt.logging.error(f"Starting organic gate error: {e}")
             bt.logging.info("Starting organic gate.")
+
+        if self.config.validator.use_wandb:
+            wandb.init(
+                project="toilaluan/Neural-Condense-Subnet",
+                name="validator-{}".format(self.uid),
+            )
 
     def forward(self):
         bt.logging.info("Running epoch.")
@@ -207,9 +214,7 @@ class Validator(ncc.BaseValidator):
                 scoring_response = scoring_response.json()
 
                 scores: list[float] = scoring_response["scores"]
-                logs: dict = scoring_response["logs"]
                 bt.logging.info(f"Scores: \n{scores}")
-                bt.logging.info(f"Logs: \n{logs}")
 
                 n_condense_tokens = [
                     len(response.compressed_tokens) for response in valid_responses
@@ -240,9 +245,22 @@ class Validator(ncc.BaseValidator):
                     f"Scores: {scores}\nFactors: {factors_list}\nPenalized scores: {penalized_scores}"
                 )
                 penalized_scores = [min(1, max(0, score)) for score in penalized_scores]
-                self.miner_manager.update_scores(penalized_scores, valid_uids, logs)
+                self.miner_manager.update_scores(penalized_scores, valid_uids)
+
+                if self.config.validator.use_wandb:
+                    logs: dict = scoring_response["logs"]
+                    self._log_wandb(logs, valid_uids)
         except Exception as e:
             bt.logging.error(f"Error: {e}")
+
+    def _log_wandb(self, logs: dict, uids: list[int]):
+        try:
+            losses: list = logs["losses"]
+            for uid, loss in zip(uids, losses):
+                loss = abs(loss)
+                wandb.log({f"loss_{uid}": loss})
+        except Exception as e:
+            bt.logging.error(f"Error logging to wandb: {e}")
 
     def set_weights(self):
         r"""

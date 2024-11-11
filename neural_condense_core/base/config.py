@@ -52,6 +52,14 @@ def add_validator_config(parser: ArgumentParser):
         default=constants.REPORT_URL,
         help="The URL of the report server.",
     )
+
+    parser.add_argument(
+        "--validator.use_wandb",
+        type=bool,
+        default=False,
+        help="Whether to use wandb for logging.",
+    )
+
     return parser
 
 
