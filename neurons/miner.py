@@ -82,7 +82,7 @@ class Miner(ncc.base.BaseMiner):
                 compressed_tokens_b64
             )
         bt.logging.info(f"Compressed to shape: {np.array(compressed_tokens).shape}")
-        return ncc.TextCompressProtocol(
+        return ncc.protocol.TextCompressProtocol(
             compressed_tokens_b64=str(compressed_tokens_b64)
         )
 
