@@ -9,3 +9,4 @@ protobuf==5.28.3
 flask==3.0.3
 gunicorn==23.0.0
 httpx==0.27.2
+wandb==0.18.6

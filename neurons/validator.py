@@ -32,10 +32,13 @@ class Validator(ncc.BaseValidator):
             bt.logging.info("Starting organic gate.")
 
         if self.config.validator.use_wandb:
-            wandb.init(
-                project="toilaluan/Neural-Condense-Subnet",
-                name="validator-{}".format(self.uid),
-            )
+            try:
+                wandb.init(
+                    project="Neural-Condense-Subnet",
+                    entity="validator-{}".format(self.uid),
+                )
+            except Exception as e:
+                bt.logging.error(f"Starting wandb error: {e}")
 
     def forward(self):
         bt.logging.info("Running epoch.")
