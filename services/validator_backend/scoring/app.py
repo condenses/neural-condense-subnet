@@ -10,7 +10,7 @@ from transformers import (
     TextGenerationPipeline,
 )
 from .datatypes import BatchedScoringRequest
-from .utils import loss_to_scores, base64_to_ndarray, _smooth_scores
+from .utils import loss_to_scores, base64_to_ndarray, _smooth_scores, unit_test
 import threading
 import traceback
 import random
@@ -31,7 +31,7 @@ class ScoringService:
         self.models = {}
         self.tokenizers = {}
         self.lock = threading.Lock()
-        self.unit_test()
+        unit_test(self)
 
     def load_model(self, model_name: str):
         """
