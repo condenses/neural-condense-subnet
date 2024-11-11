@@ -55,9 +55,8 @@ def add_validator_config(parser: ArgumentParser):
 
     parser.add_argument(
         "--validator.use_wandb",
-        type=bool,
-        default=False,
         action="store_true",
+        help="Whether to use wandb for logging.",
     )
 
     return parser
