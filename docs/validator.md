@@ -16,7 +16,7 @@
 - Synthetic request & evaluate miner's performance by using prepared tasks: autoencoder, question-answering, conservation, etc.
 - Forward Organic API if you want to sell your bandwidth to the end-users.
 
-## Steps to setup a Miner
+## Steps to setup a Validator
 
 1. Clone the repository
 ```bash
@@ -30,6 +30,12 @@ pip install -e . --ignore-installed
 pip install "numpy<2"
 ```
 
+**Optional**
+- Login to Weights & Biases to use the logging feature
+```bash
+wandb login
+```
+
 3. Config your wallet, backend host, and port. Below just an example:
 
 **Parameters**
@@ -41,6 +47,7 @@ pip install "numpy<2"
 - `--validator.scoring_backend.host` - The host of the validator backend for scoring.
 - `--validator.scoring_backend.port` - The port of the validator backend for scoring.
 - `--validator.gate_port` - The port to open for the validator to forward the request from end-users to the miner. It should be an open port in your firewall. It's optional
+- `--validator.use_wandb` - Use Weights & Biases for logging. It's optional.
 
 **Important**: `axon_port` and `gate_port` must be opened in your firewall.
 
@@ -75,5 +82,6 @@ pm2 start python --name condense_validator \
 --axon.port $val_axon_port \
 --validator.gate_port $val_gate_port \
 --validator.score_backend.host $val_backend_host \
---validator.score_backend.port $val_backend_port
+--validator.score_backend.port $val_backend_port \
+--validator.use_wandb
 ```
