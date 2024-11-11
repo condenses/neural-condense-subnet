@@ -7,7 +7,7 @@ import time
 import traceback
 
 
-class Miner(ncc.BaseMiner):
+class Miner(ncc.base.BaseMiner):
     def __init__(self):
         super().__init__()
         self.blacklist_fns.append(self.blacklist_fn)
@@ -20,8 +20,8 @@ class Miner(ncc.BaseMiner):
         Initializes the rate limits for the miners.
         """
         self.rate_limits = {
-            uid: ncc.ServingCounter(rate_limit)
-            for uid, rate_limit in ncc.build_rate_limit(
+            uid: ncc.miner_utils.ServingCounter(rate_limit)
+            for uid, rate_limit in ncc.miner_utils.build_rate_limit(
                 self.metagraph, self.config
             ).items()
         }
@@ -54,8 +54,8 @@ class Miner(ncc.BaseMiner):
                 continue
 
     async def forward_text_compress(
-        self, synapse: ncc.TextCompressProtocol
-    ) -> ncc.TextCompressProtocol:
+        self, synapse: ncc.protocol.TextCompressProtocol
+    ) -> ncc.protocol.TextCompressProtocol:
         r"""
         Forward function for the Text-Compress task.
         Args:
@@ -86,7 +86,9 @@ class Miner(ncc.BaseMiner):
             compressed_tokens_b64=str(compressed_tokens_b64)
         )
 
-    def blacklist_fn(self, synapse: ncc.TextCompressProtocol) -> Tuple[bool, str]:
+    def blacklist_fn(
+        self, synapse: ncc.protocol.TextCompressProtocol
+    ) -> Tuple[bool, str]:
         r"""
         Blacklist function for the Text-Compress task.
         Args:

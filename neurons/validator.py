@@ -13,15 +13,15 @@ disable_default_handler()
 disable_propagation()
 
 
-class Validator(ncc.BaseValidator):
+class Validator(ncc.base.BaseValidator):
     def __init__(self):
         super().__init__()
         self.tier_config = ncc.constants.TIER_CONFIG
-        self.miner_manager = ncc.MinerManager(self)
-        self.challenger = ncc.Challenger()
+        self.miner_manager = ncc.validator_utils.MinerManager(self)
+        self.challenger = ncc.validator_utils.Challenger()
         if self.config.validator.gate_port:
             try:
-                self.organic_gate = ncc.OrganicGate(
+                self.organic_gate = ncc.validator_utils.OrganicGate(
                     miner_manager=self.miner_manager,
                     wallet=self.wallet,
                     config=self.config,
@@ -74,7 +74,7 @@ class Validator(ncc.BaseValidator):
         supporting_models = ncc.constants.TIER_CONFIG[tier].supporting_models
         model_name = random.choice(supporting_models)
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-        serving_counter: dict[int, ncc.ServingCounter] = (
+        serving_counter: dict[int, ncc.validator_utils.ServingCounter] = (
             self.miner_manager.serving_counter.get(tier, {})
         )
         if len(serving_counter) == 0:
@@ -172,13 +172,13 @@ class Validator(ncc.BaseValidator):
             synapse.hide_ground_truth()
             axons = [self.metagraph.axons[int(uid)] for uid in batched_uids]
             bt.logging.info(f"Querying {tier} with uids: {batched_uids}")
-            responses: list[ncc.TextCompressProtocol] = dendrite.query(
+            responses: list[ncc.protocol.TextCompressProtocol] = dendrite.query(
                 axons=axons,
                 synapse=synapse,
                 deserialize=False,
                 timeout=this_tier_config.timeout,
             )
-            valid_responses: list[ncc.TextCompressProtocol] = []
+            valid_responses: list[ncc.protocol.TextCompressProtocol] = []
             valid_uids: list[int] = []
             for uid, response in zip(batched_uids, responses):
                 try:
