@@ -261,7 +261,9 @@ class Validator(ncc.BaseValidator):
 
     def _log_wandb(self, logs: dict, uids: list[int]):
         try:
-            losses: list = logs["losses"]
+            losses: list = logs.get("losses")
+            if not losses:
+                return
             for uid, loss in zip(uids, losses):
                 loss = abs(loss)
                 wandb.log({f"loss_{uid}": loss})
