@@ -281,7 +281,7 @@ class Validator(ncc.BaseValidator):
 
                 if metric == "losses":
                     for uid, value in zip(uids, values):
-                        wandb.log({f"{tier}/losses/{uid}": value})
+                        wandb.log({f"{tier}/losses/{uid}": abs(value)})
         except Exception as e:
             bt.logging.error(f"Error logging to wandb: {e}")
 
