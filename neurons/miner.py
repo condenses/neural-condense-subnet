@@ -21,7 +21,7 @@ class Miner(ncc.base.BaseMiner):
         """
         self.rate_limits = {
             uid: ncc.miner_utils.ServingCounter(rate_limit)
-            for uid, rate_limit in ncc.miner_utils.build_rate_limit(
+            for uid, rate_limit in ncc.common.build_rate_limit(
                 self.metagraph, self.config
             ).items()
         }
