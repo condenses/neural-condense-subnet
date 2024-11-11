@@ -77,6 +77,7 @@ class ScoringService:
 
             if criteria == "accuracy":
                 scores = self.calculate_accuracy_criteria(request, model, tokenizer)
+                logs["accuracy"] = scores
 
             return {"scores": scores, "logs": logs}
 

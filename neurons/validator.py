@@ -255,18 +255,15 @@ class Validator(ncc.BaseValidator):
 
                 if self.config.validator.use_wandb:
                     logs: dict = scoring_response["logs"]
-                    self._log_wandb(logs, valid_uids)
+                    self._log_wandb(logs, valid_uids, tier=tier)
         except Exception as e:
             bt.logging.error(f"Error: {e}")
 
-    def _log_wandb(self, logs: dict, uids: list[int]):
+    def _log_wandb(self, logs: dict, uids: list[int], tier=""):
         try:
-            losses: list = logs.get("losses")
-            if not losses:
-                return
-            for uid, loss in zip(uids, losses):
-                loss = abs(loss)
-                wandb.log({f"loss_{uid}": loss})
+            for metric, values in logs.items():
+                for uid, value in zip(uids, values):
+                    wandb.log({f"{tier}/{metric}/{uid}": value})
         except Exception as e:
             bt.logging.error(f"Error logging to wandb: {e}")
 
