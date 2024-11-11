@@ -33,12 +33,22 @@ class Validator(ncc.BaseValidator):
 
         if self.config.validator.use_wandb:
             try:
+                message = "incentivized-decentralzied-condensed-ai" + "-".join(
+                    random.choices("0123456789abcdef", k=16)
+                )
+                signature = f"0x{self.dendrite.keypair.sign(message).hex()}"
                 wandb.init(
                     project="Neural-Condense-Subnet",
                     name="validator-{}".format(self.uid),
                     job_type="validation",
                     group="validator",
                     resume="allow",
+                    config={
+                        "signature": signature,
+                        "uid": self.uid,
+                        "message": message,
+                        "ss58_address": self.metagraph.hotkeys[self.uid],
+                    },
                 )
             except Exception as e:
                 bt.logging.error(f"Starting wandb error: {e}")
