@@ -35,7 +35,10 @@ class Validator(ncc.BaseValidator):
             try:
                 wandb.init(
                     project="Neural-Condense-Subnet",
-                    entity="validator-{}".format(self.uid),
+                    name="validator-{}".format(self.uid),
+                    job_type="validation",
+                    group="validator",
+                    resume="allow",
                 )
             except Exception as e:
                 bt.logging.error(f"Starting wandb error: {e}")
