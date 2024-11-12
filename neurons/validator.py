@@ -81,59 +81,42 @@ class Validator(ncc.base.BaseValidator):
         if len(serving_counter) == 0:
             bt.logging.info(f"No miners in tier {tier}.")
             return
-        total_bandwidth = sum(
-            [serving_counter[uid].rate_limit for uid in serving_counter]
+        batch_size = ncc.constants.BATCH_SIZE
+        uids = list(serving_counter.keys())
+        pre_batched_uids = [
+            uids[i : i + batch_size] for i in range(0, len(uids), batch_size)
+        ]
+        bt.logging.info(f"Pre-batched uids: \n{pre_batched_uids}")
+        n_sets = int(
+            ncc.constants.TIER_CONFIG[tier].requests_per_epoch
+            * ncc.constants.RPE_PERCENTAGE_FOR_SYNTHETIC
         )
-
-        total_bandwidth_to_synthetic = int(
-            total_bandwidth * ncc.constants.RPE_PERCENTAGE_FOR_SYNTHETIC
-        )
-        avg_bandwidth_to_synthetic = total_bandwidth_to_synthetic // len(
-            serving_counter
-        )
-        batch_size = min(
-            ncc.constants.BATCH_SIZE,
-            len(serving_counter),
-        )
-        n_batch = avg_bandwidth_to_synthetic // ncc.constants.BATCH_SIZE
-        if n_batch:
-            sleep_per_batch = ncc.constants.EPOCH_LENGTH // n_batch
-        else:
-            sleep_per_batch = ncc.constants.EPOCH_LENGTH
-            n_batch = avg_bandwidth_to_synthetic
-
-        log = (
-            f"Tier: {tier}\n"
-            f"Model: {model_name}\n"
-            f"Total bandwidth: {total_bandwidth}\n"
-            f"Total bandwidth to synthetic: {total_bandwidth_to_synthetic}\n"
-            f"Avg bandwidth to synthetic: {avg_bandwidth_to_synthetic}\n"
-            f"Batch size: {batch_size}\n"
-            f"Number of batches: {n_batch}\n"
-            f"Sleep per batch: {sleep_per_batch}\n"
-        )
+        sleep_per_set = ncc.constants.EPOCH_LENGTH // n_sets
+        sleep_per_batch = sleep_per_set // len(pre_batched_uids)
+        log = f"{tier} -- {model_name} -- {len(uids)} miners -- {n_sets} sets -- {sleep_per_batch} sleep per batch."
         bt.logging.info(log)
-
         query_threads = []
-        for _ in range(n_batch):
-            batched_uids = []
-            for uid in serving_counter:
-                if serving_counter[uid].increment():
-                    batched_uids.append(uid)
-                    if len(batched_uids) == ncc.constants.BATCH_SIZE:
-                        break
-            if not batched_uids:
-                continue
+        for _ in range(n_sets):
+            for uids in pre_batched_uids:
+                batched_uids = []
+                for uid in uids:
+                    if serving_counter[uid].increment():
+                        batched_uids.append(uid)
+                        if len(batched_uids) == ncc.constants.BATCH_SIZE:
+                            break
+                if len(batched_uids) < 2:
+                    bt.logging.info(f"Insufficient miners in tier {tier}.")
+                    continue
 
-            thread = threading.Thread(
-                target=self._forward_batch,
-                args=(tier, model_name, batched_uids, tokenizer),
-            )
-            query_threads.append(thread)
-            thread.start()
-            bt.logging.info(f"Forwarding batch to {tier}: {batched_uids}")
-            bt.logging.info(f"Sleeping for {sleep_per_batch} seconds.")
-            time.sleep(sleep_per_batch)
+                thread = threading.Thread(
+                    target=self._forward_batch,
+                    args=(tier, model_name, batched_uids, tokenizer),
+                )
+                query_threads.append(thread)
+                thread.start()
+                bt.logging.info(f"Forwarding batch to {tier}: {batched_uids}")
+                bt.logging.info(f"Sleeping for {sleep_per_batch} seconds.")
+                time.sleep(sleep_per_batch)
         for thread in query_threads:
             thread.join()
 
