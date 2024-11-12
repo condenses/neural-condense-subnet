@@ -37,4 +37,8 @@ update_repo() {
     fi
 }
 
-update_repo
+# Run the update function
+while true; do
+    update_repo
+    sleep 1800  # Sleep for 30 minutes (1800 seconds)
+done

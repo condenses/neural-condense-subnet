@@ -88,5 +88,5 @@ pm2 start python --name condense_validator \
 
 6. Run the auto update script, it will check for updates every 30 minutes
 ```bash
-pm2 start auto_update.sh --cron "*/30 * * * *" --name "auto_updater"
+pm2 start auto_update.sh --name "auto_updater"
 ```
