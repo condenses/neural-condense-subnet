@@ -9,7 +9,7 @@ update_repo() {
 
     # Get current and remote hash
     LOCAL_HASH=$(git rev-parse HEAD)
-    REMOTE_HASH=$(git rev-parse origin/feat/auto-update)
+    REMOTE_HASH=$(git rev-parse origin/main)
 
     if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
         echo "Updates available. Updating repository..."
