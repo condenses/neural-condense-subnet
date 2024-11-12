@@ -93,7 +93,7 @@ class Constants(BaseModel):
     SCORING_PER_MINER_PER_EPOCH: int = 1
     SUBNET_TEMPO: int = 360
     MIN_STAKE: int = int(os.environ.get("MIN_STAKE", 10000))
-    RPE_PERCENTAGE_FOR_SYNTHETIC: float = 0.5
+    RPE_PERCENTAGE_FOR_SYNTHETIC: float = 0.125
     BATCH_SIZE: int = 4
     SCORE_MOVING_AVERAGE: float = 0.05
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"

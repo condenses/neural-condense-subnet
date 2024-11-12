@@ -82,21 +82,22 @@ class Validator(ncc.base.BaseValidator):
             bt.logging.info(f"No miners in tier {tier}.")
             return
         batch_size = ncc.constants.BATCH_SIZE
-        uids = list(serving_counter.keys())
-        pre_batched_uids = [
-            uids[i : i + batch_size] for i in range(0, len(uids), batch_size)
-        ]
-        bt.logging.info(f"Pre-batched uids: \n{pre_batched_uids}")
         n_sets = int(
             ncc.constants.TIER_CONFIG[tier].requests_per_epoch
             * ncc.constants.RPE_PERCENTAGE_FOR_SYNTHETIC
         )
-        sleep_per_set = ncc.constants.EPOCH_LENGTH // n_sets
-        sleep_per_batch = sleep_per_set // len(pre_batched_uids)
-        log = f"{tier} -- {model_name} -- {len(uids)} miners -- {n_sets} sets -- {sleep_per_batch} sleep per batch."
-        bt.logging.info(log)
+        sleep_per_set = ncc.constants.EPOCH_LENGTH / n_sets
         query_threads = []
         for _ in range(n_sets):
+            uids = list(serving_counter.keys())
+            random.shuffle(uids)
+            pre_batched_uids = [
+                uids[i : i + batch_size] for i in range(0, len(uids), batch_size)
+            ]
+            bt.logging.info(f"Pre-batched uids: \n{pre_batched_uids}")
+            sleep_per_batch = sleep_per_set / len(pre_batched_uids)
+            log = f"{tier} -- {model_name} -- {len(uids)} miners -- {n_sets} sets -- {sleep_per_set} seconds per set -- {sleep_per_batch} seconds per batch."
+            bt.logging.info(log)
             for uids in pre_batched_uids:
                 batched_uids = []
                 for uid in uids:
