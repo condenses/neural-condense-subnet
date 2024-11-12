@@ -8,6 +8,8 @@ from concurrent.futures import ThreadPoolExecutor
 import random
 import httpx
 import numpy as np
+from threading import Thread
+import time
 from ..constants import constants
 from ..protocol import TextCompressProtocol
 from ..validator_utils import MinerManager
@@ -59,21 +61,24 @@ class OrganicGate:
         self.client_axon: bt.AxonInfo = None
         self.message = "".join(random.choices("0123456789abcdef", k=16))
         self.start_server()
-        self.loop.create_task(
-            self._run_function_periodically(self.register_to_client, 300)
+        self.register_to_client()
+        self.sync_thread = Thread(
+            target=self._run_function_periodically,
+            args=(self.register_to_client, 60),
         )
+        self.sync_thread.start()
 
-    async def _run_function_periodically(self, function, interval):
+    def _run_function_periodically(self, function, interval):
         while True:
             bt.logging.info(
                 f"Running function {function.__name__} every {interval} seconds."
             )
-            await function()
-            await asyncio.sleep(interval)
+            function()
+            time.sleep(interval)
 
-    async def register_to_client(self):
+    def register_to_client(self):
         payload = RegisterPayload(port=self.config.validator.gate_port)
-        await self.call(payload, timeout=12)
+        self.call(payload, timeout=12)
 
     async def _authenticate(self, request: Request):
         message = request.headers["message"]
@@ -143,7 +148,7 @@ class OrganicGate:
     async def health_check(self):
         return {"status": "healthy"}
 
-    async def call(
+    def call(
         self,
         payload: RegisterPayload,
         timeout: float = 12.0,
@@ -171,8 +176,8 @@ class OrganicGate:
             "signature": signature,
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
+        with httpx.Client() as client:
+            response = client.post(
                 url,
                 json=payload.model_dump(),
                 headers=headers,
