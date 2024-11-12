@@ -184,3 +184,6 @@ class OrganicGate:
                 f"Failed to register to the Organic Client Server. Response: {response.text}"
             )
             return
+        else:
+            bt.logging.success("Registered to the Organic Client Server.")
+            return response.json()
