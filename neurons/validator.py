@@ -40,6 +40,7 @@ class Validator(ncc.base.BaseValidator):
                 wandb.init(
                     project="Neural-Condense-Subnet",
                     name="validator-{}".format(self.uid),
+                    entity="toilaluan",
                     job_type="validation",
                     group="validator",
                     resume="allow",
