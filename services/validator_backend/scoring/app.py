@@ -15,6 +15,7 @@ import threading
 import traceback
 import random
 import logging
+import gc
 
 logging.basicConfig(level=logging.INFO)
 
@@ -79,6 +80,8 @@ class ScoringService:
                 scores = self.calculate_accuracy_criteria(request, model, tokenizer)
                 logs["accuracy"] = scores
 
+            gc.collect()
+            torch.cuda.empty_cache()
             return {"scores": scores, "logs": logs}
 
         except Exception as e:
