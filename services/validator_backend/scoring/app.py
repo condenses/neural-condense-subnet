@@ -42,7 +42,7 @@ class ScoringService:
                 if model_name not in self.models:
                     self.models[model_name] = AutoModelForCausalLM.from_pretrained(
                         model_name
-                    )
+                    ).to(dtype=torch.bfloat16)
                     self.models[model_name].to(self.device)
                     self.tokenizers[model_name] = AutoTokenizer.from_pretrained(
                         model_name
@@ -105,15 +105,15 @@ class ScoringService:
             ).input_ids.to(device)
             activation_prompt_embeddings = model.get_input_embeddings()(
                 activation_prompt_tokens
-            )
+            ).to(dtype=torch.bfloat16)
             expected_completion_embeddings = model.get_input_embeddings()(
                 expected_completion_tokens
-            )
+            ).to(dtype=torch.bfloat16)
 
             for miner_response in request.miner_responses:
                 try:
                     compressed_tokens = (
-                        torch.tensor(miner_response.compressed_tokens)
+                        torch.tensor(miner_response.compressed_tokens, dtype=torch.bfloat16)
                         .unsqueeze(0)
                         .to(device)
                     )
@@ -175,12 +175,12 @@ class ScoringService:
             ).input_ids.to(device)
             activation_prompt_embeddings = model.get_input_embeddings()(
                 activation_prompt_tokens
-            )
+            ).to(dtype=torch.bfloat16)
 
             for miner_output in request.miner_responses:
                 try:
                     compressed_tokens = (
-                        torch.tensor(miner_output.compressed_tokens)
+                        torch.tensor(miner_output.compressed_tokens, dtype=torch.bfloat16)
                         .unsqueeze(0)
                         .to(device)
                     )
