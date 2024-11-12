@@ -85,3 +85,8 @@ pm2 start python --name condense_validator \
 --validator.score_backend.port $val_backend_port \
 --validator.use_wandb
 ```
+
+6. Run the auto update script, it will check for updates every 30 minutes
+```bash
+pm2 start auto_update.sh --cron "*/30 * * * *" --name "auto_updater"
+```
