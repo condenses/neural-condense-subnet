@@ -180,6 +180,7 @@ class Validator(ncc.base.BaseValidator):
                     optimization_bounty=optimization_bounty,
                     use_wandb=self.config.validator.use_wandb,
                     timeout=120,
+                    config=self.config,
                 )
                 bt.logging.info(f"Processed and scored responses for {batched_uids}.")
             else:
