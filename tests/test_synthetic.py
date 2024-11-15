@@ -113,7 +113,7 @@ def benchmark_challenger(
 
 # Run benchmark
 benchmark_results = benchmark_challenger(
-    n_iterations=20000,
+    n_iterations=50000,
     max_characters=10000,
     model_name="Condense-AI/Mistral-7B-Instruct-v0.2",
 )

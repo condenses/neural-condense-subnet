@@ -20,10 +20,12 @@ class SyntheticTaskConfig(BaseModel):
     rewarding_frequency: int
     weight: float
 
+
 class EloGroup(BaseModel):
     min_elo: int
     max_elo: int
     k_factor: int
+
 
 class Constants(BaseModel):
     TIER_CONFIG: dict[str, TierConfig] = {
@@ -105,7 +107,7 @@ class Constants(BaseModel):
     ELO_GROUPS: dict[str, EloGroup] = {
         "beginner": EloGroup(min_elo=0, max_elo=1200, k_factor=32),
         "intermediate": EloGroup(min_elo=1200, max_elo=2000, k_factor=24),
-        "advanced": EloGroup(min_elo=2000, max_elo=3000, k_factor=16),  
+        "advanced": EloGroup(min_elo=2000, max_elo=3000, k_factor=16),
     }
 
     # Adjust values based on NETWORK environment variable
