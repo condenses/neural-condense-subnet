@@ -137,17 +137,18 @@ class Validator(ncc.base.BaseValidator):
             groud_truth_synapse = self._prepare_synapse(
                 tokenizer, task_config, this_tier_config, model_name
             )
+            bt.logging.info(f"Prepared ground truth synapse for {batched_uids}.")
             synapse = groud_truth_synapse.model_copy()
             synapse.hide_ground_truth()
 
             responses = self._query_miners(
                 dendrite, batched_uids, synapse, this_tier_config.timeout
             )
-
+            bt.logging.info(f"Queried miners for {batched_uids}.")
             valid_responses, valid_uids, invalid_uids = self._validate_responses(
                 responses, batched_uids, this_tier_config
             )
-
+            bt.logging.info(f"Validated responses for {batched_uids}.")
             if not valid_responses:
                 bt.logging.info(f"No valid responses for batch {batched_uids}.")
                 return
@@ -163,6 +164,9 @@ class Validator(ncc.base.BaseValidator):
                     this_tier_config,
                     tier,
                 )
+                bt.logging.info(f"Processed and scored responses for {batched_uids}.")
+            else:
+                bt.logging.info(f"Not rewarding batch {batched_uids}.")
 
         except Exception as e:
             bt.logging.error(f"Error: {e}")
@@ -267,6 +271,7 @@ class Validator(ncc.base.BaseValidator):
 
         if self.config.validator.use_wandb:
             logs = scoring_response["logs"] | {"penalized_scores": penalized_scores}
+            logging.log_as_dataframe(data=logs, name="Batch Logs")
             logging.log_wandb(logs, valid_uids, tier=tier)
 
     def set_weights(self):
