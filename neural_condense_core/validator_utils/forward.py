@@ -200,7 +200,7 @@ def get_scoring_metrics(
 
 
 def get_additional_rewards(
-    valid_responses: list, tier_config: TierConfig, k_bounty: float
+    valid_responses: list, tier_config: TierConfig, optimization_bounty: float
 ) -> list[float]:
     """
     Calculate additional rewards for miners based on compression and processing time.
@@ -208,7 +208,7 @@ def get_additional_rewards(
     Args:
         valid_responses (list): List of valid responses
         tier_config (TierConfig): Tier configuration
-        k_bounty (float): Bounty multiplier
+        optimization_bounty (float): Bounty value
 
     Returns:
         list[float]: List of additional rewards
@@ -222,7 +222,7 @@ def get_additional_rewards(
     ]
     rewards = [(c + p) / 2 for c, p in zip(compress_rate_rewards, process_time_rewards)]
     rewards = np.array(rewards) / sum(rewards)
-    return [r * k_bounty for r in rewards]
+    return [r * optimization_bounty for r in rewards]
 
 
 def get_k_factor(miner_manager: MinerManager, uids: list[int]) -> tuple[int, float]:
