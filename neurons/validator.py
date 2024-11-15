@@ -5,6 +5,7 @@ import random
 from transformers import AutoTokenizer
 import numpy as np
 import time
+import traceback
 from neural_condense_core.validator_utils import forward as forward_utils
 
 
@@ -189,8 +190,8 @@ class Validator(ncc.base.BaseValidator):
                 bt.logging.info(f"Not rewarding batch {batched_uids}.")
 
         except Exception as e:
+            traceback.print_exc()
             bt.logging.error(f"Error: {e}")
-
     def set_weights(self):
         """Set weights for miners based on their performance."""
         self.current_block = self.subtensor.get_current_block()
