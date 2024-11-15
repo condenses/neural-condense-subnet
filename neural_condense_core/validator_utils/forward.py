@@ -125,6 +125,7 @@ def process_and_score_responses(
     k_factor: int,
     optimization_bounty: float,
     use_wandb: bool = False,
+    config: bt.config = None,
     timeout: int = 120,
 ):
     """
@@ -144,13 +145,24 @@ def process_and_score_responses(
         use_wandb (bool): Whether to use wandb
     """
     metrics = get_scoring_metrics(
-        valid_responses, ground_truth_synapse, model_name, task_config, timeout
+        valid_responses=valid_responses,
+        ground_truth_synapse=ground_truth_synapse,
+        model_name=model_name,
+        task_config=task_config,
+        timeout=timeout,
+        config=config,
     )
     additional_rewards = get_additional_rewards(
-        valid_responses, tier_config, optimization_bounty
+        valid_responses=valid_responses,
+        tier_config=tier_config,
+        optimization_bounty=optimization_bounty,
     )
     miner_manager.update_ratings(
-        metrics, valid_uids, k_factor, invalid_uids, additional_rewards
+        metrics=metrics,
+        valid_uids=valid_uids,
+        k_factor=k_factor,
+        invalid_uids=invalid_uids,
+        additional_rewards=additional_rewards,
     )
 
     if use_wandb:
@@ -161,8 +173,8 @@ def process_and_score_responses(
 def get_scoring_metrics(
     valid_responses: list,
     ground_truth_synapse,
-    model_name,
-    task_config,
+    model_name: str,
+    task_config: SyntheticTaskConfig,
     timeout: int = 120,
     config: bt.config = None,
 ):
