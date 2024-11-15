@@ -271,8 +271,7 @@ def get_batched_uids(
         list[list[int]]: Batched UIDs
     """
     uids = list(serving_counter.keys())
-    elo_ratings = [metadata[uid].elo_rating for uid in uids]
-    uids.sort(key=elo_ratings, reverse=True)
+    uids = sorted(uids, key=lambda uid: metadata[uid].elo_rating, reverse=True)
     group_size = max(2, len(uids) // 4)
     groups = [uids[i : i + group_size] for i in range(0, len(uids), group_size)]
     for group in groups:
