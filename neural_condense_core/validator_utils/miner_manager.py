@@ -220,6 +220,8 @@ class MinerManager:
                 )
                 # Reset elo rating
                 metadata[uid]["elo_rating"] = self.elo_system.initial_rating
+            if "elo_rating" not in metadata[uid]:
+                metadata[uid]["elo_rating"] = self.elo_system.initial_rating
 
         # Update self.metadata with the newly computed metadata
         self.metadata = metadata
