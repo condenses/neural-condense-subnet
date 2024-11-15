@@ -29,8 +29,8 @@ class ELOSystem:
             for j in range(i + 1, n):
                 score_i = scores[i]
                 score_j = scores[j]
-                S_i = score_i / (score_i + score_j)
-                S_j = score_j / (score_i + score_j)
+                S_i = score_i / (score_i + score_j + 1e-6)
+                S_j = score_j / (score_i + score_j + 1e-6)
                 expected_i = self.expected_score(ratings[i], ratings[j])
                 expected_j = self.expected_score(ratings[j], ratings[i])
                 rating_change_i = k_factor * (S_i - expected_i)

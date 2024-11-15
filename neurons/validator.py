@@ -81,9 +81,11 @@ class Validator(ncc.base.BaseValidator):
             bt.logging.info(f"No miners in tier {tier}.")
             return
 
-        n_sets = int(
+        n_sets = max(int(
             ncc.constants.TIER_CONFIG[tier].requests_per_epoch
-            * ncc.constants.RPE_PERCENTAGE_FOR_SYNTHETIC
+                * ncc.constants.RPE_PERCENTAGE_FOR_SYNTHETIC
+            ),
+            1,
         )
         sleep_per_set = ncc.constants.EPOCH_LENGTH / n_sets
         query_threads = []
