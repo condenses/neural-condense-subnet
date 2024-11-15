@@ -25,6 +25,7 @@ class EloGroup(BaseModel):
     min_elo: int
     max_elo: int
     k_factor: int
+    optimization_bounty: float
 
 
 class Constants(BaseModel):
@@ -105,9 +106,15 @@ class Constants(BaseModel):
     REPORT_URL: str = "https://report.condenses.ai"
     INITIAL_ELO_RATING: float = 1000.0
     ELO_GROUPS: dict[str, EloGroup] = {
-        "beginner": EloGroup(min_elo=0, max_elo=1200, k_factor=32),
-        "intermediate": EloGroup(min_elo=1200, max_elo=2000, k_factor=24),
-        "advanced": EloGroup(min_elo=2000, max_elo=3000, k_factor=16),
+        "beginner": EloGroup(
+            min_elo=0, max_elo=1200, k_factor=24, optimization_bounty=24
+        ),
+        "intermediate": EloGroup(
+            min_elo=1200, max_elo=2000, k_factor=16, optimization_bounty=16
+        ),
+        "advanced": EloGroup(
+            min_elo=2000, max_elo=3000, k_factor=8, optimization_bounty=8
+        ),
     }
 
     # Adjust values based on NETWORK environment variable

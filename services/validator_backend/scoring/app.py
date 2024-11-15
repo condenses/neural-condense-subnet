@@ -6,13 +6,13 @@ from transformers import (
     AutoModelForCausalLM,
     TextGenerationPipeline,
 )
-from .datatypes import BatchedScoringRequest
-from .utils import loss_to_scores, base64_to_ndarray, _smooth_scores, unit_test
 import threading
 import traceback
 import random
 import logging
 import gc
+from .datatypes import BatchedScoringRequest
+from .utils import base64_to_ndarray, unit_test
 
 logging.basicConfig(level=logging.INFO)
 
@@ -59,7 +59,7 @@ class ScoringService:
             self.load_model(model_name)
             model = self.models[model_name]
             tokenizer = self.tokenizers[model_name]
-            logs = {}
+            metrics = {}
             criteria = random.choice(request.ground_truth_request.criterias)
             for miner_response in request.miner_responses:
                 miner_response.compressed_tokens = base64_to_ndarray(
@@ -67,24 +67,21 @@ class ScoringService:
                 )
 
             if criteria == "loss":
-                negative_losses = self.calculate_loss_criteria(
-                    request, model, tokenizer
-                )
-                logs["losses"] = negative_losses
-                scores = _smooth_scores(negative_losses, delta_0=0.4, decay=0.7)
+                losses = self.calculate_loss_criteria(request, model, tokenizer)
+                metrics["loss"] = losses
 
             if criteria == "accuracy":
                 scores = self.calculate_accuracy_criteria(request, model, tokenizer)
-                logs["accuracy"] = scores
+                metrics["accuracy"] = scores
 
             gc.collect()
             torch.cuda.empty_cache()
-            return {"scores": scores, "logs": logs}
+            return {"metrics": metrics}
 
         except Exception as e:
             traceback.print_exc()
             print(f"Error in get_scoring: {e}")
-            return {"scores": []}
+            return {"metrics": {}}
 
     def calculate_loss_criteria(self, request: BatchedScoringRequest, model, tokenizer):
         """
@@ -152,9 +149,8 @@ class ScoringService:
                 except Exception as e:
                     print(f"Error in calculate_loss_criteria loop: {e}")
                     losses.append(1000)
-            scores = loss_to_scores(losses)
             logger.info(f"Losses: {losses}")
-            return scores
+            return losses
         except Exception as e:
             print(f"Error in calculate_loss_criteria: {e}")
             return []
