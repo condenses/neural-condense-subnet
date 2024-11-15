@@ -175,9 +175,11 @@ class Validator(ncc.base.BaseValidator):
                     model_name=model_name,
                     task_config=task_config,
                     tier_config=ncc.constants.TIER_CONFIG[tier],
+                    tier=tier,
                     k_factor=k_factor,
                     optimization_bounty=optimization_bounty,
                     use_wandb=self.config.validator.use_wandb,
+                    timeout=120,
                 )
                 bt.logging.info(f"Processed and scored responses for {batched_uids}.")
             else:

@@ -124,8 +124,8 @@ def process_and_score_responses(
     tier: str,
     k_factor: int,
     optimization_bounty: float,
-    timeout: int = 120,
     use_wandb: bool = False,
+    timeout: int = 120,
 ):
     """
     Process and score miner responses.
