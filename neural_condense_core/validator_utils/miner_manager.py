@@ -124,6 +124,7 @@ class MinerManager:
         metadata = {
             int(uid): {
                 "tier": "unknown",
+                "elo_rating": self.elo_system.initial_rating,
             }
             for uid in self.metagraph.uids
         }
