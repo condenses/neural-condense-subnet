@@ -98,6 +98,7 @@ class Constants(BaseModel):
     SCORE_MOVING_AVERAGE: float = 0.05
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"
     REPORT_URL: str = "https://report.condenses.ai"
+    INITIAL_ELO_RATING: float = 1000.0
 
     # Adjust values based on NETWORK environment variable
     def __init__(self, **data):

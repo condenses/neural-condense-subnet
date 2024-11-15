@@ -10,7 +10,11 @@ from ..protocol import Metadata
 from ..constants import constants
 from .elo import ELOSystem
 import threading
+from pydantic import BaseModel
 
+class MetadataItem(BaseModel):
+    tier: str = "unknown"
+    elo_rating: float = constants.INITIAL_ELO_RATING
 
 class ServingCounter:
     """
@@ -32,7 +36,6 @@ class ServingCounter:
             self.counter += 1
             return self.counter <= self.rate_limit
 
-
 class MinerManager:
     r"""
     Manages the metadata and serving counter of miners.
@@ -46,7 +49,6 @@ class MinerManager:
         self.elo_system = ELOSystem()
         self.default_metadata_items = [
             ("tier", "unknown"),
-            ("elo_rating", self.elo_system.initial_rating),
         ]
         self.config = validator.config
         self.metadata = self._init_metadata()
@@ -60,14 +62,14 @@ class MinerManager:
         Updates the ELO ratings of the miners.
         """
         # Get current ELO ratings for participating miners
-        current_ratings = [self.metadata[uid].get("elo_rating", self.elo_system.initial_rating) for uid in uids]
+        current_ratings = [self.metadata[uid].elo_rating for uid in uids]
         
         # Update ELO ratings based on performance scores
         new_ratings = self.elo_system.update_ratings(current_ratings, scores)
         
         # Update metadata with new ratings and scores
         for uid, new_rating in zip(uids, new_ratings):
-            self.metadata[uid]["elo_rating"] = new_rating
+            self.metadata[uid] = MetadataItem(tier=self.metadata[uid].tier, elo_rating=new_rating)
 
     def get_normalized_ratings(self) -> np.ndarray:
         """
@@ -81,8 +83,8 @@ class MinerManager:
             tier_uids = []
             
             for uid, metadata in self.metadata.items():
-                if metadata["tier"] == tier:
-                    tier_ratings.append(metadata.get("elo_rating", self.elo_system.initial_rating))
+                if metadata.tier == tier:
+                    tier_ratings.append(metadata.elo_rating)
                     tier_uids.append(uid)
             
             if tier_ratings:
@@ -101,9 +103,8 @@ class MinerManager:
     def load_state(self):
         try:
             state = json.load(open(self.state_path, "r"))
-            self.metadata = state["metadata"]
-            # Convert key str to int
-            self.metadata = {int(k): v for k, v in self.metadata.items()}
+            metadata_items = {int(k): MetadataItem(**v) for k, v in state["metadata"].items()}
+            self.metadata = metadata_items
             self._log_metadata()
             bt.logging.success("Loaded state.")
         except Exception as e:
@@ -111,7 +112,8 @@ class MinerManager:
 
     def save_state(self):
         try:
-            state = {"metadata": self.metadata}
+            metadata_dict = {k: v.dict() for k, v in self.metadata.items()}
+            state = {"metadata": metadata_dict}
             json.dump(state, open(self.state_path, "w"))
             bt.logging.success("Saved state.")
         except Exception as e:
@@ -122,10 +124,7 @@ class MinerManager:
         Initializes the metadata of the miners.
         """
         metadata = {
-            int(uid): {
-                "tier": "unknown",
-                "elo_rating": self.elo_system.initial_rating,
-            }
+            int(uid): MetadataItem()
             for uid in self.metagraph.uids
         }
         return metadata
@@ -142,10 +141,8 @@ class MinerManager:
 
     def _log_metadata(self):
         # Log metadata as pandas dataframe with uid, tier, and elo_rating
-        metadata_df = pd.DataFrame(self.metadata).T
-        # Drop loss column if it exists
-        if "loss" in metadata_df.columns:
-            metadata_df = metadata_df.drop(columns=["loss"])
+        metadata_dict = {uid: {"tier": m.tier, "elo_rating": m.elo_rating} for uid, m in self.metadata.items()}
+        metadata_df = pd.DataFrame(metadata_dict).T
         metadata_df = metadata_df.reset_index()
         metadata_df.columns = ["uid", "tier", "elo_rating"]
         bt.logging.info("\n" + metadata_df.to_string(index=True))
@@ -164,8 +161,9 @@ class MinerManager:
             "signature": signature,
         }
 
+        metadata_dict = {k: v.dict() for k, v in self.metadata.items()}
         payload = {
-            "metadata": self.metadata,
+            "metadata": metadata_dict,
         }
 
         with httpx.Client() as client:
@@ -201,27 +199,23 @@ class MinerManager:
         )
 
         for uid, response in zip(uids, responses):
-            metadata.setdefault(uid, {})
-
             # Keep track of the current tier
-            current_tier = self.metadata.get(uid, {}).get("tier", "unknown")
+            current_tier = self.metadata[uid].tier if uid in self.metadata else "unknown"
+            new_tier = current_tier
 
-            # Update metadata fields based on response or default values
-            for key, default_value in self.default_metadata_items:
-                if response and response.metadata.get(key) is not None:
-                    metadata[uid][key] = response.metadata[key]
-                else:
-                    metadata[uid][key] = default_value
+            # Update tier based on response
+            if response and response.metadata.get("tier") is not None:
+                new_tier = response.metadata["tier"]
+            
+            # Get current or initial ELO rating
+            current_elo = self.metadata[uid].elo_rating if uid in self.metadata else constants.INITIAL_ELO_RATING
+            
+            # Reset ELO rating if tier changed
+            if new_tier != current_tier:
+                bt.logging.info(f"Tier of uid {uid} changed from {current_tier} to {new_tier}.")
+                current_elo = constants.INITIAL_ELO_RATING
 
-            # Check for tier change and log it
-            if metadata[uid]["tier"] != current_tier:
-                bt.logging.info(
-                    f"Tier of uid {uid} changed from {current_tier} to {metadata[uid]['tier']}."
-                )
-                # Reset elo rating
-                metadata[uid]["elo_rating"] = self.elo_system.initial_rating
-            if "elo_rating" not in metadata[uid]:
-                metadata[uid]["elo_rating"] = self.elo_system.initial_rating
+            metadata[uid] = MetadataItem(tier=new_tier, elo_rating=current_elo)
 
         # Update self.metadata with the newly computed metadata
         self.metadata = metadata
@@ -241,7 +235,7 @@ class MinerManager:
         tier_group = {tier: {} for tier in constants.TIER_CONFIG.keys()}
 
         for uid, metadata in self.metadata.items():
-            tier = metadata.get("tier", "unknown")
+            tier = metadata.tier
             if tier not in constants.TIER_CONFIG:
                 continue
             if tier not in tier_group:
