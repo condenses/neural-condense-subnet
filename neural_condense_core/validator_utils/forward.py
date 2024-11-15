@@ -6,7 +6,7 @@ import random
 import wandb
 from . import logging
 from .synthetic_challenge import Challenger
-from .miner_manager import MinerManager, ServingCounter
+from .miner_manager import MinerManager, ServingCounter, MetadataItem
 from ..constants import SyntheticTaskConfig, TierConfig
 
 
@@ -259,7 +259,7 @@ def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
 
 
 def get_batched_uids(
-    serving_counter: dict[int, ServingCounter], metadata: dict[int, MinerMetadata]
+    serving_counter: dict[int, ServingCounter], metadata: dict[int, MetadataItem]
 ) -> list[list[int]]:
     """
     Get batched UIDs for validation.
