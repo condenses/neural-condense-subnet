@@ -89,7 +89,9 @@ class Validator(ncc.base.BaseValidator):
         query_threads = []
 
         for _ in range(n_sets):
-            pre_batched_uids = forward_utils.get_batched_uids(serving_counter)
+            pre_batched_uids = forward_utils.get_batched_uids(
+                serving_counter, self.miner_manager.metadata
+            )
             sleep_per_batch = sleep_per_set / len(pre_batched_uids)
             for batch_uids in pre_batched_uids:
                 batched_uids = [

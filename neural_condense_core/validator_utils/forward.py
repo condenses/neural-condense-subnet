@@ -258,7 +258,9 @@ def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
         bt.logging.error(f"Starting wandb error: {e}")
 
 
-def get_batched_uids(serving_counter: dict[int, ServingCounter]) -> list[list[int]]:
+def get_batched_uids(
+    serving_counter: dict[int, ServingCounter], metadata: dict[int, MinerMetadata]
+) -> list[list[int]]:
     """
     Get batched UIDs for validation.
 
@@ -269,7 +271,8 @@ def get_batched_uids(serving_counter: dict[int, ServingCounter]) -> list[list[in
         list[list[int]]: Batched UIDs
     """
     uids = list(serving_counter.keys())
-    uids.sort(key=lambda uid: serving_counter[uid].elo_rating)
+    elo_ratings = [metadata[uid].elo_rating for uid in uids]
+    uids.sort(key=elo_ratings, reverse=True)
     group_size = max(2, len(uids) // 4)
     groups = [uids[i : i + group_size] for i in range(0, len(uids), group_size)]
     for group in groups:
