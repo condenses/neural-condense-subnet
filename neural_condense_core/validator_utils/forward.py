@@ -9,6 +9,7 @@ from .synthetic_challenge import Challenger
 from .miner_manager import MinerManager, ServingCounter
 from ..constants import SyntheticTaskConfig, TierConfig
 
+
 def get_task_config() -> SyntheticTaskConfig:
     """
     Get a random task configuration based on weights.
@@ -20,6 +21,7 @@ def get_task_config() -> SyntheticTaskConfig:
         ncc.constants.SYNTHETIC_TASK_CONFIG,
         weights=[t.weight for t in ncc.constants.SYNTHETIC_TASK_CONFIG],
     )[0]
+
 
 def prepare_synapse(
     challenger: Challenger,
@@ -48,7 +50,14 @@ def prepare_synapse(
     synapse.target_model = model_name
     return synapse
 
-def query_miners(dendrite: bt.dendrite, metagraph: bt.metagraph, uids: list[int], synapse, timeout: int):
+
+def query_miners(
+    dendrite: bt.dendrite,
+    metagraph: bt.metagraph,
+    uids: list[int],
+    synapse,
+    timeout: int,
+):
     """
     Query a group of miners with a synapse.
 
@@ -68,9 +77,8 @@ def query_miners(dendrite: bt.dendrite, metagraph: bt.metagraph, uids: list[int]
         timeout=timeout,
     )
 
-def validate_responses(
-    responses: list, uids: list[int], tier_config: TierConfig
-):
+
+def validate_responses(responses: list, uids: list[int], tier_config: TierConfig):
     """
     Validate responses from miners.
 
@@ -102,6 +110,7 @@ def validate_responses(
             bt.logging.error(f"Error: {e}")
             invalid_uids.append(uid)
     return valid_responses, valid_uids, invalid_uids
+
 
 def process_and_score_responses(
     miner_manager: MinerManager,
@@ -148,6 +157,7 @@ def process_and_score_responses(
         logging.log_as_dataframe(data=metrics, name="Batch Metrics")
         logging.log_wandb(metrics, valid_uids, tier=tier)
 
+
 def get_scoring_metrics(
     valid_responses: list,
     ground_truth_synapse,
@@ -161,8 +171,7 @@ def get_scoring_metrics(
     """
     payload = {
         "miner_responses": [
-            {"compressed_tokens_b64": r.compressed_tokens_b64}
-            for r in valid_responses
+            {"compressed_tokens_b64": r.compressed_tokens_b64} for r in valid_responses
         ],
         "ground_truth_request": ground_truth_synapse.deserialize()
         | {"model_name": model_name, "criterias": task_config.criterias},
@@ -176,6 +185,7 @@ def get_scoring_metrics(
 
     metrics = scoring_response["metrics"]
     return metrics
+
 
 def get_additional_rewards(
     valid_responses: list, tier_config: TierConfig, k_bounty: float
@@ -198,11 +208,10 @@ def get_additional_rewards(
     process_time_rewards = [
         1 - r.dendrite.process_time / tier_config.timeout for r in valid_responses
     ]
-    rewards = [
-        (c + p) / 2 for c, p in zip(compress_rate_rewards, process_time_rewards)
-    ]
+    rewards = [(c + p) / 2 for c, p in zip(compress_rate_rewards, process_time_rewards)]
     rewards = np.array(rewards) / sum(rewards)
     return [r * k_bounty for r in rewards]
+
 
 def get_k_factor(miner_manager: MinerManager, uids: list[int]) -> tuple[int, float]:
     """
@@ -214,9 +223,7 @@ def get_k_factor(miner_manager: MinerManager, uids: list[int]) -> tuple[int, flo
     Returns:
         tuple[int, float]: K-factor and optimization bounty
     """
-    mean_elo = sum(
-        miner_manager.metadata[uid].elo_rating for uid in uids
-    ) / len(uids)
+    mean_elo = sum(miner_manager.metadata[uid].elo_rating for uid in uids) / len(uids)
 
     if mean_elo < ncc.constants.ELO_GROUPS["beginner"].max_elo:
         elo_group = ncc.constants.ELO_GROUPS["beginner"]
@@ -249,6 +256,7 @@ def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
         )
     except Exception as e:
         bt.logging.error(f"Starting wandb error: {e}")
+
 
 def get_batched_uids(serving_counter: dict[int, ServingCounter]) -> list[list[int]]:
     """

@@ -1,6 +1,7 @@
 import numpy as np
 import bittensor as bt
 
+
 class MetricConverter:
     def __init__(self):
         self.converters = {

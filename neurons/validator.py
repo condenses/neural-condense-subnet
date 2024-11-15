@@ -5,7 +5,6 @@ import random
 from transformers import AutoTokenizer
 import numpy as np
 import time
-from neural_condense_core.constants import TierConfig
 from neural_condense_core.validator_utils import forward as forward_utils
 
 
@@ -50,7 +49,7 @@ class Validator(ncc.base.BaseValidator):
         self.miner_manager.sync()
         threads = [
             threading.Thread(target=self._forward_tier, args=(tier,))
-            for tier in TierConfig
+            for tier in ncc.constants.TIER_CONFIG
         ]
         for t in threads:
             t.start()
@@ -130,10 +129,13 @@ class Validator(ncc.base.BaseValidator):
         try:
             dendrite = bt.dendrite(self.wallet)
             task_config = forward_utils.get_task_config()
-            this_tier_config = ncc.constants.TIER_CONFIG[tier]
 
             ground_truth_synapse = forward_utils.prepare_synapse(
-                self.challenger, tokenizer, task_config, this_tier_config, model_name
+                challenger=self.challenger,
+                tokenizer=tokenizer,
+                task_config=task_config,
+                tier_config=ncc.constants.TIER_CONFIG[tier],
+                model_name=model_name,
             )
             bt.logging.info(f"Prepared ground truth synapse for {batched_uids}.")
             synapse = ground_truth_synapse.model_copy()
@@ -142,16 +144,18 @@ class Validator(ncc.base.BaseValidator):
                 self.miner_manager, batched_uids
             )
             responses = forward_utils.query_miners(
-                dendrite,
-                self.metagraph,
-                batched_uids,
-                synapse,
-                this_tier_config.timeout,
+                dendrite=dendrite,
+                metagraph=self.metagraph,
+                uids=batched_uids,
+                synapse=synapse,
+                timeout=ncc.constants.TIER_CONFIG[tier].timeout,
             )
             bt.logging.info(f"Queried miners for {batched_uids}.")
             valid_responses, valid_uids, invalid_uids = (
                 forward_utils.validate_responses(
-                    responses, batched_uids, this_tier_config
+                    responses=responses,
+                    uids=batched_uids,
+                    tier_config=ncc.constants.TIER_CONFIG[tier],
                 )
             )
             bt.logging.info(f"Validated responses for {batched_uids}.")
@@ -168,7 +172,7 @@ class Validator(ncc.base.BaseValidator):
                     ground_truth_synapse=ground_truth_synapse,
                     model_name=model_name,
                     task_config=task_config,
-                    tier_config=this_tier_config,
+                    tier_config=ncc.constants.TIER_CONFIG[tier],
                     k_factor=k_factor,
                     optimization_bounty=optimization_bounty,
                     use_wandb=self.config.validator.use_wandb,
