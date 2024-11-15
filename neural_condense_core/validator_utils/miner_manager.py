@@ -1,5 +1,4 @@
 import json
-import os
 import bittensor as bt
 import numpy as np
 import random
@@ -12,9 +11,11 @@ from .elo import ELOSystem
 import threading
 from pydantic import BaseModel
 
+
 class MetadataItem(BaseModel):
     tier: str = "unknown"
     elo_rating: float = constants.INITIAL_ELO_RATING
+
 
 class ServingCounter:
     """
@@ -35,6 +36,7 @@ class ServingCounter:
         with self.lock:
             self.counter += 1
             return self.counter <= self.rate_limit
+
 
 class MinerManager:
     r"""
@@ -57,53 +59,60 @@ class MinerManager:
         self.load_state()
         self.sync()
 
-    def update_ratings(self, scores: list[float], uids: list[int]):
+    def update_ratings(self, scores: list[float], uids: list[int], k_factor: int):
         """
         Updates the ELO ratings of the miners.
         """
         # Get current ELO ratings for participating miners
         current_ratings = [self.metadata[uid].elo_rating for uid in uids]
-        
+
         # Update ELO ratings based on performance scores
-        new_ratings = self.elo_system.update_ratings(current_ratings, scores)
-        
+        new_ratings = self.elo_system.update_ratings(current_ratings, scores, k_factor)
+
         # Update metadata with new ratings and scores
         for uid, new_rating in zip(uids, new_ratings):
-            self.metadata[uid] = MetadataItem(tier=self.metadata[uid].tier, elo_rating=new_rating)
+            self.metadata[uid] = MetadataItem(
+                tier=self.metadata[uid].tier, elo_rating=new_rating
+            )
 
     def get_normalized_ratings(self) -> np.ndarray:
         """
         Get normalized ratings using ELO ratings within each tier.
         """
         weights = np.zeros(len(self.metagraph.hotkeys))
-        
+
         for tier in constants.TIER_CONFIG.keys():
             # Get ELO ratings for miners in this tier
             tier_ratings = []
             tier_uids = []
-            
+
             for uid, metadata in self.metadata.items():
                 if metadata.tier == tier:
                     tier_ratings.append(metadata.elo_rating)
                     tier_uids.append(uid)
-            
+
             if tier_ratings:
                 # Normalize ELO ratings to weights, sum to 1
                 normalized_ratings = self.elo_system.normalize_ratings(tier_ratings)
-                
+
                 # Apply tier incentive percentage
-                tier_weights = np.array(normalized_ratings) * constants.TIER_CONFIG[tier].incentive_percentage
-                
+                tier_weights = (
+                    np.array(normalized_ratings)
+                    * constants.TIER_CONFIG[tier].incentive_percentage
+                )
+
                 # Assign weights to corresponding UIDs
                 for uid, weight in zip(tier_uids, tier_weights):
                     weights[uid] = weight
-        
+
         return weights
 
     def load_state(self):
         try:
             state = json.load(open(self.state_path, "r"))
-            metadata_items = {int(k): MetadataItem(**v) for k, v in state["metadata"].items()}
+            metadata_items = {
+                int(k): MetadataItem(**v) for k, v in state["metadata"].items()
+            }
             self.metadata = metadata_items
             self._log_metadata()
             bt.logging.success("Loaded state.")
@@ -123,10 +132,7 @@ class MinerManager:
         r"""
         Initializes the metadata of the miners.
         """
-        metadata = {
-            int(uid): MetadataItem()
-            for uid in self.metagraph.uids
-        }
+        metadata = {int(uid): MetadataItem() for uid in self.metagraph.uids}
         return metadata
 
     def sync(self):
@@ -141,7 +147,10 @@ class MinerManager:
 
     def _log_metadata(self):
         # Log metadata as pandas dataframe with uid, tier, and elo_rating
-        metadata_dict = {uid: {"tier": m.tier, "elo_rating": m.elo_rating} for uid, m in self.metadata.items()}
+        metadata_dict = {
+            uid: {"tier": m.tier, "elo_rating": m.elo_rating}
+            for uid, m in self.metadata.items()
+        }
         metadata_df = pd.DataFrame(metadata_dict).T
         metadata_df = metadata_df.reset_index()
         metadata_df.columns = ["uid", "tier", "elo_rating"]
@@ -200,19 +209,27 @@ class MinerManager:
 
         for uid, response in zip(uids, responses):
             # Keep track of the current tier
-            current_tier = self.metadata[uid].tier if uid in self.metadata else "unknown"
+            current_tier = (
+                self.metadata[uid].tier if uid in self.metadata else "unknown"
+            )
             new_tier = current_tier
 
             # Update tier based on response
             if response and response.metadata.get("tier") is not None:
                 new_tier = response.metadata["tier"]
-            
+
             # Get current or initial ELO rating
-            current_elo = self.metadata[uid].elo_rating if uid in self.metadata else constants.INITIAL_ELO_RATING
-            
+            current_elo = (
+                self.metadata[uid].elo_rating
+                if uid in self.metadata
+                else constants.INITIAL_ELO_RATING
+            )
+
             # Reset ELO rating if tier changed
             if new_tier != current_tier:
-                bt.logging.info(f"Tier of uid {uid} changed from {current_tier} to {new_tier}.")
+                bt.logging.info(
+                    f"Tier of uid {uid} changed from {current_tier} to {new_tier}."
+                )
                 current_elo = constants.INITIAL_ELO_RATING
 
             metadata[uid] = MetadataItem(tier=new_tier, elo_rating=current_elo)

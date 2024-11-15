@@ -1,5 +1,5 @@
 from bittensor import Synapse
-from typing import List, Any
+from typing import Any
 from .common import base64
 
 

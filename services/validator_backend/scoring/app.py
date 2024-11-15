@@ -1,9 +1,6 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import List, Any
 import torch.nn.functional as F
 import torch
-import numpy as np
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -116,7 +113,9 @@ class ScoringService:
             for miner_response in request.miner_responses:
                 try:
                     compressed_tokens = (
-                        torch.tensor(miner_response.compressed_tokens, dtype=torch.bfloat16)
+                        torch.tensor(
+                            miner_response.compressed_tokens, dtype=torch.bfloat16
+                        )
                         .unsqueeze(0)
                         .to(device)
                     )
@@ -183,7 +182,9 @@ class ScoringService:
             for miner_output in request.miner_responses:
                 try:
                     compressed_tokens = (
-                        torch.tensor(miner_output.compressed_tokens, dtype=torch.bfloat16)
+                        torch.tensor(
+                            miner_output.compressed_tokens, dtype=torch.bfloat16
+                        )
                         .unsqueeze(0)
                         .to(device)
                     )

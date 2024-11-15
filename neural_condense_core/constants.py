@@ -95,10 +95,14 @@ class Constants(BaseModel):
     MIN_STAKE: int = int(os.environ.get("MIN_STAKE", 10000))
     RPE_PERCENTAGE_FOR_SYNTHETIC: float = 0.05
     BATCH_SIZE: int = 4
-    SCORE_MOVING_AVERAGE: float = 0.05
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"
     REPORT_URL: str = "https://report.condenses.ai"
     INITIAL_ELO_RATING: float = 1000.0
+    ELO_GROUPS = {
+        "beginner": {"min": 0, "max": 1200, "k_factor": 32},
+        "intermediate": {"min": 1200, "max": 2000, "k_factor": 24},
+        "advanced": {"min": 2000, "max": float("inf"), "k_factor": 16},
+    }
 
     # Adjust values based on NETWORK environment variable
     def __init__(self, **data):

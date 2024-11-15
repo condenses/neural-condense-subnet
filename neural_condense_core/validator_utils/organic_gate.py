@@ -7,7 +7,6 @@ import uvicorn
 from concurrent.futures import ThreadPoolExecutor
 import random
 import httpx
-import numpy as np
 from threading import Thread
 import time
 from ..constants import constants
@@ -115,7 +114,7 @@ class OrganicGate:
             if targeted_uid is None:
                 raise HTTPException(
                     status_code=503,
-                    detail=f"No miners available.",
+                    detail="No miners available.",
                 )
             target_axon = self.metagraph.axons[targeted_uid]
 

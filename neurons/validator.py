@@ -8,6 +8,7 @@ import numpy as np
 import time
 import requests
 import wandb
+import pandas as pd
 
 disable_default_handler()
 disable_propagation()
@@ -96,8 +97,10 @@ class Validator(ncc.base.BaseValidator):
             uids = list(serving_counter.keys())
             # Sort UIDs by ELO rating and split into groups to maintain competitive matches
             uids.sort(key=lambda uid: self.miner_manager.metadata[uid].elo_rating)
-            group_size = max(2, len(uids) // 4)  # Split into quarters, minimum 2 per group
-            groups = [uids[i:i + group_size] for i in range(0, len(uids), group_size)]
+            group_size = max(
+                2, len(uids) // 4
+            )  # Split into quarters, minimum 2 per group
+            groups = [uids[i : i + group_size] for i in range(0, len(uids), group_size)]
             # Shuffle within each ELO range group
             for group in groups:
                 random.shuffle(group)
@@ -263,7 +266,10 @@ class Validator(ncc.base.BaseValidator):
                 invalid_scores = [0] * len(invalid_uids)
                 merged_scores = penalized_scores + invalid_scores
                 merged_uids = valid_uids + invalid_uids
-                self.miner_manager.update_ratings(merged_scores, merged_uids)
+
+                # Get K-factor for based on Mean ELO rating of the batch
+                k_factor = self._get_k_factor(merged_uids)
+                self.miner_manager.update_ratings(merged_scores, merged_uids, k_factor)
                 if self.config.validator.use_wandb:
                     logs: dict = scoring_response["logs"]
                     logs["penalized_scores"] = penalized_scores
@@ -313,6 +319,21 @@ class Validator(ncc.base.BaseValidator):
             )
             bt.logging.info(f"Set weights result: {result}")
             self.resync_metagraph()
+
+    def _log_as_dataframe(self, data: dict, name: str):
+        df = pd.DataFrame(data)
+        bt.logging.info(f"Logging dataframe {name}:\n{df}")
+
+    def _get_k_factor(self, uids: list[int]):
+        """Helper method to determine K-factor based on ELO rating"""
+        elo_ratings = [self.miner_manager.metadata[uid].elo_rating for uid in uids]
+        mean_elo = sum(elo_ratings) / len(elo_ratings)
+        if mean_elo < ncc.constants.ELO_GROUPS["beginner"]["max"]:  # Beginners
+            return ncc.constants.ELO_GROUPS["beginner"]["k_factor"]
+        elif mean_elo < ncc.constants.ELO_GROUPS["intermediate"]["max"]:  # Intermediate
+            return ncc.constants.ELO_GROUPS["intermediate"]["k_factor"]
+        else:  # Advanced
+            return ncc.constants.ELO_GROUPS["advanced"]["k_factor"]
 
 
 if __name__ == "__main__":
