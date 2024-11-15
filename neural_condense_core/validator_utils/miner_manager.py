@@ -8,6 +8,7 @@ import pandas as pd
 from ..common import build_rate_limit
 from ..protocol import Metadata
 from ..constants import constants
+from .elo import ELOSystem
 import threading
 
 
@@ -42,8 +43,10 @@ class MinerManager:
         self.wallet = validator.wallet
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.metagraph = validator.metagraph
+        self.elo_system = ELOSystem()
         self.default_metadata_items = [
             ("tier", "unknown"),
+            ("elo_rating", self.elo_system.initial_rating),
         ]
         self.config = validator.config
         self.metadata = self._init_metadata()
@@ -52,31 +55,47 @@ class MinerManager:
         self.load_state()
         self.sync()
 
-    def update_scores(self, scores: list[float], uids: list[int]):
-        r"""
-        Updates the scores of the miners.
+    def update_ratings(self, scores: list[float], uids: list[int]):
         """
-        for score, uid in zip(scores, uids):
-            self.metadata[uid]["score"] = (
-                constants.SCORE_MOVING_AVERAGE * score
-                + (1 - constants.SCORE_MOVING_AVERAGE) * self.metadata[uid]["score"]
-            )
+        Updates the ELO ratings of the miners.
+        """
+        # Get current ELO ratings for participating miners
+        current_ratings = [self.metadata[uid].get("elo_rating", self.elo_system.initial_rating) for uid in uids]
+        
+        # Update ELO ratings based on performance scores
+        new_ratings = self.elo_system.update_ratings(current_ratings, scores)
+        
+        # Update metadata with new ratings and scores
+        for uid, new_rating in zip(uids, new_ratings):
+            self.metadata[uid]["elo_rating"] = new_rating
 
-    def get_normalized_scores(self, eps=1e-5) -> np.ndarray:
+    def get_normalized_ratings(self) -> np.ndarray:
+        """
+        Get normalized ratings using ELO ratings within each tier.
+        """
         weights = np.zeros(len(self.metagraph.hotkeys))
+        
         for tier in constants.TIER_CONFIG.keys():
-            scores = np.zeros(len(self.metagraph.hotkeys))
+            # Get ELO ratings for miners in this tier
+            tier_ratings = []
+            tier_uids = []
+            
             for uid, metadata in self.metadata.items():
-                scores[uid] = metadata["score"]
-            scores_sum = np.sum(scores)
-            if scores_sum < eps:
-                bt.logging.info(f"Scores sum is too small: {scores_sum}, {tier}")
-                continue
-            scores = scores / scores_sum
-            scores = scores * constants.TIER_CONFIG[tier].incentive_percentage
-            bt.logging.info(f"Scores for tier {tier}: \n{scores}")
-            weights += scores
-
+                if metadata["tier"] == tier:
+                    tier_ratings.append(metadata.get("elo_rating", self.elo_system.initial_rating))
+                    tier_uids.append(uid)
+            
+            if tier_ratings:
+                # Normalize ELO ratings to weights, sum to 1
+                normalized_ratings = self.elo_system.normalize_ratings(tier_ratings)
+                
+                # Apply tier incentive percentage
+                tier_weights = np.array(normalized_ratings) * constants.TIER_CONFIG[tier].incentive_percentage
+                
+                # Assign weights to corresponding UIDs
+                for uid, weight in zip(tier_uids, tier_weights):
+                    weights[uid] = weight
+        
         return weights
 
     def load_state(self):
@@ -104,7 +123,6 @@ class MinerManager:
         """
         metadata = {
             int(uid): {
-                "score": 0.0,
                 "tier": "unknown",
             }
             for uid in self.metagraph.uids
@@ -122,13 +140,13 @@ class MinerManager:
         self._log_metadata()
 
     def _log_metadata(self):
-        # Log metadata as pandas dataframe with 3 cols: uid, tier, score
+        # Log metadata as pandas dataframe with uid, tier, and elo_rating
         metadata_df = pd.DataFrame(self.metadata).T
         # Drop loss column if it exists
         if "loss" in metadata_df.columns:
             metadata_df = metadata_df.drop(columns=["loss"])
         metadata_df = metadata_df.reset_index()
-        metadata_df.columns = ["uid", "tier", "score"]
+        metadata_df.columns = ["uid", "tier", "elo_rating"]
         bt.logging.info("\n" + metadata_df.to_string(index=True))
 
     def _report(self):
@@ -170,18 +188,16 @@ class MinerManager:
         It doesn't consume validator's serving counter.
         """
         synapse = Metadata()
-        metadata = self.metadata.copy()  # Start with a copy of the current metadata
+        metadata = self.metadata.copy()
         uids = [uid for uid in range(len(self.metagraph.hotkeys))]
         axons = [self.metagraph.axons[uid] for uid in uids]
 
-        # Query responses from axons
         responses = self.dendrite.query(
             axons,
             synapse,
             deserialize=False,
             timeout=16,
         )
-        bt.logging.info(f"Responses: {responses}")
 
         for uid, response in zip(uids, responses):
             metadata.setdefault(uid, {})
@@ -196,20 +212,16 @@ class MinerManager:
                 else:
                     metadata[uid][key] = default_value
 
-            # Check for tier change
+            # Check for tier change and log it
             if metadata[uid]["tier"] != current_tier:
                 bt.logging.info(
                     f"Tier of uid {uid} changed from {current_tier} to {metadata[uid]['tier']}."
                 )
-                # Reset score to 0 if the tier has changed
-                metadata[uid]["score"] = 0.0
-            else:
-                # Retain existing score or initialize if missing
-                metadata[uid]["score"] = self.metadata.get(uid, {}).get("score", 0.0)
+                # Reset elo rating
+                metadata[uid]["elo_rating"] = self.elo_system.initial_rating
 
         # Update self.metadata with the newly computed metadata
         self.metadata = metadata
-        bt.logging.info(f"Metadata: {self.metadata}")
         bt.logging.success(f"Updated metadata for {len(uids)} uids.")
         return self.metadata
 

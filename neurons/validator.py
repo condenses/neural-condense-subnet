@@ -72,6 +72,10 @@ class Validator(ncc.base.BaseValidator):
             bt.logging.error(f"Failed to report metadata & save-state: {e}")
 
     def _forward_tier(self, tier):
+        incentive_percentage = ncc.constants.TIER_CONFIG[tier].incentive_percentage
+        if incentive_percentage == 0:
+            bt.logging.info(f"Tier {tier} has no incentive percentage.")
+            return
         supporting_models = ncc.constants.TIER_CONFIG[tier].supporting_models
         model_name = random.choice(supporting_models)
         tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -165,6 +169,7 @@ class Validator(ncc.base.BaseValidator):
             )
             valid_responses: list[ncc.protocol.TextCompressProtocol] = []
             valid_uids: list[int] = []
+            invalid_uids: list[int] = []
             for uid, response in zip(batched_uids, responses):
                 try:
                     response.base64_to_ndarray()
@@ -182,15 +187,16 @@ class Validator(ncc.base.BaseValidator):
                         bt.logging.info(
                             f"Invalid response from uid {uid}, {response.is_success}"
                         )
-                        self.miner_manager.update_scores([0], [uid])
+                        invalid_uids.append(uid)
                     else:
                         valid_responses.append(response)
                         valid_uids.append(uid)
                 except Exception as e:
                     bt.logging.error(f"Pre-reward Error: {e}")
-                    self.miner_manager.update_scores([0], [uid])
+                    invalid_uids.append(uid)
             if not valid_responses:
                 bt.logging.info("No valid responses.")
+                return
             if valid_responses and random.random() < rewarding_frequency:
                 bt.logging.info(
                     f"Updating scores of {len(valid_responses)} valid responses."
@@ -246,7 +252,10 @@ class Validator(ncc.base.BaseValidator):
                     f"Scores: {scores}\nFactors: {factors_list}\nPenalized scores: {penalized_scores}"
                 )
                 penalized_scores = [min(1, max(0, score)) for score in penalized_scores]
-                self.miner_manager.update_scores(penalized_scores, valid_uids)
+                invalid_scores = [0] * len(invalid_uids)
+                merged_scores = penalized_scores + invalid_scores
+                merged_uids = valid_uids + invalid_uids
+                self.miner_manager.update_ratings(merged_scores, merged_uids)
                 if self.config.validator.use_wandb:
                     logs: dict = scoring_response["logs"]
                     logs["penalized_scores"] = penalized_scores
@@ -275,7 +284,7 @@ class Validator(ncc.base.BaseValidator):
         """
         self.current_block = self.subtensor.get_current_block()
         self.last_update = self.metagraph.last_update[self.uid]
-        weights: np.ndarray = self.miner_manager.get_normalized_scores()
+        weights: np.ndarray = self.miner_manager.get_normalized_ratings()
         if np.all(weights == 0):
             bt.logging.info(
                 "All weights are zero. Setting all weights to 1 to prevent error."
