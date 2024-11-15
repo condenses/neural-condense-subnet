@@ -94,7 +94,15 @@ class Validator(ncc.base.BaseValidator):
         query_threads = []
         for _ in range(n_sets):
             uids = list(serving_counter.keys())
-            random.shuffle(uids)
+            # Sort UIDs by ELO rating and split into groups to maintain competitive matches
+            uids.sort(key=lambda uid: self.miner_manager.metadata[uid].elo_rating)
+            group_size = max(2, len(uids) // 4)  # Split into quarters, minimum 2 per group
+            groups = [uids[i:i + group_size] for i in range(0, len(uids), group_size)]
+            # Shuffle within each ELO range group
+            for group in groups:
+                random.shuffle(group)
+            # Flatten groups back to single list
+            uids = [uid for group in groups for uid in group]
             pre_batched_uids = [
                 uids[i : i + batch_size] for i in range(0, len(uids), batch_size)
             ]
