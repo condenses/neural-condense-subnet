@@ -25,7 +25,6 @@ class EloGroup(BaseModel):
     min_elo: int
     max_elo: int
     k_factor: int
-    optimization_bounty: float
 
 
 class Constants(BaseModel):
