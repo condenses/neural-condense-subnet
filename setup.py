@@ -1,5 +1,4 @@
 from setuptools import setup, find_packages
-from os import path
 
 
 def read_requirements(path):

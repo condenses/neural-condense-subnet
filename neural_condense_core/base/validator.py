@@ -110,7 +110,7 @@ class Validator(ABC):
             bt.logging.debug("Started")
 
     @abstractmethod
-    def forward(self):
+    def start_epoch(self):
         pass
 
     def run(self):
@@ -120,7 +120,7 @@ class Validator(ABC):
             start_epoch = time.time()
 
             try:
-                self.forward()
+                self.start_epoch()
             except Exception as e:
                 bt.logging.error(f"Forward error: {e}")
                 traceback.print_exc()

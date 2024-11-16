@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Callable, List
+from typing import List
 import os
 
 
@@ -7,11 +7,11 @@ class TierConfig(BaseModel):
     incentive_percentage: float
     requests_per_epoch: int
     timeout: int
-    scoring_lambda: Callable[[dict], float]
     supporting_models: List[str]
     max_condensed_tokens: int
     min_condensed_tokens: int
     max_context_length_in_chars: int
+    accelerate_reward_scalar: float
 
 
 class SyntheticTaskConfig(BaseModel):
@@ -21,15 +21,19 @@ class SyntheticTaskConfig(BaseModel):
     weight: float
 
 
+class EloGroup(BaseModel):
+    min_elo: int
+    max_elo: int
+    k_factor: int
+
+
 class Constants(BaseModel):
     TIER_CONFIG: dict[str, TierConfig] = {
         "research": TierConfig(
             incentive_percentage=1.0,
             requests_per_epoch=256,
             timeout=32,
-            scoring_lambda=lambda x: x["normalized_score_in_batch"]
-            - 0.1 * x["process_time/timeout"]
-            + 0.1 * x["compress_rate_reward"],
+            accelerate_reward_scalar=0.1,
             supporting_models=["Condense-AI/Mistral-7B-Instruct-v0.2"],
             max_condensed_tokens=1024,
             min_condensed_tokens=128,
@@ -39,12 +43,7 @@ class Constants(BaseModel):
             incentive_percentage=0.0,
             requests_per_epoch=1024,
             timeout=8,
-            scoring_lambda=lambda x: max(
-                0,
-                x["normalized_score_in_batch"]
-                - 0.1 * x["process_time/timeout"]
-                + 0.1 * x["compress_rate_reward"],
-            ),
+            accelerate_reward_scalar=0.1,
             supporting_models=["Condense-AI/Mistral-7B-Instruct-v0.2"],
             max_condensed_tokens=1024,
             min_condensed_tokens=128,
@@ -54,12 +53,7 @@ class Constants(BaseModel):
             incentive_percentage=0.0,
             requests_per_epoch=1024,
             timeout=8,
-            scoring_lambda=lambda x: max(
-                0,
-                x["normalized_score_in_batch"]
-                - 0.1 * x["process_time/timeout"]
-                + 0.1 * x["compress_rate_reward"],
-            ),
+            accelerate_reward_scalar=0.1,
             supporting_models=["Condense-AI/Mistral-7B-Instruct-v0.2"],
             max_condensed_tokens=2048,
             min_condensed_tokens=128,
@@ -96,9 +90,15 @@ class Constants(BaseModel):
     RPE_PERCENTAGE_FOR_SYNTHETIC: float = 0.05
     BATCH_SIZE: int = 4
     SET_WEIGHTS_TIMEOUT: int = 60
-    SCORE_MOVING_AVERAGE: float = 0.05
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"
     REPORT_URL: str = "https://report.condenses.ai"
+    INITIAL_ELO_RATING: float = 1000.0
+    FLOOR_ELO_RATING: float = 100.0
+    ELO_GROUPS: dict[str, EloGroup] = {
+        "beginner": EloGroup(min_elo=0, max_elo=1200, k_factor=24),
+        "intermediate": EloGroup(min_elo=1200, max_elo=2000, k_factor=16),
+        "advanced": EloGroup(min_elo=2000, max_elo=3000, k_factor=4),
+    }
 
     # Adjust values based on NETWORK environment variable
     def __init__(self, **data):
