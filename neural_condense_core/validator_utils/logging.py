@@ -8,12 +8,9 @@ def log_wandb(logs: dict, uids: list[int], tier=""):
         for metric, values in logs.items():
             if metric == "accuracy":
                 pass
-            if metric == "losses":
+            if metric == "loss":
                 for uid, value in zip(uids, values):
-                    wandb.log({f"{tier}-{uid}/losses": abs(value)})
-            if metric == "penalized_scores":
-                for uid, value in zip(uids, values):
-                    wandb.log({f"{tier}-{uid}/penalized_scores": value})
+                    wandb.log({f"{tier}-{uid}/loss": abs(value)})
     except Exception as e:
         bt.logging.error(f"Error logging to wandb: {e}")
 
