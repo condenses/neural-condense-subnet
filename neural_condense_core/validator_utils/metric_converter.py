@@ -22,7 +22,7 @@ class MetricConverter:
                 scores = [s * (1 + a) for s, a in zip(scores, accelerate_bonuses)]
                 total_scores[metric] = scores
             except KeyError:
-                bt.logging.error(f"Unknown metric: {metric}")
+                continue
         return total_scores
 
     def loss_to_score(self, losses: list[float]):

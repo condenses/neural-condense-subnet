@@ -261,7 +261,7 @@ def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
             entity="toilaluan",
             job_type="validation",
             group="validator",
-            resume="auto",
+            resume="allow",
             config={
                 "signature": signature,
                 "uid": uid,
