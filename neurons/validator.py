@@ -40,6 +40,10 @@ class Validator(ncc.base.BaseValidator):
 
         if self.config.validator.use_wandb:
             forward_utils.initialize_wandb(self.dendrite, self.metagraph, self.uid)
+        
+        weights = self.miner_manager.get_normalized_ratings()
+        bt.logging.info(f"Weights: {weights}")
+        bt.logging.info(f"Uids: {self.metagraph.uids}")
 
     def start_epoch(self):
         """
