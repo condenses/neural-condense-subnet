@@ -140,7 +140,9 @@ class MinerManager:
         ):
             self.metadata[uid] = MetadataItem(
                 tier=self.metadata[uid].tier,
-                elo_rating=final_rating + additional_reward,
+                elo_rating=max(
+                    constants.FLOOR_ELO_RATING, final_rating + additional_reward
+                ),
             )
 
         # Update ratings for invalid miners, penalizing them for not responding
@@ -148,7 +150,8 @@ class MinerManager:
             self.metadata[uid] = MetadataItem(
                 tier=self.metadata[uid].tier,
                 elo_rating=max(
-                    0, self.metadata[uid].elo_rating - k_factor * len(valid_uids)
+                    constants.FLOOR_ELO_RATING,
+                    self.metadata[uid].elo_rating - k_factor * len(valid_uids),
                 ),
             )
 
