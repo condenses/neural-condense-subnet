@@ -10,7 +10,7 @@ from .metric_converter import MetricConverter
 from .elo import ELOSystem
 from ..common import build_rate_limit
 from ..protocol import Metadata
-from ..constants import constants
+from ..constants import constants, TierConfig
 
 
 class MetadataItem(BaseModel):
@@ -108,7 +108,7 @@ class MinerManager:
         valid_uids: list[int],
         k_factor: int,
         invalid_uids: list[int],
-        additional_rewards: list[float],
+        tier_config: TierConfig,
     ):
         """
         Updates the ELO ratings of miners based on their performance.
@@ -118,12 +118,12 @@ class MinerManager:
             valid_uids (list[int]): UIDs of valid miners
             k_factor (int): ELO K-factor for rating adjustments
             invalid_uids (list[int]): UIDs of invalid miners
-            additional_rewards (list[float]): Additional rating adjustments
+            tier_config (TierConfig): Tier configuration
         """
         # Get current ELO ratings for participating miners
         initial_ratings = [self.metadata[uid].elo_rating for uid in valid_uids]
         performance_scores: dict[str, list[float]] = (
-            self.metric_converter.convert_metrics_to_score(metrics)
+            self.metric_converter.convert_metrics_to_score(metrics, tier_config)
         )
         # Update ELO ratings based on performance scores
         metric_ratings = []
@@ -135,14 +135,10 @@ class MinerManager:
 
         final_ratings = np.mean(metric_ratings, axis=0)
         # Update metadata with new ratings and scores
-        for uid, final_rating, additional_reward in zip(
-            valid_uids, final_ratings, additional_rewards
-        ):
+        for uid, final_rating in zip(valid_uids, final_ratings):
             self.metadata[uid] = MetadataItem(
                 tier=self.metadata[uid].tier,
-                elo_rating=max(
-                    constants.FLOOR_ELO_RATING, final_rating + additional_reward
-                ),
+                elo_rating=max(constants.FLOOR_ELO_RATING, final_rating),
             )
 
         # Update ratings for invalid miners, penalizing them for not responding

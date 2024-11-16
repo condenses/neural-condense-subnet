@@ -1,9 +1,9 @@
 import neural_condense_core as ncc
 import bittensor as bt
-import numpy as np
 import requests
 import random
 import wandb
+from ..protocol import TextCompressProtocol
 from . import logging
 from .synthetic_challenge import Challenger
 from .miner_manager import MinerManager, ServingCounter, MetadataItem
@@ -114,16 +114,15 @@ def validate_responses(responses: list, uids: list[int], tier_config: TierConfig
 
 def process_and_score_responses(
     miner_manager: MinerManager,
-    valid_responses: list,
+    valid_responses: list[TextCompressProtocol],
     valid_uids: list[int],
     invalid_uids: list[int],
-    ground_truth_synapse,
+    ground_truth_synapse: TextCompressProtocol,
     model_name: str,
     task_config: SyntheticTaskConfig,
     tier_config: TierConfig,
     tier: str,
     k_factor: int,
-    optimization_bounty: float,
     use_wandb: bool = False,
     config: bt.config = None,
     timeout: int = 120,
@@ -152,17 +151,17 @@ def process_and_score_responses(
         timeout=timeout,
         config=config,
     )
-    additional_rewards = get_additional_rewards(
+    accelerate_metrics = get_accelerate_metrics(
         valid_responses=valid_responses,
         tier_config=tier_config,
-        optimization_bounty=optimization_bounty,
     )
+    metrics["accelerate_metrics"] = accelerate_metrics
     final_ratings, initial_ratings = miner_manager.update_ratings(
         metrics=metrics,
         valid_uids=valid_uids,
         k_factor=k_factor,
         invalid_uids=invalid_uids,
-        additional_rewards=additional_rewards,
+        tier_config=tier_config,
     )
     rating_changes = [
         f"{initial_ratings[i]} -> {final_ratings[i]}"
@@ -170,9 +169,9 @@ def process_and_score_responses(
     ]
 
     metrics["rating_changes"] = rating_changes
-
+    metrics["UIDs"] = valid_uids
+    logging.log_as_dataframe(data=metrics, name="Batch Metrics")
     if use_wandb:
-        logging.log_as_dataframe(data=metrics, name="Batch Metrics")
         logging.log_wandb(metrics, valid_uids, tier=tier)
 
 
@@ -205,8 +204,8 @@ def get_scoring_metrics(
     return metrics
 
 
-def get_additional_rewards(
-    valid_responses: list, tier_config: TierConfig, optimization_bounty: float
+def get_accelerate_metrics(
+    valid_responses: list, tier_config: TierConfig
 ) -> list[float]:
     """
     Calculate additional rewards for miners based on compression and processing time.
@@ -214,7 +213,6 @@ def get_additional_rewards(
     Args:
         valid_responses (list): List of valid responses
         tier_config (TierConfig): Tier configuration
-        optimization_bounty (float): Bounty value
 
     Returns:
         list[float]: List of additional rewards
@@ -227,8 +225,7 @@ def get_additional_rewards(
         1 - r.dendrite.process_time / tier_config.timeout for r in valid_responses
     ]
     rewards = [(c + p) / 2 for c, p in zip(compress_rate_rewards, process_time_rewards)]
-    rewards = np.array(rewards) / sum(rewards)
-    return [r * optimization_bounty for r in rewards]
+    return rewards
 
 
 def get_k_factor(miner_manager: MinerManager, uids: list[int]) -> tuple[int, float]:
@@ -249,7 +246,7 @@ def get_k_factor(miner_manager: MinerManager, uids: list[int]) -> tuple[int, flo
         elo_group = ncc.constants.ELO_GROUPS["intermediate"]
     else:
         elo_group = ncc.constants.ELO_GROUPS["advanced"]
-    return elo_group.k_factor, elo_group.optimization_bounty
+    return elo_group.k_factor
 
 
 def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):

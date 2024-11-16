@@ -82,8 +82,9 @@ class Validator(ncc.base.BaseValidator):
             bt.logging.info(f"No miners in tier {tier}.")
             return
 
-        n_sets = max(int(
-            ncc.constants.TIER_CONFIG[tier].requests_per_epoch
+        n_sets = max(
+            int(
+                ncc.constants.TIER_CONFIG[tier].requests_per_epoch
                 * ncc.constants.RPE_PERCENTAGE_FOR_SYNTHETIC
             ),
             1,
@@ -145,9 +146,7 @@ class Validator(ncc.base.BaseValidator):
             bt.logging.info(f"Prepared ground truth synapse for {batched_uids}.")
             synapse = ground_truth_synapse.model_copy()
             synapse.hide_ground_truth()
-            k_factor, optimization_bounty = forward_utils.get_k_factor(
-                self.miner_manager, batched_uids
-            )
+            k_factor = forward_utils.get_k_factor(self.miner_manager, batched_uids)
             responses = forward_utils.query_miners(
                 dendrite=dendrite,
                 metagraph=self.metagraph,
@@ -180,9 +179,7 @@ class Validator(ncc.base.BaseValidator):
                     tier_config=ncc.constants.TIER_CONFIG[tier],
                     tier=tier,
                     k_factor=k_factor,
-                    optimization_bounty=optimization_bounty,
                     use_wandb=self.config.validator.use_wandb,
-                    timeout=120,
                     config=self.config,
                 )
                 bt.logging.info(f"Processed and scored responses for {batched_uids}.")
@@ -192,6 +189,7 @@ class Validator(ncc.base.BaseValidator):
         except Exception as e:
             traceback.print_exc()
             bt.logging.error(f"Error: {e}")
+
     def set_weights(self):
         """Set weights for miners based on their performance."""
         self.current_block = self.subtensor.get_current_block()
