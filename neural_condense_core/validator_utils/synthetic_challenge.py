@@ -4,7 +4,6 @@ import re
 import random
 from typing import Iterator, List, Dict
 import threading
-from copy import deepcopy
 from .custom_dataset_loaders import load_custom_dataset
 from ..protocol import TextCompressProtocol
 

@@ -1,7 +1,5 @@
 import os
-import time
 import argparse
-import traceback
 import bittensor as bt
 from typing import Tuple
 from .config import add_common_config, add_miner_config

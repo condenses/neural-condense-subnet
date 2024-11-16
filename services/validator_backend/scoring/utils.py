@@ -92,6 +92,7 @@ def ndarray_to_base64(array: np.ndarray) -> str:
         return ""
     return base64_str
 
+
 def _smooth_scores(scores: list[float], delta_0=0.4, decay=0.7):
     """
     Smooths the scores based on a ranking system with an exponential decay.
@@ -109,9 +110,7 @@ def _smooth_scores(scores: list[float], delta_0=0.4, decay=0.7):
         - Rank 4 gets 1 - delta_0 - delta_0 * decay - delta_0 * decay^2, etc.
     If there are ties, the scores are averaged.
     """
-    sorted_scores = sorted(
-        scores, reverse=True
-    )  # Sort scores descending for ranking
+    sorted_scores = sorted(scores, reverse=True)  # Sort scores descending for ranking
     smoothed_scores = [1.0]  # First rank is 1.0
     decrement = delta_0
 

@@ -21,6 +21,13 @@ class SyntheticTaskConfig(BaseModel):
     weight: float
 
 
+class EloGroup(BaseModel):
+    min_elo: int
+    max_elo: int
+    k_factor: int
+    optimization_bounty: float
+
+
 class Constants(BaseModel):
     TIER_CONFIG: dict[str, TierConfig] = {
         "research": TierConfig(
@@ -95,9 +102,20 @@ class Constants(BaseModel):
     MIN_STAKE: int = int(os.environ.get("MIN_STAKE", 10000))
     RPE_PERCENTAGE_FOR_SYNTHETIC: float = 0.05
     BATCH_SIZE: int = 4
-    SCORE_MOVING_AVERAGE: float = 0.05
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"
     REPORT_URL: str = "https://report.condenses.ai"
+    INITIAL_ELO_RATING: float = 1000.0
+    ELO_GROUPS: dict[str, EloGroup] = {
+        "beginner": EloGroup(
+            min_elo=0, max_elo=1200, k_factor=24, optimization_bounty=24
+        ),
+        "intermediate": EloGroup(
+            min_elo=1200, max_elo=2000, k_factor=16, optimization_bounty=16
+        ),
+        "advanced": EloGroup(
+            min_elo=2000, max_elo=3000, k_factor=8, optimization_bounty=8
+        ),
+    }
 
     # Adjust values based on NETWORK environment variable
     def __init__(self, **data):
