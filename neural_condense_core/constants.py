@@ -105,7 +105,7 @@ class Constants(BaseModel):
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"
     REPORT_URL: str = "https://report.condenses.ai"
     INITIAL_ELO_RATING: float = 1000.0
-    FLOOR_ELO_RATING: float = 1000.0
+    FLOOR_ELO_RATING: float = 100.0
     ELO_GROUPS: dict[str, EloGroup] = {
         "beginner": EloGroup(
             min_elo=0, max_elo=1200, k_factor=8, optimization_bounty=4
