@@ -154,6 +154,7 @@ class MinerManager:
                     self.metadata[uid].elo_rating - k_factor * len(valid_uids),
                 ),
             )
+        return final_ratings, initial_ratings
 
     def get_normalized_ratings(self) -> np.ndarray:
         """

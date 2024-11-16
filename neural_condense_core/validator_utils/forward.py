@@ -157,13 +157,19 @@ def process_and_score_responses(
         tier_config=tier_config,
         optimization_bounty=optimization_bounty,
     )
-    miner_manager.update_ratings(
+    final_ratings, initial_ratings = miner_manager.update_ratings(
         metrics=metrics,
         valid_uids=valid_uids,
         k_factor=k_factor,
         invalid_uids=invalid_uids,
         additional_rewards=additional_rewards,
     )
+    rating_changes = [
+        f"{initial_ratings[i]} -> {final_ratings[i]}"
+        for i in range(len(initial_ratings))
+    ]
+
+    metrics["rating_changes"] = rating_changes
 
     if use_wandb:
         logging.log_as_dataframe(data=metrics, name="Batch Metrics")
