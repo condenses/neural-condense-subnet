@@ -195,10 +195,11 @@ class Validator(ncc.base.BaseValidator):
         self.current_block = self.subtensor.get_current_block()
         self.last_update = self.metagraph.last_update[self.uid]
         weights = self.miner_manager.get_normalized_ratings()
-
         if np.all(weights == 0):
             weights = np.ones(len(self.metagraph.uids))
-
+            bt.logging.info("All weights are zero, setting to ones.")
+        bt.logging.info(f"Weights: {weights}")
+        bt.logging.info(f"Uids: {self.metagraph.uids}")
         if self.current_block > self.last_update + ncc.constants.SUBNET_TEMPO:
             result = self.subtensor.set_weights(
                 netuid=self.config.netuid,
