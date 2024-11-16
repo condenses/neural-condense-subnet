@@ -89,6 +89,7 @@ class Constants(BaseModel):
     MIN_STAKE: int = int(os.environ.get("MIN_STAKE", 10000))
     RPE_PERCENTAGE_FOR_SYNTHETIC: float = 0.05
     BATCH_SIZE: int = 4
+    SET_WEIGHTS_TIMEOUT: int = 60
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"
     REPORT_URL: str = "https://report.condenses.ai"
     INITIAL_ELO_RATING: float = 1000.0

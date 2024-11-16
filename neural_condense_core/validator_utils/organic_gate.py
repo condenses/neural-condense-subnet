@@ -72,7 +72,10 @@ class OrganicGate:
             bt.logging.info(
                 f"Running function {function.__name__} every {interval} seconds."
             )
-            function()
+            try:
+                function()
+            except Exception as e:
+                bt.logging.error(f"Error running function {function.__name__}: {e}")
             time.sleep(interval)
 
     def register_to_client(self):
