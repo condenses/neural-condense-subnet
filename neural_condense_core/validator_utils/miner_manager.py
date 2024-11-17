@@ -114,13 +114,12 @@ class MinerManager:
 
         Args:
             metrics (dict[str, list[float]]): Performance metrics for each miner
-            valid_uids (list[int]): UIDs of valid miners
+            total_uids (list[int]): UIDs of all miners
             k_factor (int): ELO K-factor for rating adjustments
-            invalid_uids (list[int]): UIDs of invalid miners
             tier_config (TierConfig): Tier configuration
         """
         # Get current ELO ratings for participating miners
-        initial_ratings = [self.metadata[uid].elo_rating for uid in valid_uids]
+        initial_ratings = [self.metadata[uid].elo_rating for uid in total_uids]
         performance_scores: dict[str, list[float]] = (
             self.metric_converter.convert_metrics_to_score(metrics, tier_config)
         )
