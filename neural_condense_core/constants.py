@@ -95,9 +95,9 @@ class Constants(BaseModel):
     INITIAL_ELO_RATING: float = 100.0
     FLOOR_ELO_RATING: float = 100.0
     ELO_GROUPS: dict[str, EloGroup] = {
-        "beginner": EloGroup(min_elo=0, max_elo=1200, k_factor=32),
-        "intermediate": EloGroup(min_elo=1200, max_elo=2000, k_factor=16),
-        "advanced": EloGroup(min_elo=2000, max_elo=3000, k_factor=8),
+        "beginner": EloGroup(min_elo=0, max_elo=800, k_factor=24),
+        "intermediate": EloGroup(min_elo=800, max_elo=1600, k_factor=16),
+        "advanced": EloGroup(min_elo=1600, max_elo=3000, k_factor=4),
     }
 
     # Adjust values based on NETWORK environment variable
