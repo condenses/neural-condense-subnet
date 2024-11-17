@@ -105,9 +105,8 @@ class MinerManager:
     def update_ratings(
         self,
         metrics: dict[str, list[float]],
-        valid_uids: list[int],
         k_factor: int,
-        invalid_uids: list[int],
+        total_uids: list[int],
         tier_config: TierConfig,
     ):
         """
@@ -135,20 +134,10 @@ class MinerManager:
 
         final_ratings = np.mean(metric_ratings, axis=0)
         # Update metadata with new ratings and scores
-        for uid, final_rating in zip(valid_uids, final_ratings):
+        for uid, final_rating in zip(total_uids, final_ratings):
             self.metadata[uid] = MetadataItem(
                 tier=self.metadata[uid].tier,
                 elo_rating=max(constants.FLOOR_ELO_RATING, final_rating),
-            )
-
-        # Update ratings for invalid miners, penalizing them for not responding
-        for uid in invalid_uids:
-            self.metadata[uid] = MetadataItem(
-                tier=self.metadata[uid].tier,
-                elo_rating=max(
-                    constants.FLOOR_ELO_RATING,
-                    self.metadata[uid].elo_rating - k_factor * len(valid_uids),
-                ),
             )
         return final_ratings, initial_ratings
 

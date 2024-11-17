@@ -156,11 +156,15 @@ def process_and_score_responses(
         tier_config=tier_config,
     )
     metrics["accelerate_metrics"] = accelerate_metrics
+    metrics = update_metrics_of_invalid_miners(
+        invalid_uids=invalid_uids,
+        metrics=metrics,
+    )
+    total_uids = valid_uids + invalid_uids
     final_ratings, initial_ratings = miner_manager.update_ratings(
         metrics=metrics,
-        valid_uids=valid_uids,
+        total_uids=total_uids,
         k_factor=k_factor,
-        invalid_uids=invalid_uids,
         tier_config=tier_config,
     )
     rating_changes = [
@@ -173,6 +177,14 @@ def process_and_score_responses(
     logging.log_as_dataframe(data=metrics, name="Batch Metrics")
     if use_wandb:
         logging.log_wandb(metrics, valid_uids, tier=tier)
+
+def update_metrics_of_invalid_miners(
+    invalid_uids: list[int],
+    metrics: dict,
+):
+    for metric_name, values in metrics.items():
+        values.extend([0] * len(invalid_uids))
+    return metrics
 
 
 def get_scoring_metrics(
@@ -224,7 +236,7 @@ def get_accelerate_metrics(
     process_time_rewards = [
         1 - r.dendrite.process_time / tier_config.timeout for r in valid_responses
     ]
-    rewards = [(c + p) / 2 for c, p in zip(compress_rate_rewards, process_time_rewards)]
+    rewards = [max(0, (c + p) / 2) for c, p in zip(compress_rate_rewards, process_time_rewards)]
     return rewards
 
 
