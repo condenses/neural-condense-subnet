@@ -10,6 +10,8 @@ def log_wandb(logs: dict, uids: list[int], tier=""):
                 pass
             if metric == "loss":
                 for uid, value in zip(uids, values):
+                    if value is None:
+                        value = 1000
                     wandb.log({f"{tier}-{uid}/loss": abs(value)})
     except Exception as e:
         bt.logging.error(f"Error logging to wandb: {e}")

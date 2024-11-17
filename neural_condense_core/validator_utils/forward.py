@@ -173,10 +173,10 @@ def process_and_score_responses(
     ]
 
     metrics["rating_changes"] = rating_changes
-    metrics["UIDs"] = valid_uids
+    metrics["UIDs"] = total_uids
     logging.log_as_dataframe(data=metrics, name="Batch Metrics")
     if use_wandb:
-        logging.log_wandb(metrics, valid_uids, tier=tier)
+        logging.log_wandb(metrics, total_uids, tier=tier)
 
 def update_metrics_of_invalid_miners(
     invalid_uids: list[int],
