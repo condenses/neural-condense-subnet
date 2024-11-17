@@ -183,7 +183,7 @@ def update_metrics_of_invalid_miners(
     metrics: dict,
 ):
     for metric_name, values in metrics.items():
-        values.extend([0] * len(invalid_uids))
+        values.extend([None] * len(invalid_uids))
     return metrics
 
 
