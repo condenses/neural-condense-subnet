@@ -246,7 +246,7 @@ class ScoringService:
         except Exception as e:
             traceback.print_exc()
             print(f"Error in _llm_judge: {e}")
-            return True
+            return False
 
 
 app = FastAPI()
