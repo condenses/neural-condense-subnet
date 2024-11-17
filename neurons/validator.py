@@ -85,10 +85,10 @@ class Validator(ncc.base.BaseValidator):
         if not serving_counter:
             bt.logging.info(f"No miners in tier {tier}.")
             return
-
+        rate_limit = self.miner_manager.rate_limit_per_tier[tier]
         n_sets = max(
             int(
-                ncc.constants.TIER_CONFIG[tier].requests_per_epoch
+                rate_limit
                 * ncc.constants.RPE_PERCENTAGE_FOR_SYNTHETIC
             ),
             1,
@@ -169,7 +169,6 @@ class Validator(ncc.base.BaseValidator):
             bt.logging.info(f"Validated responses for {batched_uids}.")
             if not valid_responses:
                 bt.logging.info(f"No valid responses for batch {batched_uids}.")
-                return
 
             if random.random() < task_config.rewarding_frequency:
                 forward_utils.process_and_score_responses(

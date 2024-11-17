@@ -99,6 +99,8 @@ class MinerManager:
         self.state_path = self.config.full_path + "/state.json"
         self.message = "".join(random.choices("0123456789abcdef", k=16))
         self.metric_converter = MetricConverter()
+        self.rate_limit_per_tier = self.get_rate_limit_per_tier()
+        bt.logging.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
         self.load_state()
         self.sync()
 
@@ -216,6 +218,9 @@ class MinerManager:
         """
         Synchronize metadata and serving counters for all miners.
         """
+        bt.logging.info("Synchronizing metadata and serving counters.")
+        self.rate_limit_per_tier = self.get_rate_limit_per_tier()
+        bt.logging.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
         self.metadata = self._update_metadata()
         self.serving_counter: dict[str, dict[int, ServingCounter]] = (
             self._create_serving_counter()
@@ -321,6 +326,16 @@ class MinerManager:
         self.metadata = metadata
         bt.logging.success(f"Updated metadata for {len(uids)} uids.")
         return self.metadata
+    
+    def get_rate_limit_per_tier(self):
+        """
+        Get rate limit per tier for the validator.
+        """
+        rate_limit_per_tier = {
+            tier: build_rate_limit(self.metagraph, self.config, tier)[self.uid]
+            for tier in constants.TIER_CONFIG.keys()
+        }
+        return rate_limit_per_tier
 
     def _create_serving_counter(self):
         """
@@ -329,18 +344,12 @@ class MinerManager:
         Returns:
             dict: Serving counters organized by tier and UID
         """
-        rate_limit_per_tier = {
-            tier: build_rate_limit(self.metagraph, self.config, tier)[self.uid]
-            for tier in constants.TIER_CONFIG.keys()
-        }
         tier_group = {tier: {} for tier in constants.TIER_CONFIG.keys()}
-
         for uid, metadata in self.metadata.items():
             tier = metadata.tier
             if tier not in constants.TIER_CONFIG:
                 continue
             if tier not in tier_group:
                 tier_group[tier] = {}
-            tier_group[tier][uid] = ServingCounter(rate_limit_per_tier[tier])
-
+            tier_group[tier][uid] = ServingCounter(self.rate_limit_per_tier[tier])
         return tier_group
