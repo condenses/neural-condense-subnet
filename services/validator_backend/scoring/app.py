@@ -67,8 +67,6 @@ class ScoringService:
         try:
             model_name = request.ground_truth_request.model_name
             self.load_model(model_name)
-            model = self.models[model_name]
-            tokenizer = self.tokenizers[model_name]
             metrics = {}
             criteria = random.choice(request.ground_truth_request.criterias)
             for miner_response in request.miner_responses:
@@ -77,11 +75,11 @@ class ScoringService:
                 )
 
             if criteria == "loss":
-                losses = self.calculate_loss_criteria(request, model, tokenizer)
+                losses = self.calculate_loss_criteria(request, model_name)
                 metrics["loss"] = losses
 
             if criteria == "accuracy":
-                scores = self.calculate_accuracy_criteria(request, model, tokenizer)
+                scores = self.calculate_accuracy_criteria(request, model_name)
                 metrics["accuracy"] = scores
 
             torch.cuda.empty_cache()
@@ -93,27 +91,27 @@ class ScoringService:
             print(f"Error in get_scoring: {e}")
             return {"metrics": {}}
 
-    def calculate_loss_criteria(self, request: BatchedScoringRequest, model, tokenizer):
+    def calculate_loss_criteria(self, request: BatchedScoringRequest, model_name):
         """
         Calculates the loss-based scores by comparing expected and generated tokens based
         on the activation prompt and expected completion.
         """
-        device = model.device
+        device = self.models[model_name].device
         activation_prompt = request.ground_truth_request.activation_prompt
         expected_completion = request.ground_truth_request.expected_completion
         losses = []
 
         try:
-            activation_prompt_tokens = tokenizer(
+            activation_prompt_tokens = self.tokenizers[model_name](
                 activation_prompt, return_tensors="pt", add_special_tokens=False
             ).input_ids.to(device)
-            expected_completion_tokens = tokenizer(
+            expected_completion_tokens = self.tokenizers[model_name](
                 expected_completion, return_tensors="pt", add_special_tokens=False
             ).input_ids.to(device)
-            activation_prompt_embeddings = model.get_input_embeddings()(
+            activation_prompt_embeddings = self.models[model_name].get_input_embeddings()(
                 activation_prompt_tokens
             ).to(dtype=torch.bfloat16)
-            expected_completion_embeddings = model.get_input_embeddings()(
+            expected_completion_embeddings = self.models[model_name].get_input_embeddings()(
                 expected_completion_tokens
             ).to(dtype=torch.bfloat16)
 
@@ -147,7 +145,7 @@ class ScoringService:
                     ).to(device)
 
                     labels = labels[:, 1:]
-                    outputs = model(inputs_embeds=inputs_embeddings)
+                    outputs = self.models[model_name](inputs_embeds=inputs_embeddings)
                     logits = outputs.logits[:, :-1, :]
 
                     loss = F.cross_entropy(
@@ -165,23 +163,21 @@ class ScoringService:
             print(f"Error in calculate_loss_criteria: {e}")
             return []
 
-    def calculate_accuracy_criteria(
-        self, request: BatchedScoringRequest, model, tokenizer
-    ):
+    def calculate_accuracy_criteria(self, request: BatchedScoringRequest, model_name):
         """
         Calculates accuracy-based scores by generating responses from miner responses,
         comparing them to the expected completion.
         """
-        device = model.device
+        device = self.models[model_name].device
         activation_prompt = request.ground_truth_request.activation_prompt
         expected_completion = request.ground_truth_request.expected_completion
         accuracy_scores = []
 
         try:
-            activation_prompt_tokens = tokenizer(
+            activation_prompt_tokens = self.tokenizers[model_name](
                 activation_prompt, return_tensors="pt", add_special_tokens=False
             ).input_ids.to(device)
-            activation_prompt_embeddings = model.get_input_embeddings()(
+            activation_prompt_embeddings = self.models[model_name].get_input_embeddings()(
                 activation_prompt_tokens
             ).to(dtype=torch.bfloat16)
 
@@ -198,19 +194,19 @@ class ScoringService:
                         [compressed_tokens, activation_prompt_embeddings], dim=1
                     ).to(device)
 
-                    generated_outputs = model.generate(
+                    generated_outputs = self.models[model_name].generate(
                         inputs_embeds=inputs_embeds,
                         max_new_tokens=64,
                         num_return_sequences=1,
                     )
                     completion = (
-                        tokenizer.decode(
+                        self.tokenizers[model_name].decode(
                             generated_outputs[0], skip_special_tokens=True
                         ).strip()
                         or "I dont know"
                     )
                     accuracy = self._llm_judge(
-                        expected_completion, completion, model, tokenizer
+                        expected_completion, completion, model_name
                     )
                     accuracy_scores.append(accuracy)
                 except Exception as e:
@@ -224,7 +220,7 @@ class ScoringService:
             return []
 
     def _llm_judge(
-        self, expected_completion, completion, model, tokenizer, max_new_tokens=32
+        self, expected_completion, completion, model_name, max_new_tokens=32
     ):
         """
         Generates a yes or no judgment on the accuracy of the model's completion compared to
@@ -237,7 +233,7 @@ class ScoringService:
             """
             # Remove special tokens and instruction tags, TODO: make it general
             prompt = prompt.replace("</s>", "").replace("[/INST]", "")
-            pipeline = TextGenerationPipeline(model, tokenizer, device=self.device)
+            pipeline = self.pipelines[model_name]
             messages = [{"role": "user", "content": prompt}]
             completion_text = pipeline(
                 messages,
