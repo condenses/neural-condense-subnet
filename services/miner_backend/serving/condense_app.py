@@ -28,19 +28,22 @@ class Condenser(nn.Module):
     A neural module for condensing large text contexts into smaller dense representations
     """
 
-    def __init__(self, num_condense_tokens):
+    def __init__(
+        self,
+        num_condense_tokens,
+        hidden_size,
+        n_last_hidden_states,
+        condense_model,
+        condense_tokenizer,
+    ):
         super().__init__()
         self.dtype = torch.bfloat16
-        self.condense_model = AutoModelForCausalLM.from_pretrained(
-            "Condense-AI/Condenser-Llama-3.2-1B-20241117-173040", torch_dtype=self.dtype
-        ).to("cuda")
-        self.condense_tokenizer = AutoTokenizer.from_pretrained(
-            "meta-llama/Llama-3.2-1B"
-        )
-        self.condense_tokenizer.pad_token = self.condense_tokenizer.eos_token
         self.num_condense_tokens = num_condense_tokens
-        self.hidden_size = self.condense_model.config.hidden_size
-        self.n_last_hidden_states = 2
+        self.hidden_size = hidden_size
+        self.n_last_hidden_states = n_last_hidden_states
+        self.condense_model = condense_model
+        self.condense_tokenizer = condense_tokenizer
+
         self.norm = nn.LayerNorm(self.hidden_size * n_last_hidden_states).to(
             dtype=self.dtype, device="cuda"
         )
@@ -56,6 +59,40 @@ class Condenser(nn.Module):
                 device="cuda",
             )
         )
+
+    @classmethod
+    def from_pretrained(cls, repo_id, checkpoint_path, local_dir="./"):
+        # Download and load checkpoint
+        file_path = huggingface_hub.hf_hub_download(
+            repo_id=repo_id,
+            filename=checkpoint_path,
+            local_dir=local_dir,
+        )
+        state_dict = torch.load(file_path)
+
+        # Extract model configuration
+        num_condense_tokens = state_dict["modules"]["pre_condensed_tokens"].shape[1]
+        hidden_size = state_dict["modules"]["pre_condensed_tokens"].shape[2]
+        linear_input_dim = state_dict["modules"]["linear_state_dict"]["weight"].shape[1]
+        n_last_hidden_states = linear_input_dim // hidden_size
+
+        # Load model and tokenizer
+        condense_model = AutoModelForCausalLM.from_pretrained(
+            repo_id, torch_dtype=torch.bfloat16
+        ).to("cuda")
+        condense_tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1B")
+        condense_tokenizer.pad_token = condense_tokenizer.eos_token
+
+        # Initialize and load state_dict
+        model = cls(
+            num_condense_tokens,
+            hidden_size,
+            n_last_hidden_states,
+            condense_model,
+            condense_tokenizer,
+        )
+        model.load_state_dict(state_dict["modules"])
+        return model
 
     def load_state_dict(self, state_dict):
         self.pre_condensed_tokens.data = state_dict["pre_condensed_tokens"].to(
@@ -76,6 +113,7 @@ class Condenser(nn.Module):
 
     @torch.no_grad()
     def compress(self, context: str) -> torch.Tensor:
+        # Tokenize and process context
         output = self.condense_tokenizer(
             context,
             return_tensors="pt",
@@ -119,6 +157,7 @@ class Condenser(nn.Module):
         return self.linear(self.norm(hidden_states)).to(torch.float32)
 
 
+# Helper function to convert NumPy array to base64
 def ndarray_to_base64(array: np.ndarray) -> str:
     """Convert a NumPy array to a base64-encoded string."""
     buffer = io.BytesIO()
@@ -128,45 +167,46 @@ def ndarray_to_base64(array: np.ndarray) -> str:
     return base64_str
 
 
-# Load state dict and get model configuration
-file_path = huggingface_hub.hf_hub_download(
-    repo_id="Condense-AI/Condenser-Llama-3.2-1B-20241117-173040",
-    filename="checkpoints/modules.pt",
-    local_dir="./",
-)
-state_dict = torch.load(file_path)
-num_condense_tokens = state_dict["modules"]["pre_condensed_tokens"].shape[1]
-n_last_hidden_states = 2
-
 # Initialize Condenser
-condenser = Condenser(num_condense_tokens)
-condenser.load_state_dict(state_dict["modules"])
+repo_id = "Condense-AI/Condenser-Llama-3.2-1B-20241117-173040"
+checkpoint_path = "checkpoints/modules.pt"
+condenser = Condenser.from_pretrained(repo_id, checkpoint_path)
 condenser.eval()
 
 
+# Define endpoint for compression
 @app.route("/condense", methods=["POST"])
 def compress_endpoint():
-    """
-    Endpoint for prediction requests. Receives JSON data with 'context' and 'target_model'.
-    """
     t1 = time.time()
     data = request.get_json()
     context = data.get("context")
     target_model = data.get("target_model")
+
     if not context:
         return jsonify({"error": "Missing 'context' in request."}), 400
 
-    compressed_tokens = condenser.compress(context)
-    compressed_tokens = compressed_tokens.squeeze(0)
-    compressed_tokens = compressed_tokens.cpu().numpy()
-    compress_tokens_bs64 = ndarray_to_base64(compressed_tokens)
+    try:
+        # Compress context into condensed tokens
+        compressed_tokens = condenser.compress(context)
+        compressed_tokens = compressed_tokens.squeeze(0)
+        compressed_tokens = compressed_tokens.cpu().numpy()
+        compress_tokens_bs64 = ndarray_to_base64(compressed_tokens)
 
-    InferenceLogger.log(
-        "Predict",
-        f"Compress token length {len(compressed_tokens)} shape{compressed_tokens.shape}",
-    )
-    InferenceLogger.log("Inference time", time.time() - t1)
+        # Log inference details
+        InferenceLogger.log(
+            "Predict",
+            f"Compressed token length {len(compressed_tokens)} shape {compressed_tokens.shape}",
+        )
+        InferenceLogger.log("Inference time", time.time() - t1)
 
-    return jsonify(
-        {"compressed_tokens_b64": compress_tokens_bs64, "target_model": target_model}
-    )
+        return jsonify(
+            {
+                "compressed_tokens_b64": compress_tokens_bs64,
+                "target_model": target_model,
+            }
+        )
+    except Exception as e:
+        InferenceLogger.log("Error", str(e))
+        return jsonify(
+            {"error": "Failed to process the request.", "details": str(e)}
+        ), 500
