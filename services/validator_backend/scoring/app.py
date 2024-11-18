@@ -14,6 +14,8 @@ import gc
 from .datatypes import BatchedScoringRequest
 from .utils import base64_to_ndarray, unit_test
 
+gc.enable()
+
 logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger("Validator-Backend")
@@ -28,6 +30,7 @@ class ScoringService:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.models = {}
         self.tokenizers = {}
+        self.pipelines = {}
         self.lock = threading.Lock()
         unit_test(self)
 
@@ -45,8 +48,15 @@ class ScoringService:
                     self.tokenizers[model_name] = AutoTokenizer.from_pretrained(
                         model_name
                     )
+                    self.pipelines[model_name] = TextGenerationPipeline(
+                        self.models[model_name],
+                        self.tokenizers[model_name],
+                        device=self.device,
+                    )
             except Exception as e:
                 print(f"Error loading model {model_name}: {e}")
+        torch.cuda.empty_cache()
+        gc.collect()
 
     @torch.no_grad()
     def get_scoring(self, request: BatchedScoringRequest):
@@ -74,8 +84,8 @@ class ScoringService:
                 scores = self.calculate_accuracy_criteria(request, model, tokenizer)
                 metrics["accuracy"] = scores
 
-            gc.collect()
             torch.cuda.empty_cache()
+            gc.collect()
             return {"metrics": metrics}
 
         except Exception as e:
