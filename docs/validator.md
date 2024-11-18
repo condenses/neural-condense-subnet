@@ -66,9 +66,10 @@ val_subtensor_network="finney"
 4. Run the validator backend.
 ```bash
 pm2 start python --name condense_validator_backend \
--- -m uvicorn services.validator_backend.scoring.app:app \
---port $val_backend_port \
---host 0.0.0.0
+-- -m gunicorn services.validator_backend.scoring.app:app \
+--workers 1 \
+--bind $val_backend_host:$val_backend_port \
+--timeout 0
 ```
 
 5. Run the validator script
