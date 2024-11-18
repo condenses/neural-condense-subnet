@@ -7,6 +7,7 @@ import numpy as np
 import time
 import traceback
 from neural_condense_core.validator_utils import forward as forward_utils
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Validator(ncc.base.BaseValidator):
@@ -44,6 +45,12 @@ class Validator(ncc.base.BaseValidator):
         weights = self.miner_manager.get_normalized_ratings()
         bt.logging.info(f"Weights: {weights}")
         bt.logging.info(f"Uids: {self.metagraph.uids}")
+
+        # Add a thread pool executor
+        self.thread_pool = ThreadPoolExecutor(
+            max_workers=min(32, (threading.active_count() + 4) * 2),  # Adjust max_workers as needed
+            thread_name_prefix="validator_pool"
+        )
 
     def start_epoch(self):
         """
@@ -94,7 +101,7 @@ class Validator(ncc.base.BaseValidator):
             1,
         )
         sleep_per_set = ncc.constants.EPOCH_LENGTH / n_sets
-        query_threads = []
+        futures = []
 
         for _ in range(n_sets):
             pre_batched_uids = forward_utils.get_batched_uids(
@@ -109,16 +116,20 @@ class Validator(ncc.base.BaseValidator):
                 if len(batched_uids) < 2:
                     continue
 
-                thread = threading.Thread(
-                    target=self._forward_batch,
-                    args=(tier, model_name, batched_uids, tokenizer),
+                # Submit to thread pool instead of creating new thread
+                future = self.thread_pool.submit(
+                    self._forward_batch,
+                    tier,
+                    model_name,
+                    batched_uids,
+                    tokenizer
                 )
-                query_threads.append(thread)
-                thread.start()
+                futures.append(future)
                 time.sleep(sleep_per_batch)
 
-        for thread in query_threads:
-            thread.join()
+        # Wait for all tasks to complete
+        for future in futures:
+            future.result()  # This will also raise any exceptions that occurred
 
     def _forward_batch(
         self,
