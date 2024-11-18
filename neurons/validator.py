@@ -48,7 +48,7 @@ class Validator(ncc.base.BaseValidator):
 
         # Add a thread pool executor
         self.thread_pool = ThreadPoolExecutor(
-            max_workers=min(32, (threading.active_count() + 4) * 2),  # Adjust max_workers as needed
+            max_workers=min(32, (threading.active_count() + 4) * 2),
             thread_name_prefix="validator_pool"
         )
 
@@ -66,7 +66,10 @@ class Validator(ncc.base.BaseValidator):
         for t in threads:
             t.start()
         for t in threads:
-            t.join()
+            try:
+                t.join(timeout=ncc.constants.EPOCH_LENGTH*1.5)
+            except Exception as e:
+                bt.logging.error(f"Thread join error: {e}")
 
         try:
             self.miner_manager.report()
@@ -115,8 +118,6 @@ class Validator(ncc.base.BaseValidator):
 
                 if len(batched_uids) < 2:
                     continue
-
-                # Submit to thread pool instead of creating new thread
                 future = self.thread_pool.submit(
                     self._forward_batch,
                     tier,
@@ -127,9 +128,8 @@ class Validator(ncc.base.BaseValidator):
                 futures.append(future)
                 time.sleep(sleep_per_batch)
 
-        # Wait for all tasks to complete
         for future in futures:
-            future.result()  # This will also raise any exceptions that occurred
+            future.result()
 
     def _forward_batch(
         self,
