@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from flask import Flask, request, jsonify
 import torch.nn.functional as F
 import torch
 from transformers import (
@@ -255,25 +255,30 @@ class ScoringService:
             return False
 
 
-app = FastAPI()
+app = Flask(__name__)
 scoring_service = ScoringService()
 
 
-@app.get("/")
+@app.route("/", methods=["GET"])
 def is_alive():
     """
     Endpoint to check if the service is running and responsive.
     """
-    return {"message": "I'm alive!"}
+    return jsonify({"message": "I'm alive!"})
 
 
-@app.post("/scoring")
-def get_scoring(request: BatchedScoringRequest):
+@app.route("/scoring", methods=["POST"])
+def get_scoring():
     """
     Endpoint to receive a batched scoring request and return calculated scores.
     """
     try:
-        return scoring_service.get_scoring(request)
+        request_data = BatchedScoringRequest(**request.get_json())
+        return jsonify(scoring_service.get_scoring(request_data))
     except Exception as e:
         print(f"Error in /scoring endpoint: {e}")
-        return {"error": "Failed to calculate scores"}
+        return jsonify({"error": "Failed to calculate scores"})
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
