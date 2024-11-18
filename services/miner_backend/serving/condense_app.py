@@ -80,7 +80,7 @@ class Condenser(nn.Module):
         condense_model = AutoModelForCausalLM.from_pretrained(
             repo_id, torch_dtype=torch.bfloat16
         ).to("cuda")
-        condense_tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-1B")
+        condense_tokenizer = AutoTokenizer.from_pretrained("unsloth/Llama-3.2-1B")
         condense_tokenizer.pad_token = condense_tokenizer.eos_token
 
         # Initialize and load state_dict
