@@ -5,7 +5,7 @@ import random
 import wandb
 from ..protocol import TextCompressProtocol
 from . import logging
-from .synthetic_challenge import Challenger
+from .synthetic_challenge import ChallengeGenerator
 from .miner_manager import MinerManager, ServingCounter, MetadataItem
 from ..constants import SyntheticTaskConfig, TierConfig
 
@@ -24,7 +24,7 @@ def get_task_config() -> SyntheticTaskConfig:
 
 
 def prepare_synapse(
-    challenger: Challenger,
+    challenge_generator: ChallengeGenerator,
     tokenizer,
     task_config: SyntheticTaskConfig,
     tier_config: TierConfig,
@@ -42,7 +42,7 @@ def prepare_synapse(
     Returns:
         The prepared synapse object
     """
-    synapse = challenger(
+    synapse = challenge_generator(
         tokenizer=tokenizer,
         task=task_config.task,
         max_context_length_in_chars=tier_config.max_context_length_in_chars,
@@ -178,6 +178,7 @@ def process_and_score_responses(
     if use_wandb:
         logging.log_wandb(metrics, total_uids, tier=tier)
 
+
 def update_metrics_of_invalid_miners(
     invalid_uids: list[int],
     metrics: dict,
@@ -236,7 +237,9 @@ def get_accelerate_metrics(
     process_time_rewards = [
         1 - r.dendrite.process_time / tier_config.timeout for r in valid_responses
     ]
-    rewards = [max(0, (c + p) / 2) for c, p in zip(compress_rate_rewards, process_time_rewards)]
+    rewards = [
+        max(0, (c + p) / 2) for c, p in zip(compress_rate_rewards, process_time_rewards)
+    ]
     return rewards
 
 

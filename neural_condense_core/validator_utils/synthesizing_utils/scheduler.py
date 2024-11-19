@@ -7,9 +7,9 @@ from typing import Optional, List
 import random
 from datasets import load_dataset
 import json
-from convo_generator import ConvoGenerator
-from custom_dataset_loaders import load_instruct_datasets, load_context_datasets
-from schemas import (
+from .convo_generator import ConvoGenerator
+from .custom_dataset_loaders import load_instruct_datasets, load_context_datasets
+from .schemas import (
     QASet,
     Conversation,
     Message,

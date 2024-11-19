@@ -150,7 +150,6 @@ class MinerManager:
             np.ndarray: Array of normalized ratings for all miners
         """
         weights = np.zeros(len(self.metagraph.hotkeys))
-
         for tier in constants.TIER_CONFIG.keys():
             # Get ELO ratings for miners in this tier
             tier_ratings = []
@@ -326,7 +325,7 @@ class MinerManager:
         self.metadata = metadata
         bt.logging.success(f"Updated metadata for {len(uids)} uids.")
         return self.metadata
-    
+
     def get_rate_limit_per_tier(self):
         """
         Get rate limit per tier for the validator.

@@ -13,7 +13,6 @@ class GroundTruthRequest(BaseModel):
     activation_prompt: str
     model_name: str
     criterias: List[str]
-    last_prompt: str = ""
 
 
 class BatchedScoringRequest(BaseModel):

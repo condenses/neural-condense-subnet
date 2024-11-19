@@ -8,7 +8,7 @@ from .synthesizing_utils import (
     ConversationSchedulerConfig,
 )
 import random
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 from ..protocol import TextCompressProtocol
 from .synthesizing_utils.schemas import Conversation, Message, QASet
 
@@ -32,13 +32,15 @@ class ChallengeGenerator:
         self.task_to_builder = {
             "question_answering": self._build_qa_conversation,
             "causal_conversation": self._build_causal_conversation,
+            "reconstruct_conversation": self._build_reconstruct_conversation,
+            "trivial_qa_conversation": self._build_trivial_qa_conversation,
         }
         self.lock = threading.Lock()  # Ensures thread safety for dataset access
 
-    def __call__(
+    def generate_challenge(
         self,
         tokenizer: AutoTokenizer,
-        task: str = "",
+        task: str = "question_answering",
         max_context_length_in_chars: int = 10000,
     ) -> TextCompressProtocol:
         messages, hidden_messages = self.task_to_builder[task](
@@ -50,11 +52,25 @@ class ChallengeGenerator:
         self, max_chars: int
     ) -> Tuple[List[Message], List[Message]]:
         messages, _ = self._build_causal_conversation(max_chars)
+        # Trivial question answering: Ask about fill in the blank sentences
         # Select a random sentence from the conversation and 2 nearby sentences
         random_index = random.randint(0, len(messages) - 1)
         selected_message_content = messages[random_index].content
         sentences = selected_message_content.split(".")
-        selected_sentence = sentences[random.randint(1, len(sentences) - 1)]
+        # Replace the selected sentence with a fill in the blank sentence
+        sentence_index = random.randint(1, len(sentences) - 1)
+        hidden_sentence = sentences[sentence_index]
+        sentences[sentence_index] = "______"
+        fill_in_the_blank_sentence = ".".join(sentences)
+
+        hidden_messages = [
+            Message(
+                role="user",
+                content=f"From the conversation above, fill in the blank: {fill_in_the_blank_sentence}",
+            ),
+            Message(role="assistant", content=hidden_sentence),
+        ]
+        return messages, hidden_messages
 
     def _build_reconstruct_conversation(
         self, max_chars: int
@@ -65,15 +81,13 @@ class ChallengeGenerator:
 Example:
 - User: Hello, how are you?
 - Assistant: I am fine, thank you.
-
 - User: What is your name?
 - Assistant: I am a helpful assistant.
-
 ... other turns
 """
         activation_prompt = f"Please paraphrase all the messages in the conversation above in the format {turn_format}."
         formatted_messages = [
-            f"{msg.role.capitalize()}: {msg.content}" for msg in messages
+            f"- {msg.role.capitalize()}: {msg.content}" for msg in messages
         ]
         hidden_messages = [
             Message(role="user", content=activation_prompt),
@@ -103,11 +117,7 @@ Example:
     def _build_qa_conversation(
         self, max_chars: int
     ) -> Tuple[List[Message], List[Message]]:
-        qa_sets = self.synthesizer.get_qas(n=1)
-        if not qa_sets:
-            return [], []
-
-        main_qa_set = qa_sets[0]
+        main_qa_set = self.synthesizer.get_qas(n=1)[0]
         context = main_qa_set.context_seed
         qa_pairs = [
             (main_qa_set.questions[i], main_qa_set.answers[i])
@@ -130,7 +140,7 @@ Example:
             Message(role="assistant", content=selected_answer),
         ]
 
-        conversations = self._ensemble_conversations()
+        conversations = self._ensemble_conversations(10)
         if not conversations:
             return qa_seed, hidden_messages
 
@@ -164,7 +174,7 @@ Example:
     ) -> TextCompressProtocol:
         messages[-1].content = messages[-1].content + self.start_activation_token
         hidden_messages[0].content = (
-            self.end_activation_token + hidden_messages[0].content
+            hidden_messages[0].content + self.end_activation_token
         )
 
         all_messages = [msg.model_dump() for msg in messages + hidden_messages]
@@ -176,7 +186,11 @@ Example:
             f"{re.escape(self.start_activation_token)}|{re.escape(self.end_activation_token)}",
             prompt,
         )
-        return TextCompressProtocol(context, activation_prompt, expected_completion)
+        return TextCompressProtocol(
+            context=context,
+            activation_prompt=activation_prompt,
+            expected_completion=expected_completion,
+        )
 
     def _ensemble_conversations(self, n: int) -> List[List[Message]]:
         qa_conversations = self._get_qa_as_conversation(n=n)
