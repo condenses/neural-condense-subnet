@@ -5,7 +5,7 @@ from ...constants import TierConfig
 class MetricConverter:
     def __init__(self):
         self.converters = {
-            "loss": self.loss_to_score,
+            "perplexity": self.perplexity_to_score,
             "accuracy": self.accuracy_to_score,
         }
 
@@ -24,12 +24,12 @@ class MetricConverter:
                 continue
         return total_scores
 
-    def loss_to_score(self, losses: list[float]):
-        for i in range(len(losses)):
-            if losses[i] is None:
-                losses[i] = 1000
-        pivot = max(losses)
-        scores = pivot / np.array(losses)
+    def perplexity_to_score(self, perplexities: list[float]):
+        for i in range(len(perplexities)):
+            if perplexities[i] is None:
+                perplexities[i] = 1000
+        pivot = min(perplexities)
+        scores = pivot / np.array(perplexities)
         return scores.tolist()
 
     def accuracy_to_score(self, accuracies: list[float]):

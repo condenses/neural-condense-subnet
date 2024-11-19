@@ -208,7 +208,7 @@ def get_scoring_metrics(
     }
 
     scoring_response = requests.post(
-        f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/scoring",
+        f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics",
         json=payload,
         timeout=timeout,
     ).json()

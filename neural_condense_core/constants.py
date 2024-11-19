@@ -63,22 +63,28 @@ class Constants(BaseModel):
 
     SYNTHETIC_TASK_CONFIG: List[SyntheticTaskConfig] = [
         SyntheticTaskConfig(
-            task="reconstruction",
-            criterias=["loss"],
+            task="causal_conversation",
+            criterias=["perplexity"],
             rewarding_frequency=1,
-            weight=0.8,
+            weight=1,
         ),
         SyntheticTaskConfig(
             task="question_answering",
-            criterias=["accuracy"],
+            criterias=["perplexity"],
             rewarding_frequency=1,
-            weight=0.2,
+            weight=1,
         ),
         SyntheticTaskConfig(
-            task="continual_conversation",
-            criterias=["reward_model"],
+            task="reconstruct_conversation",
+            criterias=["perplexity"],
             rewarding_frequency=1,
-            weight=0.0,
+            weight=1,
+        ),
+        SyntheticTaskConfig(
+            task="trivial_qa_conversation",
+            criterias=["perplexity"],
+            rewarding_frequency=1,
+            weight=1,
         ),
     ]
 

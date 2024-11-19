@@ -1,16 +1,13 @@
 from transformers import AutoTokenizer
 import re
 import threading
-from . import (
-    Scheduler,
-    ConvoGenerator,
-    QASchedulerConfig,
-    ConversationSchedulerConfig,
-)
+from .scheduler import Scheduler
+from .convo_generator import ConvoGenerator
+from .schemas import Message, QASchedulerConfig, ConversationSchedulerConfig
 import random
 from typing import List, Tuple
 from ...protocol import TextCompressProtocol
-from .schemas import Message
+from ...constants import constants
 
 
 class ChallengeGenerator:
@@ -35,6 +32,10 @@ class ChallengeGenerator:
             "reconstruct_conversation": self._build_reconstruct_conversation,
             "trivial_qa_conversation": self._build_trivial_qa_conversation,
         }
+        for task in constants.SYNTHETIC_TASK_CONFIG:
+            assert (
+                task.task in self.task_to_builder
+            ), f"Task {task.task} not supported. Supported tasks: {list(self.task_to_builder.keys())}"
         self.lock = threading.Lock()  # Ensures thread safety for dataset access
 
     def generate_challenge(

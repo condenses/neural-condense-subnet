@@ -1,11 +1,7 @@
 import numpy as np
-from .datatypes import ScoringRequest, GroundTruthRequest, BatchedScoringRequest
+from .datatypes import MinerResponse, GroundTruthRequest, BatchedScoringRequest
 import io
 import base64
-
-
-def loss_to_scores(losses: list[float]) -> list[float]:
-    return [-loss for loss in losses]
 
 
 def unit_test(self):
@@ -18,11 +14,9 @@ def unit_test(self):
             "activation_prompt": "Identify the person arrested on suspicion of spying for North Korea. [/INST]",
             "expected_completion": "Benoit Quennedey",
         }
-        model_name = "Condense-AI/Mistral-7B-Instruct-v0.2"
-        criterias = ["loss", "accuracy"]
+        criterias = ["perplexity"]
 
-        self.load_model(model_name)
-        context_ids = self.tokenizers[model_name](
+        context_ids = self.tokenizer(
             data["context"],
             return_tensors="pt",
             truncation=False,
@@ -30,25 +24,21 @@ def unit_test(self):
             add_special_tokens=False,
         )["input_ids"].to(self.device)
 
-        context_embeds = (
-            self.models[model_name].get_input_embeddings()(context_ids).squeeze(0)
-        )
+        context_embeds = self.model.get_input_embeddings()(context_ids).squeeze(0)
         compressed_tokens = context_embeds.detach().cpu().numpy().tolist()
         compressed_tokens_b64 = ndarray_to_base64(compressed_tokens)
-        miner_response = ScoringRequest(compressed_tokens_b64=compressed_tokens_b64)
+        miner_response = MinerResponse(compressed_tokens_b64=compressed_tokens_b64)
         ground_truth_request = GroundTruthRequest(
             context=data["context"],
             activation_prompt=data["activation_prompt"],
             expected_completion=data["expected_completion"],
-            model_name=model_name,
             criterias=criterias,
         )
         request = BatchedScoringRequest(
             miner_responses=[miner_response],
             ground_truth_request=ground_truth_request,
         )
-        scores = self.get_scoring(request)
-        print(scores)
+        self.get_metrics(request)
 
         ground_truth_request.activation_prompt = (
             "Write exactly the same context as provided. [/INST]"
@@ -59,8 +49,7 @@ def unit_test(self):
             miner_responses=[miner_response],
             ground_truth_request=ground_truth_request,
         )
-        scores = self.get_scoring(request)
-        print(scores)
+        self.get_metrics(request)
     except Exception as e:
         print(f"Error in unit_test: {e}")
 
