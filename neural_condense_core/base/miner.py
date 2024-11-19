@@ -69,7 +69,11 @@ class Miner:
             bt.logging.info(f"Running miner on uid: {self.my_subnet_uid}")
 
     def setup_axon(self):
-        self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port, external_port=self.config.axon.external_port)
+        self.axon = bt.axon(
+            wallet=self.wallet,
+            port=self.config.axon.port,
+            external_port=self.config.axon.external_port,
+        )
         bt.logging.info("Attaching forward function to axon.")
         for blacklist_fn, forward_fn in zip(self.blacklist_fns, self.forward_fns):
             bt.logging.info(

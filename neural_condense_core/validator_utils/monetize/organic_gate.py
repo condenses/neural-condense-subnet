@@ -9,9 +9,9 @@ import random
 import httpx
 from threading import Thread
 import time
-from ..constants import constants
-from ..protocol import TextCompressProtocol
-from ..validator_utils import MinerManager
+from ...constants import constants
+from ...protocol import TextCompressProtocol
+from .. import MinerManager
 
 
 class OrganicPayload(pydantic.BaseModel):

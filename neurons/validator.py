@@ -1,4 +1,4 @@
-import neural_condense_core as ncc
+from neural_condense_core import constants, validator_utils as vutils, __spec_version__
 import bittensor as bt
 import threading
 import random
@@ -6,11 +6,10 @@ from transformers import AutoTokenizer
 import numpy as np
 import time
 import traceback
-from neural_condense_core.validator_utils import forward as forward_utils
 from concurrent.futures import ThreadPoolExecutor
 
 
-class Validator(ncc.base.BaseValidator):
+class Validator(vutils.base.BaseValidator):
     """
     Validator class that handles validation of miner responses and manages rewards.
 
@@ -24,12 +23,12 @@ class Validator(ncc.base.BaseValidator):
     def __init__(self):
         """Initialize the validator with required components and configurations."""
         super().__init__()
-        self.miner_manager = ncc.validator_utils.MinerManager(self)
-        self.challenger = ncc.validator_utils.Challenger()
+        self.miner_manager = vutils.managing.MinerManager(self)
+        self.challenger = vutils.synthesizing.Challenger()
 
         if self.config.validator.gate_port:
             try:
-                self.organic_gate = ncc.validator_utils.OrganicGate(
+                self.organic_gate = vutils.monetize.OrganicGate(
                     miner_manager=self.miner_manager,
                     wallet=self.wallet,
                     config=self.config,
@@ -40,8 +39,8 @@ class Validator(ncc.base.BaseValidator):
                 bt.logging.error(f"Starting organic gate error: {e}")
 
         if self.config.validator.use_wandb:
-            forward_utils.initialize_wandb(self.dendrite, self.metagraph, self.uid)
-        
+            vutils.loop.initialize_wandb(self.dendrite, self.metagraph, self.uid)
+
         weights = self.miner_manager.get_normalized_ratings()
         bt.logging.info(f"Weights: {weights}")
         bt.logging.info(f"Uids: {self.metagraph.uids}")
@@ -49,7 +48,7 @@ class Validator(ncc.base.BaseValidator):
         # Add a thread pool executor
         self.thread_pool = ThreadPoolExecutor(
             max_workers=min(32, (threading.active_count() + 4) * 2),
-            thread_name_prefix="validator_pool"
+            thread_name_prefix="validator_pool",
         )
 
     def start_epoch(self):
@@ -61,13 +60,13 @@ class Validator(ncc.base.BaseValidator):
         self.miner_manager.sync()
         threads = [
             threading.Thread(target=self._forward_tier, args=(tier,))
-            for tier in ncc.constants.TIER_CONFIG
+            for tier in constants.TIER_CONFIG
         ]
         for t in threads:
             t.start()
         for t in threads:
             try:
-                t.join(timeout=ncc.constants.EPOCH_LENGTH*1.5)
+                t.join(timeout=constants.EPOCH_LENGTH * 1.5)
             except Exception as e:
                 bt.logging.error(f"Thread join error: {e}")
 
@@ -84,11 +83,11 @@ class Validator(ncc.base.BaseValidator):
         Args:
             tier (str): The tier level to process
         """
-        if ncc.constants.TIER_CONFIG[tier].incentive_percentage == 0:
+        if constants.TIER_CONFIG[tier].incentive_percentage == 0:
             bt.logging.info(f"Tier {tier} has no incentive percentage.")
             return
 
-        model_name = random.choice(ncc.constants.TIER_CONFIG[tier].supporting_models)
+        model_name = random.choice(constants.TIER_CONFIG[tier].supporting_models)
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         serving_counter = self.miner_manager.serving_counter.get(tier, {})
 
@@ -97,33 +96,26 @@ class Validator(ncc.base.BaseValidator):
             return
         rate_limit = self.miner_manager.rate_limit_per_tier[tier]
         n_sets = max(
-            int(
-                rate_limit
-                * ncc.constants.RPE_PERCENTAGE_FOR_SYNTHETIC
-            ),
+            int(rate_limit * constants.RPE_PERCENTAGE_FOR_SYNTHETIC),
             1,
         )
-        sleep_per_set = ncc.constants.EPOCH_LENGTH / n_sets
+        sleep_per_set = constants.EPOCH_LENGTH / n_sets
         futures = []
 
         for _ in range(n_sets):
-            pre_batched_uids = forward_utils.get_batched_uids(
+            pre_batched_uids = vutils.loop.get_batched_uids(
                 serving_counter, self.miner_manager.metadata
             )
             sleep_per_batch = sleep_per_set / len(pre_batched_uids)
             for batch_uids in pre_batched_uids:
                 batched_uids = [
                     uid for uid in batch_uids if serving_counter[uid].increment()
-                ][: ncc.constants.BATCH_SIZE]
+                ][: constants.BATCH_SIZE]
 
                 if len(batched_uids) < 2:
                     continue
                 future = self.thread_pool.submit(
-                    self._forward_batch,
-                    tier,
-                    model_name,
-                    batched_uids,
-                    tokenizer
+                    self._forward_batch, tier, model_name, batched_uids, tokenizer
                 )
                 futures.append(future)
                 time.sleep(sleep_per_batch)
@@ -149,40 +141,38 @@ class Validator(ncc.base.BaseValidator):
         """
         try:
             dendrite = bt.dendrite(self.wallet)
-            task_config = forward_utils.get_task_config()
+            task_config = vutils.loop.get_task_config()
 
-            ground_truth_synapse = forward_utils.prepare_synapse(
+            ground_truth_synapse = vutils.loop.prepare_synapse(
                 challenger=self.challenger,
                 tokenizer=tokenizer,
                 task_config=task_config,
-                tier_config=ncc.constants.TIER_CONFIG[tier],
+                tier_config=constants.TIER_CONFIG[tier],
                 model_name=model_name,
             )
             bt.logging.info(f"Prepared ground truth synapse for {batched_uids}.")
             synapse = ground_truth_synapse.model_copy()
             synapse.hide_ground_truth()
-            k_factor = forward_utils.get_k_factor(self.miner_manager, batched_uids)
-            responses = forward_utils.query_miners(
+            k_factor = vutils.loop.get_k_factor(self.miner_manager, batched_uids)
+            responses = vutils.loop.query_miners(
                 dendrite=dendrite,
                 metagraph=self.metagraph,
                 uids=batched_uids,
                 synapse=synapse,
-                timeout=ncc.constants.TIER_CONFIG[tier].timeout,
+                timeout=constants.TIER_CONFIG[tier].timeout,
             )
             bt.logging.info(f"Queried miners for {batched_uids}.")
-            valid_responses, valid_uids, invalid_uids = (
-                forward_utils.validate_responses(
-                    responses=responses,
-                    uids=batched_uids,
-                    tier_config=ncc.constants.TIER_CONFIG[tier],
-                )
+            valid_responses, valid_uids, invalid_uids = vutils.loop.validate_responses(
+                responses=responses,
+                uids=batched_uids,
+                tier_config=constants.TIER_CONFIG[tier],
             )
             bt.logging.info(f"Validated responses for {batched_uids}.")
             if not valid_responses:
                 bt.logging.info(f"No valid responses for batch {batched_uids}.")
 
             if random.random() < task_config.rewarding_frequency:
-                forward_utils.process_and_score_responses(
+                vutils.loop.process_and_score_responses(
                     miner_manager=self.miner_manager,
                     valid_responses=valid_responses,
                     valid_uids=valid_uids,
@@ -190,7 +180,7 @@ class Validator(ncc.base.BaseValidator):
                     ground_truth_synapse=ground_truth_synapse,
                     model_name=model_name,
                     task_config=task_config,
-                    tier_config=ncc.constants.TIER_CONFIG[tier],
+                    tier_config=constants.TIER_CONFIG[tier],
                     tier=tier,
                     k_factor=k_factor,
                     use_wandb=self.config.validator.use_wandb,
@@ -214,14 +204,14 @@ class Validator(ncc.base.BaseValidator):
             bt.logging.info("All weights are zero, setting to ones.")
         bt.logging.info(f"Weights: {weights}")
         bt.logging.info(f"Uids: {self.metagraph.uids}")
-        if self.current_block > self.last_update + ncc.constants.SUBNET_TEMPO:
+        if self.current_block > self.last_update + constants.SUBNET_TEMPO:
             result = self.subtensor.set_weights(
                 netuid=self.config.netuid,
                 wallet=self.wallet,
                 uids=self.metagraph.uids,
                 weights=weights,
                 wait_for_inclusion=True,
-                version_key=ncc.__spec_version__,
+                version_key=__spec_version__,
             )
             bt.logging.info(f"Set weights result: {result}")
             self.resync_metagraph()

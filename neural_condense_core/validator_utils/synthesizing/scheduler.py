@@ -1,12 +1,10 @@
 import redis
-import json
 import threading
 import time
 import os
 from typing import Optional, List
 import random
 from datasets import load_dataset
-import json
 from .convo_generator import ConvoGenerator
 from .custom_dataset_loaders import load_instruct_datasets, load_context_datasets
 from .schemas import (
@@ -34,7 +32,9 @@ class Scheduler:
         self.instruct_datasets = load_instruct_datasets()
         self.context_datasets = load_context_datasets()
         self.redis = redis.Redis(
-            host="localhost", port=6379, decode_responses=True  # Configure as needed
+            host="localhost",
+            port=6379,
+            decode_responses=True,  # Configure as needed
         )
         self.qa_key = "qa_sets"
         self.convo_key = "conversations"

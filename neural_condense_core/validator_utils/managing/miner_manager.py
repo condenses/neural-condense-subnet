@@ -8,9 +8,9 @@ import threading
 from pydantic import BaseModel
 from .metric_converter import MetricConverter
 from .elo import ELOSystem
-from ..common import build_rate_limit
-from ..protocol import Metadata
-from ..constants import constants, TierConfig
+from ...common import build_rate_limit
+from ...protocol import Metadata
+from ...constants import constants, TierConfig
 
 
 class MetadataItem(BaseModel):

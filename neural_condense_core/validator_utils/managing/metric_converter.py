@@ -1,6 +1,5 @@
 import numpy as np
-import bittensor as bt
-from ..constants import TierConfig
+from ...constants import TierConfig
 
 
 class MetricConverter:

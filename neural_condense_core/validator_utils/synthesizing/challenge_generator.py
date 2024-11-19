@@ -1,7 +1,7 @@
 from transformers import AutoTokenizer
 import re
 import threading
-from .synthesizing_utils import (
+from . import (
     Scheduler,
     ConvoGenerator,
     QASchedulerConfig,
@@ -9,8 +9,8 @@ from .synthesizing_utils import (
 )
 import random
 from typing import List, Tuple
-from ..protocol import TextCompressProtocol
-from .synthesizing_utils.schemas import Conversation, Message, QASet
+from ...protocol import TextCompressProtocol
+from .schemas import Message
 
 
 class ChallengeGenerator:

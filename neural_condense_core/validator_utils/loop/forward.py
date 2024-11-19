@@ -3,11 +3,11 @@ import bittensor as bt
 import requests
 import random
 import wandb
-from ..protocol import TextCompressProtocol
+from ...protocol import TextCompressProtocol
 from . import logging
-from .synthetic_challenge import ChallengeGenerator
-from .miner_manager import MinerManager, ServingCounter, MetadataItem
-from ..constants import SyntheticTaskConfig, TierConfig
+from ..synthesizing.challenge_generator import ChallengeGenerator
+from ..managing.miner_manager import MinerManager, ServingCounter, MetadataItem
+from ...constants import SyntheticTaskConfig, TierConfig
 
 
 def get_task_config() -> SyntheticTaskConfig:

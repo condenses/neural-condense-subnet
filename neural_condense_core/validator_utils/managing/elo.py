@@ -36,7 +36,7 @@ class ELOSystem:
                 else:
                     S_i = int(diff > 0)
                     S_j = int(diff < 0)
-                
+
                 expected_i = self.expected_score(ratings[i], ratings[j])
                 expected_j = self.expected_score(ratings[j], ratings[i])
                 rating_change_i = k_factor * (S_i - expected_i)

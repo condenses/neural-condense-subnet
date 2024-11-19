@@ -1,7 +1,4 @@
 import requests
-import threading
-import queue
-import time
 from typing import Dict, List, Optional
 
 
