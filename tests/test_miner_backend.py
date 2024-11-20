@@ -1,6 +1,7 @@
 import requests
 import pytest
 import argparse
+from neural_condense_core.common.base64 import base64_to_ndarray
 
 # Default values for the base URL and port
 DEFAULT_HOST = "localhost"
@@ -29,7 +30,7 @@ def get_args():
     parser.add_argument(
         "--target-model",
         type=str,
-        default="mistralai/Mistral-7B-Instruct-v0.1",
+        default="Condense-AI/Mistral-7B-Instruct-v0.1",
     )
 
     args, _ = parser.parse_known_args()  # Avoid conflict with pytest's arguments
@@ -43,18 +44,19 @@ args = get_args()
 BASE_URL = f"http://{args.host}:{args.port}{args.api_path}"
 
 
-@pytest.fixture
-def api_url():
+def get_api_url():
     """
-    Fixture to provide the full API URL based on the host, port, and path.
+    Function to provide the full API URL based on the host, port, and path.
     """
     return BASE_URL
 
 
-def test_api_prediction(api_url):
+def test_miner_api():
     """
     Test the prediction endpoint by sending a valid context and model request.
     """
+    api_url = get_api_url()
+
     payload = {
         "context": "This is a long test context that needs to be compressed.",
         "target_model": args.target_model,
@@ -62,16 +64,18 @@ def test_api_prediction(api_url):
 
     response = requests.post(api_url, json=payload)
 
-    # Ensure the response status is OK
-    assert (
-        response.status_code == 200
-    ), f"Expected status code 200 but got {response.status_code}"
+    if response.status_code != 200:
+        raise Exception(f"Expected status code 200 but got {response.status_code}")
 
-    # Parse the response JSON
     data = response.json()
 
-    # Check that the necessary fields are in the response
-    assert "compressed_tokens" in data, "Response should contain compressed_context."
+    if "compressed_tokens_base64" not in data:
+        raise Exception("Response should contain compressed_tokens_base64.")
 
-    # Ensure the compressed context is not empty
-    assert len(data["compressed_tokens"]) > 0, "Compressed context should not be empty."
+    compressed_tokens = base64_to_ndarray(data["compressed_tokens_base64"])
+
+    seq_len, hidden_size = compressed_tokens.shape
+
+    print(f"Compressed tokens shape: {seq_len} x {hidden_size}")
+
+    print("API test passed successfully!")
