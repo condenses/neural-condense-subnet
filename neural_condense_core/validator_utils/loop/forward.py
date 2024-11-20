@@ -49,7 +49,7 @@ def prepare_synapse(
             max_context_length_in_chars=tier_config.max_context_length_in_chars,
         )
         synapse.target_model = model_name
-    except Exception as e:
+    except Exception:
         return None
     return synapse
 

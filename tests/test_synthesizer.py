@@ -1,5 +1,5 @@
 from transformers import AutoTokenizer
-from neural_condense_core.validator_utils.synthesizing.challenge_generator import ChallengeGenerator
+from neural_condense_core.validator_utils.synthesizing import ChallengeGenerator
 import json
 import os
 

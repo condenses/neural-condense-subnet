@@ -11,5 +11,7 @@ def retry(max_attempts=3):
                     if attempts == max_attempts:
                         raise e
             return None
+
         return wrapper
+
     return decorator
