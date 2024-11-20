@@ -1,26 +1,7 @@
 import torch
-import base64
-import io
-import huggingface_hub
-from flask import Flask, request, jsonify
-from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch.nn as nn
-import numpy as np
-import rich
-import time
-
-app = Flask(__name__)
-
-
-class InferenceLogger:
-    """
-    Logger class for inference processes. This logs key-value pairs of information
-    during the execution of the backend inference, using the rich library for better readability.
-    """
-
-    @staticmethod
-    def log(key, value):
-        rich.print(f"Inference Backend -- {key}: {value}")
+import huggingface_hub
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 class Condenser(nn.Module):
@@ -30,11 +11,11 @@ class Condenser(nn.Module):
 
     def __init__(
         self,
-        num_condense_tokens,
-        hidden_size,
-        n_last_hidden_states,
-        condense_model,
-        condense_tokenizer,
+        num_condense_tokens: int,
+        hidden_size: int,
+        n_last_hidden_states: int,
+        condense_model: AutoModelForCausalLM,
+        condense_tokenizer: AutoTokenizer,
     ):
         super().__init__()
         self.dtype = torch.bfloat16
@@ -61,11 +42,11 @@ class Condenser(nn.Module):
         )
 
     @classmethod
-    def from_pretrained(cls, repo_id, checkpoint_path, local_dir="./"):
+    def from_pretrained(cls, repo_id, local_dir="./"):
         # Download and load checkpoint
         file_path = huggingface_hub.hf_hub_download(
             repo_id=repo_id,
-            filename=checkpoint_path,
+            filename="checkpoints/modules.pt",
             local_dir=local_dir,
         )
         state_dict = torch.load(file_path)
@@ -94,7 +75,7 @@ class Condenser(nn.Module):
         model.load_state_dict(state_dict["modules"])
         return model
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict: dict):
         self.pre_condensed_tokens.data = state_dict["pre_condensed_tokens"].to(
             dtype=self.dtype, device="cuda"
         )
@@ -155,58 +136,3 @@ class Condenser(nn.Module):
         )[:, -self.num_condense_tokens :, :]
 
         return self.linear(self.norm(hidden_states)).to(torch.float32)
-
-
-# Helper function to convert NumPy array to base64
-def ndarray_to_base64(array: np.ndarray) -> str:
-    """Convert a NumPy array to a base64-encoded string."""
-    buffer = io.BytesIO()
-    np.save(buffer, array)
-    buffer.seek(0)
-    base64_str = base64.b64encode(buffer.read()).decode("utf-8")
-    return base64_str
-
-
-# Initialize Condenser
-repo_id = "Condense-AI/Condenser-Llama-3.2-1B-20241117-173040"
-checkpoint_path = "checkpoints/modules.pt"
-condenser = Condenser.from_pretrained(repo_id, checkpoint_path)
-condenser.eval()
-
-
-# Define endpoint for compression
-@app.route("/condense", methods=["POST"])
-def compress_endpoint():
-    t1 = time.time()
-    data = request.get_json()
-    context = data.get("context")
-    target_model = data.get("target_model")
-
-    if not context:
-        return jsonify({"error": "Missing 'context' in request."}), 400
-
-    try:
-        # Compress context into condensed tokens
-        compressed_tokens = condenser.compress(context)
-        compressed_tokens = compressed_tokens.squeeze(0)
-        compressed_tokens = compressed_tokens.cpu().numpy()
-        compress_tokens_bs64 = ndarray_to_base64(compressed_tokens)
-
-        # Log inference details
-        InferenceLogger.log(
-            "Predict",
-            f"Compressed token length {len(compressed_tokens)} shape {compressed_tokens.shape}",
-        )
-        InferenceLogger.log("Inference time", time.time() - t1)
-
-        return jsonify(
-            {
-                "compressed_tokens_b64": compress_tokens_bs64,
-                "target_model": target_model,
-            }
-        )
-    except Exception as e:
-        InferenceLogger.log("Error", str(e))
-        return jsonify(
-            {"error": "Failed to process the request.", "details": str(e)}
-        ), 500

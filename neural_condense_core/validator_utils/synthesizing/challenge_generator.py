@@ -25,6 +25,7 @@ class ChallengeGenerator:
             ),
             refresh_time=15.0,
         )
+        self.synthesizer.start()
         self.start_activation_token = "<START-ACTIVATE-TOKEN>"
         self.end_activation_token = "<END-ACTIVATE-TOKEN>"
         self.task_to_builder = {

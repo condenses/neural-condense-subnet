@@ -72,7 +72,7 @@ miner_subtensor_network="finney"
 4. Run the miner backend. Example of using our baseline ICAE as a backend (https://github.com/getao/icae):
 ```bash
 pm2 start python --name condense_miner_backend \
--- -m gunicorn services.miner_backend.serving.icae_app:app \
+-- -m gunicorn services.miner_backend.soft_token.app:app \
 --timeout 120 \
 --bind 0.0.0.0:$miner_backend_port
 ```
