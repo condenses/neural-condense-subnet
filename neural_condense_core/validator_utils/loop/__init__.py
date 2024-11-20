@@ -8,6 +8,7 @@ from .forward import (
     validate_responses,
     process_and_score_responses,
 )
+from . import logging
 
 __all__ = [
     "get_task_config",
@@ -18,4 +19,5 @@ __all__ = [
     "prepare_synapse",
     "validate_responses",
     "process_and_score_responses",
+    "logging",
 ]

@@ -147,7 +147,6 @@ class Validator(base.BaseValidator):
         try:
             dendrite = bt.dendrite(self.wallet)
             task_config = vutils.loop.get_task_config()
-
             ground_truth_synapse = vutils.loop.prepare_synapse(
                 challenge_generator=self.challenge_generator,
                 tokenizer=tokenizer,
@@ -156,10 +155,7 @@ class Validator(base.BaseValidator):
                 model_name=model_name,
             )
             if not ground_truth_synapse:
-                bt.logging.info(f"No ground truth synapse for {batched_uids}.")
                 return
-
-            bt.logging.info(f"Prepared ground truth synapse for {batched_uids}.")
             synapse = ground_truth_synapse.model_copy()
             synapse.hide_ground_truth()
             k_factor = vutils.loop.get_k_factor(self.miner_manager, batched_uids)
@@ -170,35 +166,30 @@ class Validator(base.BaseValidator):
                 synapse=synapse,
                 timeout=constants.TIER_CONFIG[tier].timeout,
             )
-            bt.logging.info(f"Queried miners for {batched_uids}.")
             valid_responses, valid_uids, invalid_uids = vutils.loop.validate_responses(
                 responses=responses,
                 uids=batched_uids,
                 tier_config=constants.TIER_CONFIG[tier],
             )
-            bt.logging.info(f"Validated responses for {batched_uids}.")
-            if not valid_responses:
-                bt.logging.info(f"No valid responses for batch {batched_uids}.")
+            metrics = vutils.loop.process_and_score_responses(
+                miner_manager=self.miner_manager,
+                valid_responses=valid_responses,
+                valid_uids=valid_uids,
+                invalid_uids=invalid_uids,
+                ground_truth_synapse=ground_truth_synapse,
+                model_name=model_name,
+                task_config=task_config,
+                tier_config=constants.TIER_CONFIG[tier],
+                tier=tier,
+                k_factor=k_factor,
+                use_wandb=self.config.validator.use_wandb,
+                config=self.config,
+            )
 
-            if random.random() < task_config.rewarding_frequency:
-                vutils.loop.process_and_score_responses(
-                    miner_manager=self.miner_manager,
-                    valid_responses=valid_responses,
-                    valid_uids=valid_uids,
-                    invalid_uids=invalid_uids,
-                    ground_truth_synapse=ground_truth_synapse,
-                    model_name=model_name,
-                    task_config=task_config,
-                    tier_config=constants.TIER_CONFIG[tier],
-                    tier=tier,
-                    k_factor=k_factor,
-                    use_wandb=self.config.validator.use_wandb,
-                    config=self.config,
-                )
-                bt.logging.info(f"Processed and scored responses for {batched_uids}.")
-            else:
-                bt.logging.info(f"Not rewarding batch {batched_uids}.")
-
+            batch_information = (
+                f"Batch Metrics - {tier} - {model_name} - {task_config.task}"
+            )
+            vutils.loop.logging.log_as_dataframe(metrics, batch_information)
         except Exception as e:
             traceback.print_exc()
             bt.logging.error(f"Error: {e}")
@@ -224,6 +215,10 @@ class Validator(base.BaseValidator):
             )
             bt.logging.info(f"Set weights result: {result}")
             self.resync_metagraph()
+        else:
+            bt.logging.info(
+                f"Not setting weights because current block {self.current_block} is not greater than last update {self.last_update} + tempo {constants.SUBNET_TEMPO}"
+            )
 
 
 if __name__ == "__main__":

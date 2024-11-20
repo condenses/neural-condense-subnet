@@ -4,7 +4,7 @@ import requests
 import random
 import wandb
 from ...protocol import TextCompressProtocol
-from . import logging
+from .logging import log_wandb
 from ..synthesizing.challenge_generator import ChallengeGenerator
 from ..managing.miner_manager import MinerManager, ServingCounter, MetadataItem
 from ...constants import SyntheticTaskConfig, TierConfig
@@ -171,18 +171,16 @@ def process_and_score_responses(
         tier_config=tier_config,
     )
     rating_changes = [
-        f"{initial_ratings[i]} -> {final_ratings[i]}"
+        f"{int(initial_ratings[i])} -> {int(final_ratings[i])}"
         for i in range(len(initial_ratings))
     ]
 
     metrics["rating_changes"] = rating_changes
     metrics["UIDs"] = total_uids
-    logging.log_as_dataframe(
-        data=metrics,
-        name=f"Batch Metrics - {tier} - {model_name} - {task_config.task}",
-    )
     if use_wandb:
-        logging.log_wandb(metrics, total_uids, tier=tier)
+        log_wandb(metrics, total_uids, tier=tier)
+
+    return metrics
 
 
 def update_metrics_of_invalid_miners(
