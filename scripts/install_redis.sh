@@ -28,16 +28,30 @@ else
     exit 1
 fi
 
-# Enable Redis to start on boot
-$SUDO systemctl enable redis
+# Attempt to start Redis with systemctl
+echo "Attempting to start Redis using systemctl..."
+if $SUDO systemctl start redis 2>/dev/null; then
+    echo "Redis started successfully using systemctl."
+else
+    echo "systemctl not available or failed. Starting Redis manually..."
+    if redis-server --daemonize yes; then
+        echo "Redis started manually in the background."
+    else
+        echo "Failed to start Redis. Check your setup."
+        exit 1
+    fi
+fi
 
-# Start Redis service
-$SUDO systemctl start redis
+# Enable Redis to start on boot (optional, for non-WSL environments)
+if $SUDO systemctl enable redis 2>/dev/null; then
+    echo "Redis enabled to start on boot using systemctl."
+else
+    echo "systemctl not available. Skipping boot configuration."
+fi
 
 # Test Redis
 if redis-cli ping | grep -q "PONG"; then
-    $SUDO systemctl status redis
     echo "Redis is working correctly!"
 else
-    echo "Redis test failed. Check the service status with '$SUDO systemctl status redis'."
+    echo "Redis test failed. Check the service status or logs."
 fi
