@@ -24,7 +24,7 @@ Firstly, I want to credit [In-context Autoencoder](https://github.com/getao/icae
 
 ### Challenge Item Creation for Synthetic
 
-Preview: https://huggingface.co/datasets/Condense-AI/benchmark-condense-v0.1
+**Preview:** https://huggingface.co/datasets/Condense-AI/synthetic-samples-v0.1
 
 <div align="center">
 <img src="https://github.com/user-attachments/assets/0734407e-f967-4b67-9a49-1da7c2c752f6" alt="preview-synth-dataset" width="75%">
