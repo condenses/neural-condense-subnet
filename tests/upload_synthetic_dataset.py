@@ -3,8 +3,8 @@ import pandas as pd
 import json
 
 
-data = json.load(open("benchmark_dataset.json"))
+data = json.load(open("synthetic_samples.json"))
 
 dataset = Dataset.from_pandas(pd.DataFrame(data))
 
-dataset.push_to_hub("Condense-AI/benchmark-condense-v0.1")
+dataset.push_to_hub("Condense-AI/synthetic-samples-v0.1")

@@ -24,7 +24,7 @@ class Validator(vutils.base.BaseValidator):
         """Initialize the validator with required components and configurations."""
         super().__init__()
         self.miner_manager = vutils.managing.MinerManager(self)
-        self.challenger = vutils.synthesizing.Challenger()
+        self.challenge_generator = vutils.synthesizing.ChallengeGenerator()
 
         if self.config.validator.gate_port:
             try:
@@ -144,12 +144,16 @@ class Validator(vutils.base.BaseValidator):
             task_config = vutils.loop.get_task_config()
 
             ground_truth_synapse = vutils.loop.prepare_synapse(
-                challenger=self.challenger,
+                challenge_generator=self.challenge_generator,
                 tokenizer=tokenizer,
                 task_config=task_config,
                 tier_config=constants.TIER_CONFIG[tier],
                 model_name=model_name,
             )
+            if not ground_truth_synapse:
+                bt.logging.info(f"No ground truth synapse for {batched_uids}.")
+                return
+
             bt.logging.info(f"Prepared ground truth synapse for {batched_uids}.")
             synapse = ground_truth_synapse.model_copy()
             synapse.hide_ground_truth()

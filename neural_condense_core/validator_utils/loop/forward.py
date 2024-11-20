@@ -42,12 +42,15 @@ def prepare_synapse(
     Returns:
         The prepared synapse object
     """
-    synapse = challenge_generator(
-        tokenizer=tokenizer,
-        task=task_config.task,
-        max_context_length_in_chars=tier_config.max_context_length_in_chars,
-    )
-    synapse.target_model = model_name
+    try:
+        synapse = challenge_generator.generate_challenge(
+            tokenizer=tokenizer,
+            task=task_config.task,
+            max_context_length_in_chars=tier_config.max_context_length_in_chars,
+        )
+        synapse.target_model = model_name
+    except Exception as e:
+        return None
     return synapse
 
 

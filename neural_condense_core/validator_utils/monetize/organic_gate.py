@@ -11,7 +11,7 @@ from threading import Thread
 import time
 from ...constants import constants
 from ...protocol import TextCompressProtocol
-from .. import MinerManager
+from ..managing import MinerManager
 
 
 class OrganicPayload(pydantic.BaseModel):

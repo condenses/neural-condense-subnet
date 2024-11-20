@@ -8,6 +8,7 @@ import random
 from typing import List, Tuple
 from ...protocol import TextCompressProtocol
 from ...constants import constants
+from .utils import retry
 
 
 class ChallengeGenerator:
@@ -38,6 +39,7 @@ class ChallengeGenerator:
             ), f"Task {task.task} not supported. Supported tasks: {list(self.task_to_builder.keys())}"
         self.lock = threading.Lock()  # Ensures thread safety for dataset access
 
+    @retry(max_attempts=3)
     def generate_challenge(
         self,
         tokenizer: AutoTokenizer,
@@ -49,20 +51,24 @@ class ChallengeGenerator:
         )
         return self._build_protocol(tokenizer, messages, hidden_messages)
 
+    @retry(max_attempts=3)
     def _build_trivial_qa_conversation(
         self, max_chars: int
     ) -> Tuple[List[Message], List[Message]]:
         messages, _ = self._build_causal_conversation(max_chars)
         # Trivial question answering: Ask about fill in the blank sentences
         # Select a random sentence from the conversation and 2 nearby sentences
-        random_index = random.randint(0, len(messages) - 1)
-        selected_message_content = messages[random_index].content
+        content_sentences = [len(msg.content.split(".")) for msg in messages]
+        # Get msg with most sentences
+        selected_message_index = content_sentences.index(max(content_sentences))
+        selected_message_content = messages[selected_message_index].content
         sentences = selected_message_content.split(".")
-        # Replace the selected sentence with a fill in the blank sentence
         sentence_index = random.randint(1, len(sentences) - 1)
         hidden_sentence = sentences[sentence_index]
         sentences[sentence_index] = "______"
-        fill_in_the_blank_sentence = ".".join(sentences)
+        fill_in_the_blank_sentence = ".".join(
+            sentences[max(sentence_index - 3, 0) : sentence_index + 3]
+        )
 
         hidden_messages = [
             Message(
@@ -73,6 +79,7 @@ class ChallengeGenerator:
         ]
         return messages, hidden_messages
 
+    @retry(max_attempts=3)
     def _build_reconstruct_conversation(
         self, max_chars: int
     ) -> Tuple[List[Message], List[Message]]:
@@ -96,6 +103,7 @@ Example:
         ]
         return messages, hidden_messages
 
+    @retry(max_attempts=3)
     def _build_causal_conversation(
         self, max_chars: int
     ) -> Tuple[List[Message], List[Message]]:
@@ -115,6 +123,7 @@ Example:
         hidden_messages = messages[i:]
         return messages[:i], hidden_messages
 
+    @retry(max_attempts=3)
     def _build_qa_conversation(
         self, max_chars: int
     ) -> Tuple[List[Message], List[Message]]:

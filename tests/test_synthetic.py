@@ -4,10 +4,11 @@ import numpy as np
 from tqdm import tqdm
 from transformers import AutoTokenizer
 from neural_condense_core import validator_utils
+import traceback
 
 
 def benchmark_challenger(
-    n_iterations: int = 5000,
+    n_iterations: int = 10,
     max_characters: int = 10000,
     model_name: str = "Condense-AI/Mistral-7B-Instruct-v0.2",
 ):
@@ -24,10 +25,15 @@ def benchmark_challenger(
     """
     # Load tokenizer and initialize Challenger instance
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    challenger = validator_utils.Challenger()
+    challenger = validator_utils.synthesizing.ChallengeGenerator()
 
     # Define task types and initialize logs
-    tasks = ["question_answering", "reconstruction", "continual_conversation"]
+    tasks = [
+        "question_answering",
+        "causal_conversation",
+        "reconstruct_conversation",
+        "trivial_qa_conversation",
+    ]
     time_logs = {task: 0 for task in tasks}
     error_count = 0
     dataset_items = []
@@ -43,7 +49,11 @@ def benchmark_challenger(
                 start_time = time.time()
 
                 # Generate protocol using Challenger
-                protocol = challenger(tokenizer, task, max_characters)
+                protocol = challenger.generate_challenge(
+                    tokenizer=tokenizer,
+                    task=task,
+                    max_context_length_in_chars=max_characters,
+                )
 
                 # Record details of the generated sample
                 item = {
@@ -66,6 +76,7 @@ def benchmark_challenger(
                 dataset_items.append(item)
 
             except Exception as e:
+                traceback.print_exc()
                 print(f"Error during task '{task}' at iteration {i}: {e}")
                 error_count += 1
                 continue
@@ -98,7 +109,7 @@ def benchmark_challenger(
     print(f"Standard Deviation: {std_length:.2f} characters")
 
     # Save dataset items to JSON file
-    with open("benchmark_dataset.json", "w") as file:
+    with open("synthetic_samples.json", "w") as file:
         json.dump(dataset_items, file)
 
     # Return summary of results
@@ -113,7 +124,7 @@ def benchmark_challenger(
 
 # Run benchmark
 benchmark_results = benchmark_challenger(
-    n_iterations=50000,
+    n_iterations=10,
     max_characters=10000,
     model_name="Condense-AI/Mistral-7B-Instruct-v0.2",
 )
