@@ -6,13 +6,11 @@ import pandas as pd
 def log_wandb(logs: dict, uids: list[int], tier=""):
     try:
         for metric, values in logs.items():
-            if metric == "accuracy":
-                pass
-            if metric == "loss":
+            if metric == "perplexity":
                 for uid, value in zip(uids, values):
                     if value is None:
                         value = 1000
-                    wandb.log({f"{tier}-{uid}/loss": abs(value)})
+                    wandb.log({f"{tier}-{uid}/perplexity": abs(value)})
     except Exception as e:
         bt.logging.error(f"Error logging to wandb: {e}")
 
