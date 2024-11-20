@@ -1,7 +1,9 @@
-import numpy as np
-from .datatypes import MinerResponse, GroundTruthRequest, BatchedScoringRequest
-import io
-import base64
+from .datatypes import (
+    MinerResponse,
+    GroundTruthRequest,
+    BatchedScoringRequest,
+    ndarray_to_base64,
+)
 
 
 def unit_test(self):
@@ -52,29 +54,3 @@ def unit_test(self):
         self.get_metrics(request)
     except Exception as e:
         print(f"Error in unit_test: {e}")
-
-
-def base64_to_ndarray(base64_str: str) -> np.ndarray:
-    try:
-        """Convert a base64-encoded string back to a NumPy array."""
-        buffer = io.BytesIO(base64.b64decode(base64_str))
-        buffer.seek(0)
-        array = np.load(buffer)
-        array = array.astype(np.float32)
-    except Exception as e:
-        print(e)
-        return None
-    return array
-
-
-def ndarray_to_base64(array: np.ndarray) -> str:
-    try:
-        """Convert a NumPy array to a base64-encoded string."""
-        buffer = io.BytesIO()
-        np.save(buffer, array)
-        buffer.seek(0)
-        base64_str = base64.b64encode(buffer.read()).decode("utf-8")
-    except Exception as e:
-        print(e)
-        return ""
-    return base64_str
