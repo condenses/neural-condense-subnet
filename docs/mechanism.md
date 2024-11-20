@@ -13,7 +13,8 @@ This section provides an overview of how challenge items are created for trainin
 3. [Score Calculation](#score-calculation)
     - [Criteria Used](#criteria-used)
     - [Scoring Methods](#scoring-methods)
-    - [Score Smoothing](#score-smoothing)
+    - [Rating Groups](#rating-groups)
+    - [Tier System](#tier-system)
 
 Firstly, I want to credit [In-context Autoencoder](https://github.com/getao/icae) for the inspiration and the paper of token compressing.
 
@@ -52,98 +53,177 @@ Standard Deviation: 86.42 characters
 
 #### Datasets Used
 
-The challenge items are created using a combination of datasets to simulate real-world scenarios. The datasets include:
+The challenge items are created using a combination of datasets to simulate real-world scenarios:
 
-| Dataset Type           | Datasets Used                                      |
-|------------------------|----------------------------------------------------|
-| Question-Answering     | SQuAD v2, CoQA                                     |
-| Conversation           | Infinity Instruct, Open Math Instruct              |
-| Raw Text               | FineWeb-Pro                                        |
+| Dataset Type | Datasets Used |
+|--------------|---------------|
+| Context Seeds | FineWeb-Pro and other context datasets loaded via `load_context_datasets()` |
+| Conversation Seeds | Infinity Instruct, Open Math Instruct, and other instruction datasets loaded via `load_instruct_datasets()` |
+| Cached Examples | Condense-AI/subnet-synthetic-dataset-v0.2 |
 
 #### Challenge Generation Process
 
-The `Challenger` class in `neural_condense_core/validator_utils/synthetic_challenge.py` is responsible for generating challenge items. The process involves:
+The challenge generation system consists of three main components:
 
-1. **Loading Datasets**: Datasets are loaded and shuffled to ensure diversity.
-2. **Building Conversations**: A mixture of conversation and QA data is assembled into a conversation format.
-3. **Injecting Challenge Elements**: Special tokens (`[START-ACTIVATE-TOKEN]`, `[END-ACTIVATE-TOKEN]`) are inserted to mark the activation prompt and expected completion.
-4. **Creating Protocol**: A `TextCompressProtocol` object is created containing the `context`, `activation_prompt`, and `expected_completion`.
+1. **ConvoGenerator**: Handles the generation of conversations and QA pairs using an LLM API
+2. **Scheduler**: Manages queues of pre-generated challenges using Redis
+3. **ChallengeGenerator**: Creates the final challenge items in the correct protocol format
+
+The process involves:
+
+1. **Queue Management**:
+   - Pre-fills Redis queues with cached examples from subnet-synthetic-dataset-v0.2
+   - Continuously refreshes queues to maintain a steady supply of challenges
+   - Monitors queue sizes and generates new items when needed
+
+2. **Challenge Types**:
+   - `question_answering`: QA pairs embedded within conversations
+   - `causal_conversation`: Natural flowing conversations
+   - `reconstruct_conversation`: Tests ability to reformat conversations
+   - `trivial_qa_conversation`: Fill-in-the-blank style questions
+
+3. **Protocol Creation**:
+   - Inserts special tokens (`<START-ACTIVATE-TOKEN>`, `<END-ACTIVATE-TOKEN>`)
+   - Formats context, activation prompt, and expected completion
+   - Applies chat template using the provided tokenizer
 
 ### Purpose of Each Task
 
-There are three main tasks designed to test the token compressor's ability to handle different scenarios. The miner can't determine the task type from the challenge item, so the compressor must be trained to handle all tasks effectively and more generally.
+The system supports four main task types:
 
 #### Question Answering Task
 
-**Objective**: Evaluate the compressor's ability to retain crucial information needed to answer a specific question based on the given context.
+**Objective**: Test comprehension of context and ability to answer specific questions.
 
 - **Process**:
-    - A QA pair is selected and appended to mixed conversations.
-    - The `START-ACTIVATE-TOKEN` and `END-ACTIVATE-TOKEN` are placed around the question.
-    - The assistant is expected to provide the correct answer.
+  - Generates QA pairs from context using LLM
+  - Embeds QA within larger conversations
+  - Number of QA pairs controlled by `n_qa_per_context` (default: 4)
 
-#### Continual Conversation Task
+#### Causal Conversation Task
 
-**Objective**: Test the compressor's capability to maintain the flow of conversation, ensuring context continuity.
+**Objective**: Test ability to maintain conversation flow and context.
 
 - **Process**:
-    - A new conversation is appended to the existing mixed conversations.
-    - Activation tokens are placed to signal the start of the new conversation.
-    - The assistant should continue the conversation appropriately.
+  - Uses conversation seeds from instruction datasets
+  - Generates additional turns using LLM
+  - Controls conversation length with `max_turns` parameter
 
 #### Reconstruction Task
 
-**Objective**: Assess the compressor's ability to reconstruct the original conversation format from the compressed context.
+**Objective**: Test ability to reformat conversations while maintaining content.
 
 - **Process**:
-    - The mixed conversations are presented in a compressed form.
-    - An activation prompt requests the assistant to rewrite the conversations in a specific format.
-    - The assistant is expected to reconstruct and format the conversations as per the prompt.
+  - Takes existing conversation
+  - Requires reformatting into specific template:
+    ```
+    [Role]: [Message]
+    Example:
+    - User: Hello, how are you?
+    - Assistant: I am fine, thank you.
+    ```
 
+#### Trivial QA Task
+
+**Objective**: Test basic comprehension with fill-in-the-blank questions.
+
+- **Process**:
+  - Selects sentence from conversation
+  - Creates blank with surrounding context
+  - Expects exact completion of missing text
 ### Score Calculation
 
 #### Criteria Used
 
-Scores are calculated based on the following criteria:
+Scores are calculated based on perplexity and ELO ranking in batched competitions:
 
-| Criteria         | Description                                                         |
-|------------------|---------------------------------------------------------------------|
-| Loss             | Measures how well the model predicts the expected tokens.           |
-| Accuracy         | Assesses if the assistant's completion matches the expected output. |
-| Reward Model     | Uses a reward model to evaluate the quality of the assistant's response. |
+| Criteria | Description |
+|----------|-------------|
+| Perplexity | Measures how well the model predicts the expected completion tokens, with lower values indicating better performance |
+| ELO Rating | A relative rating system that adjusts based on performance against other miners in the batch |
 
-#### Scoring Methods
+#### Scoring Method
 
-1. **Loss Calculation**:
-    - The cross-entropy loss between the model's predictions and the expected tokens is computed.
-    - Lower loss indicates better performance.
+1. **Perplexity Calculation**:
+   ```python
+   # Lower perplexity = better performance
+   perplexity = exp(-1/N * Σ log P(token_i))
+   ```
 
-2. **Accuracy Calculation**:
-    - The model generates a response based on the compressed tokens.
-    - An LLM judge assesses whether the response matches the expected completion ("yes" or "no").
+2. **Batch Competition**:
+   - Miners are grouped into batches of size `BATCH_SIZE` (default: 4)
+   - Each batch competes on the same challenge
+   - Performance is relative within the batch
+   - Groups are formed based on ELO ratings to ensure fair competition
 
-3. **Reward Model Evaluation**:
-    - A pretrained reward model evaluates the assistant's response.
-    - Generates a reward score indicating the quality of the response.
+3. **ELO Rating Updates**:
+   ```python
+   # K-factor varies based on rating tier:
+   # - Beginner (0-800): K=24
+   # - Intermediate (800-1600): K=16
+   # - Advanced (1600-3000): K=4
+   
+   expected_score = 1 / (1 + 10^((opponent_rating - player_rating)/400))
+   new_rating = current_rating + K * (actual_score - expected_score)
+   ```
 
-#### Score Smoothing
+4. **Accelerator Rewards**:
+   Additional rewards are calculated based on:
+   ```python
+   compress_rate = 1 - len(compressed_tokens) / max_condensed_tokens
+   process_time = 1 - process_time / timeout
+   accelerator = max(0, (compress_rate + process_time) / 2)
+   ```
 
-Scores are smoothed using an exponential decay function to handle variations and ties.
+#### Rating Groups
 
-- **Algorithm**:
-    - **Initial Score**: The top-ranked response gets a score of 1.0.
-    - **Decrement Factor**: Starts with `delta_0` (e.g., 0.3) and decays exponentially.
-    - **Tie Handling**: Responses with similar scores are assigned the same smoothed score.
+Miners are divided into ELO rating groups that affect their K-factor:
 
-- **Formula**:
-    ```
-    smoothed_score_i = smoothed_score_(i-1) - decrement
-    decrement = decrement * decay
-    ```
+| Group | Rating Range | K-factor |
+|-------|-------------|----------|
+| Beginner | 0-800 | 24 |
+| Intermediate | 800-1600 | 16 |
+| Advanced | 1600-3000 | 4 |
 
-- **Parameters**:
-    - `delta_0`: Initial decrement factor.
-    - `decay`: Exponential decay rate.
+#### Tier System
+
+Each tier has specific configuration and incentive percentages:
+
+| Tier | Incentive % | Max Tokens | Context Length |
+|------|-------------|------------|----------------|
+| Research | 100% | 1024 | 10,000 chars |
+| Inference 0 | 0% | 1024 | 15,000 chars |
+| Inference 1 | 0% | 2048 | 20,000 chars |
+
+### Configuration
+
+The challenge system is configured through constants:
+
+```python
+SYNTHETIC_TASK_CONFIG = [
+    {
+        "task": "causal_conversation",
+        "criterias": ["perplexity"],
+        "rewarding_frequency": 1,
+        "weight": 1,
+    },
+    // ... other tasks ...
+]
+```
+
+Each tier has specific configuration for context length and token limits:
+
+```python
+TIER_CONFIG = {
+    "research": {
+        "max_context_length_in_chars": 10000,
+        "max_condensed_tokens": 1024,
+        "min_condensed_tokens": 128,
+        // ... other settings ...
+    },
+    // ... other tiers ...
+}
+```
 
 ### Summary
 
@@ -151,7 +231,7 @@ The token compression challenge is designed to rigorously test the token compres
 
 - Using diverse datasets to simulate real-world inputs.
 - Creating tasks that challenge different aspects of comprehension and context retention.
-- Calculating scores based on meaningful criteria and smoothing them for fairness.
+- Calculating scores based on LM metrics (perplexity,...) and ELO rating.
 
 By understanding how the challenge items are created, the purpose behind each task, and the scoring methodology, developers can better train and evaluate token compressors for LLMs.
 

@@ -76,3 +76,11 @@ On the early launch of the subnet, we distribute all the incentives to the resea
 - **Setup for miners**: [Miner Setup](./docs/miner.md)
 - **Setup for validators**: [Validator Setup](./docs/validator.md)
 - **Mechanism**: [Mechanism](./docs/mechanism.md)
+
+### 🗺️ Roadmap
+- [x] Launch the subnet with `Mistral-7B-Instruct-v0.2` as target decoder model and full monetization/organic functionality
+- [x] Enhance challenge generator with LLM-augmented task generation
+- [x] Release baseline compressor model trainer for miners
+- [ ] Implement KV-Cache-level compression alongside token-level compression
+- [ ] Enable inference tier and incentive distribution
+- [ ] Support additional SOTA LLM models across different sizes
