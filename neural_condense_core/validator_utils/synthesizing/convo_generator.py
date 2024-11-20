@@ -9,6 +9,7 @@ class ConvoGenerator:
         api_key=None,
         url="https://api.corcel.io/v1/text/vision/chat",
     ):
+        assert api_key is not None, f"api_key is required for host {url}"
         self.model_id = model_id
         self.api_key = api_key
         self.url = url
