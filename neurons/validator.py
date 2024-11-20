@@ -1,4 +1,9 @@
-from neural_condense_core import constants, validator_utils as vutils, __spec_version__
+from neural_condense_core import (
+    base,
+    validator_utils as vutils,
+    constants,
+    __spec_version__,
+)
 import bittensor as bt
 import threading
 import random
@@ -9,7 +14,7 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 
-class Validator(vutils.base.BaseValidator):
+class Validator(base.BaseValidator):
     """
     Validator class that handles validation of miner responses and manages rewards.
 
