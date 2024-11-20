@@ -33,7 +33,7 @@ def perplexity(
     n_compressed_tokens = compressed_tokens.shape[1]
     labels = torch.cat(
         [
-            torch.full((n_compressed_tokens,), -100, dtype=torch.long, device=device),
+            torch.full((1, n_compressed_tokens), -100, dtype=torch.long, device=device),
             completion_ids,
         ]
     )
