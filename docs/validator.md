@@ -28,7 +28,9 @@ cd neural-condense-subnet
 ```bash
 pip install -e . --ignore-installed
 pip install "numpy<2"
+. scripts/install_redis.sh
 ```
+To test if Redis is working correctly, run `redis-cli ping` and it should return `PONG`.
 
 **Optional**
 - Login to Weights & Biases to use the logging feature
