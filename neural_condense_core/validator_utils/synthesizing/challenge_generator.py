@@ -5,10 +5,17 @@ from .scheduler import Scheduler
 from .convo_generator import ConvoGenerator
 from .schemas import Message, QASchedulerConfig, ConversationSchedulerConfig
 import random
+import os
 from typing import List, Tuple
 from ...protocol import TextCompressProtocol
 from ...constants import constants
 from .utils import retry
+
+CORCEL_API_KEY = os.getenv("CORCEL_API_KEY")
+CORCEL_BASE_URL = os.getenv(
+    "CORCEL_BASE_URL", "https://api.corcel.io/v1/text/vision/chat"
+)
+GENERATOR_MODEL_ID = os.getenv("GENERATOR_MODEL_ID", "llama-3-1-8b")
 
 
 class ChallengeGenerator:
@@ -16,7 +23,7 @@ class ChallengeGenerator:
         """
         Initialize the ChallengeGenerator class with various dataset loaders and configuration tokens.
         """
-        self.generator = ConvoGenerator()
+        self.generator = ConvoGenerator(api_key=CORCEL_API_KEY, url=CORCEL_BASE_URL)
         self.synthesizer = Scheduler(
             generator=self.generator,
             qa_config=QASchedulerConfig(n_qa_per_context=4, max_items=100),
