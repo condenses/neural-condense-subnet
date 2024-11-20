@@ -35,12 +35,22 @@ def perplexity(
         [
             torch.full((1, n_compressed_tokens), -100, dtype=torch.long, device=device),
             completion_ids,
-        ]
+        ],
+        dim=1,
     )
+    completion_embeddings = torch.cat(
+        [
+            compressed_tokens,
+            completion_embeddings,
+        ],
+        dim=1,
+    ).to(device)
     outputs = model(inputs_embeds=completion_embeddings)
     logits = outputs.logits[:, :-1, :]
     labels = labels[:, 1:]
-    loss = F.cross_entropy(logits.view(-1, logits.shape[-1]), labels.view(-1))
+    loss = F.cross_entropy(
+        logits.view(-1, logits.shape[-1]), labels.view(-1), ignore_index=-100
+    )
     perplexity = torch.exp(loss)
     return perplexity.item()
 
