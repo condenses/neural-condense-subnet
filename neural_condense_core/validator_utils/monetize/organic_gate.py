@@ -108,9 +108,10 @@ class OrganicGate:
                 if counter.increment():
                     targeted_uid = request.miner_uid
             else:
-                for uid, counter in self.miner_manager.serving_counter[
-                    request.tier
-                ].items():
+                # Get list of items and shuffle them
+                items = list(self.miner_manager.serving_counter[request.tier].items())
+                random.shuffle(items)
+                for uid, counter in items:
                     if counter.increment():
                         targeted_uid = uid
                         break
