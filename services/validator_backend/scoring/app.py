@@ -53,6 +53,7 @@ class ScoringService:
                 logger.error(f"Error in scoring: {e}")
                 value = None
             values.append(value)
+            logger.info(f"Value{value}")
         values = preprocess_batch(values)
         return {"metrics": {criteria: values}}
 
