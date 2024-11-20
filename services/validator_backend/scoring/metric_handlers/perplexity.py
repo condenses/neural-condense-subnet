@@ -27,7 +27,9 @@ def perplexity(
     completion_embeddings = model.get_input_embeddings()(completion_ids).to(
         dtype=dtype, device=device
     )
-    compressed_tokens = compressed_tokens.to(dtype=dtype, device=device).unsqueeze(0)
+    compressed_tokens = (
+        torch.from_numpy(compressed_tokens).to(dtype=dtype, device=device).unsqueeze(0)
+    )
     n_compressed_tokens = compressed_tokens.shape[1]
     labels = torch.cat(
         [
