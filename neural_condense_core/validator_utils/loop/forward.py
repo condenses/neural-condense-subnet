@@ -177,7 +177,10 @@ def process_and_score_responses(
 
     metrics["rating_changes"] = rating_changes
     metrics["UIDs"] = total_uids
-    logging.log_as_dataframe(data=metrics, name="Batch Metrics")
+    logging.log_as_dataframe(
+        data=metrics,
+        name=f"Batch Metrics - {tier} - {model_name} - {task_config.task}",
+    )
     if use_wandb:
         logging.log_wandb(metrics, total_uids, tier=tier)
 

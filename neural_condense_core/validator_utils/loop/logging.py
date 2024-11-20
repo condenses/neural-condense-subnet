@@ -22,5 +22,7 @@ def log_as_dataframe(data: dict, name: str):
         for i in range(len(values)):
             if values[i] is None:
                 values[i] = "N/A"
+            if isinstance(values[i], float):
+                values[i] = round(values[i], 2)
     df = pd.DataFrame(data)
     bt.logging.info(f"Logging dataframe {name}:\n{df}")
