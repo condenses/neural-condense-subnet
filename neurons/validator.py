@@ -156,8 +156,7 @@ class Validator(base.BaseValidator):
             )
             if not ground_truth_synapse:
                 return
-            synapse = ground_truth_synapse.model_copy()
-            synapse.hide_ground_truth()
+            synapse = ground_truth_synapse.miner_synapse
             k_factor = vutils.loop.get_k_factor(self.miner_manager, batched_uids)
             responses = vutils.loop.query_miners(
                 dendrite=dendrite,
@@ -166,16 +165,15 @@ class Validator(base.BaseValidator):
                 synapse=synapse,
                 timeout=constants.TIER_CONFIG[tier].timeout,
             )
-            valid_responses, valid_uids, invalid_uids = vutils.loop.validate_responses(
-                responses=responses,
-                uids=batched_uids,
-                tier_config=constants.TIER_CONFIG[tier],
+            valid_responses, valid_uids, invalid_uids, invalid_reasons = (
+                vutils.loop.validate_responses(
+                    responses=responses,
+                    uids=batched_uids,
+                    tier_config=constants.TIER_CONFIG[tier],
+                )
             )
-            metrics = vutils.loop.process_and_score_responses(
-                miner_manager=self.miner_manager,
+            metrics = vutils.loop.get_scoring_metrics(
                 valid_responses=valid_responses,
-                valid_uids=valid_uids,
-                invalid_uids=invalid_uids,
                 ground_truth_synapse=ground_truth_synapse,
                 model_name=model_name,
                 task_config=task_config,
@@ -184,6 +182,7 @@ class Validator(base.BaseValidator):
                 k_factor=k_factor,
                 use_wandb=self.config.validator.use_wandb,
                 config=self.config,
+                invalid_reasons=invalid_reasons,
             )
 
             batch_information = (

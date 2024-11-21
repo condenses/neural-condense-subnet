@@ -4,6 +4,7 @@ import torch
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
+    DynamicCache,
 )
 import random
 import logging
@@ -40,9 +41,12 @@ class ScoringService:
         preprocess_batch = metric_handlers[criteria]["preprocess_batch"]
         for miner_response in request.miner_responses:
             miner_response.decode()
+            kv_cache = DynamicCache.from_legacy_cache(
+                torch.from_numpy(miner_response.compressed_kv)
+            )
             try:
                 value = metric_handler(
-                    compressed_tokens=miner_response.compressed_tokens,
+                    kv_cache=kv_cache,
                     activation_prompt=request.ground_truth_request.activation_prompt,
                     expected_completion=request.ground_truth_request.expected_completion,
                     tokenizer=self.tokenizer,

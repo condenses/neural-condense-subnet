@@ -81,7 +81,9 @@ def query_miners(
     )
 
 
-def validate_responses(responses: list, uids: list[int], tier_config: TierConfig):
+def validate_responses(
+    responses: list[TextCompressProtocol], uids: list[int], tier_config: TierConfig
+):
     """
     Validate responses from miners.
 
@@ -93,26 +95,20 @@ def validate_responses(responses: list, uids: list[int], tier_config: TierConfig
     Returns:
         tuple: Lists of valid responses, valid UIDs, and invalid UIDs
     """
-    valid_responses, valid_uids, invalid_uids = [], [], []
+    valid_responses, valid_uids, invalid_uids, invalid_reasons = [], [], [], []
     for uid, response in zip(uids, responses):
         try:
-            response.base64_to_ndarray()
-            if (
-                response
-                and response.is_success
-                and len(response.compressed_tokens.shape) == 2
-                and tier_config.min_condensed_tokens
-                <= len(response.compressed_tokens)
-                <= tier_config.max_condensed_tokens
-            ):
+            is_valid, reason = TextCompressProtocol.verify(response, tier_config)
+            if is_valid:
                 valid_responses.append(response)
                 valid_uids.append(uid)
             else:
                 invalid_uids.append(uid)
+                invalid_reasons.append(reason)
         except Exception as e:
-            bt.logging.error(f"Error: {e}")
             invalid_uids.append(uid)
-    return valid_responses, valid_uids, invalid_uids
+            invalid_reasons.append(str(e))
+    return valid_responses, valid_uids, invalid_uids, invalid_reasons
 
 
 def process_and_score_responses(
@@ -128,6 +124,7 @@ def process_and_score_responses(
     k_factor: int,
     use_wandb: bool = False,
     config: bt.config = None,
+    invalid_reasons: list[str] = [],
     timeout: int = 120,
 ):
     """
@@ -174,9 +171,10 @@ def process_and_score_responses(
         f"{int(initial_ratings[i])} -> {int(final_ratings[i])}"
         for i in range(len(initial_ratings))
     ]
-
-    metrics["rating_changes"] = rating_changes
-    metrics["UIDs"] = total_uids
+    reasons = [""] * len(valid_uids) + invalid_reasons
+    metrics["rating_change"] = rating_changes
+    metrics["uid"] = total_uids
+    metrics["invalid_reasons"] = reasons
     if use_wandb:
         log_wandb(metrics, total_uids, tier=tier)
 
@@ -194,7 +192,7 @@ def update_metrics_of_invalid_miners(
 
 def get_scoring_metrics(
     valid_responses: list,
-    ground_truth_synapse,
+    ground_truth_synapse: TextCompressProtocol,
     model_name: str,
     task_config: SyntheticTaskConfig,
     timeout: int = 120,
@@ -205,9 +203,9 @@ def get_scoring_metrics(
     """
     payload = {
         "miner_responses": [
-            {"compressed_tokens_b64": r.compressed_tokens_b64} for r in valid_responses
+            {"compressed_kv_b64": r.compressed_kv_b64} for r in valid_responses
         ],
-        "ground_truth_request": ground_truth_synapse.deserialize()
+        "ground_truth_request": ground_truth_synapse.validator_payload
         | {"model_name": model_name, "criterias": task_config.criterias},
     }
 

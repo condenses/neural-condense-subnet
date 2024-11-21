@@ -6,11 +6,11 @@ import base64
 
 
 class MinerResponse(BaseModel):
-    compressed_tokens_b64: str
-    compressed_tokens: Any = None
+    compressed_kv_b64: str
+    compressed_kv: Any = None
 
     def decode(self):
-        self.compressed_tokens = base64_to_ndarray(self.compressed_tokens_b64)
+        self.compressed_kv = base64_to_ndarray(self.compressed_kv_b64)
 
 
 class GroundTruthRequest(BaseModel):
