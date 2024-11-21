@@ -58,7 +58,7 @@ class OrganicGate:
         )
         self.loop = asyncio.get_event_loop()
         self.client_axon: bt.AxonInfo = None
-        self.message = "".join(random.choices("0123456789abcdef", k=16))
+        self.authentication_key = "".join(random.choices("0123456789abcdef", k=16))
         self.start_server()
         self.register_to_client()
         self.sync_thread = Thread(
@@ -84,7 +84,7 @@ class OrganicGate:
 
     async def _authenticate(self, request: Request):
         message = request.headers["message"]
-        if message != self.message:
+        if message != self.authentication_key:
             raise Exception("Authentication failed.")
 
     async def forward(self, request: Request):
@@ -170,11 +170,13 @@ class OrganicGate:
         """
 
         url = f"{self.config.validator.organic_client_url}/register"
-        signature = f"0x{self.dendrite.keypair.sign(self.message).hex()}"
+        nonce = str(time.time_ns())
+        message = self.authentication_key + ":" + nonce
+        signature = f"0x{self.dendrite.keypair.sign(message).hex()}"
 
         headers = {
             "Content-Type": "application/json",
-            "message": self.message,
+            "message": message,
             "ss58_address": self.wallet.hotkey.ss58_address,
             "signature": signature,
         }

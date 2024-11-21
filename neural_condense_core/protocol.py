@@ -45,7 +45,7 @@ class TextCompressProtocol(Synapse):
     def verify(
         response: "TextCompressProtocol", tier_config: TierConfig
     ) -> tuple[bool, str]:
-        compressed_kv, error = file.download_file_from_url(response.compressed_kv_url)
+        compressed_kv, error = file.load_npy_from_url(response.compressed_kv_url)
         try:
             kv_cache = DynamicCache.from_legacy_cache(torch.from_numpy(compressed_kv))
         except Exception as e:

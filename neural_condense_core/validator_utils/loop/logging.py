@@ -9,7 +9,7 @@ def log_wandb(logs: dict, uids: list[int], tier=""):
             if metric == "perplexity":
                 for uid, value in zip(uids, values):
                     if value is None:
-                        value = 1000
+                        continue
                     wandb.log({f"{tier}-{uid}/perplexity": abs(value)})
     except Exception as e:
         bt.logging.error(f"Error logging to wandb: {e}")
@@ -24,3 +24,4 @@ def log_as_dataframe(data: dict, name: str):
                 values[i] = round(values[i], 2)
     df = pd.DataFrame(data)
     bt.logging.info(f"Logging dataframe {name}:\n{df}")
+    return df

@@ -3,7 +3,7 @@ import numpy as np
 import io
 
 
-def download_file_from_url(url: str, max_size_mb: int = 10):
+def load_npy_from_url(url: str, max_size_mb: int = 10):
     try:
         # Stream the response to check size first
         response = requests.get(url, stream=True)

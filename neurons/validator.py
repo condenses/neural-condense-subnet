@@ -76,7 +76,7 @@ class Validator(base.BaseValidator):
                 bt.logging.error(f"Thread join error: {e}")
 
         try:
-            self.miner_manager.report()
+            self.miner_manager.report_metadata()
             self.miner_manager.save_state()
         except Exception as e:
             bt.logging.error(f"Failed to report metadata & save-state: {e}")
@@ -172,8 +172,11 @@ class Validator(base.BaseValidator):
                     tier_config=constants.TIER_CONFIG[tier],
                 )
             )
-            metrics = vutils.loop.get_scoring_metrics(
+            metrics = vutils.loop.process_and_score_responses(
+                miner_manager=self.miner_manager,
                 valid_responses=valid_responses,
+                valid_uids=valid_uids,
+                invalid_uids=invalid_uids,
                 ground_truth_synapse=ground_truth_synapse,
                 model_name=model_name,
                 task_config=task_config,
@@ -188,7 +191,11 @@ class Validator(base.BaseValidator):
             batch_information = (
                 f"Batch Metrics - {tier} - {model_name} - {task_config.task}"
             )
-            vutils.loop.logging.log_as_dataframe(metrics, batch_information)
+            batch_report_df = vutils.loop.logging.log_as_dataframe(
+                metrics, batch_information
+            )
+            self.miner_manager.report(batch_report_df.to_dict(), "batch-report")
+
         except Exception as e:
             traceback.print_exc()
             bt.logging.error(f"Error: {e}")

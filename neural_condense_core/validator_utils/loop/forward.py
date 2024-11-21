@@ -29,7 +29,7 @@ def prepare_synapse(
     task_config: SyntheticTaskConfig,
     tier_config: TierConfig,
     model_name: str,
-):
+) -> TextCompressProtocol:
     """
     Prepare a synapse for validation.
 
@@ -60,7 +60,7 @@ def query_miners(
     uids: list[int],
     synapse,
     timeout: int,
-):
+) -> list[TextCompressProtocol]:
     """
     Query a group of miners with a synapse.
 
@@ -83,18 +83,7 @@ def query_miners(
 
 def validate_responses(
     responses: list[TextCompressProtocol], uids: list[int], tier_config: TierConfig
-):
-    """
-    Validate responses from miners.
-
-    Args:
-        responses (list): List of miner responses
-        uids (list[int]): List of miner UIDs
-        tier_config (TierConfig): Configuration for the tier
-
-    Returns:
-        tuple: Lists of valid responses, valid UIDs, and invalid UIDs
-    """
+) -> tuple[list[TextCompressProtocol], list[int], list[int], list[str]]:
     valid_responses, valid_uids, invalid_uids, invalid_reasons = [], [], [], []
     for uid, response in zip(uids, responses):
         try:
@@ -126,23 +115,7 @@ def process_and_score_responses(
     config: bt.config = None,
     invalid_reasons: list[str] = [],
     timeout: int = 120,
-):
-    """
-    Process and score miner responses.
-
-    Args:
-        valid_responses (list): List of valid responses
-        valid_uids (list[int]): List of valid miner UIDs
-        invalid_uids (list[int]): List of invalid miner UIDs
-        ground_truth_synapse: The ground truth synapse
-        model_name (str): Name of the model used
-        task_config (SyntheticTaskConfig): Task configuration
-        tier_config (TierConfig): Tier configuration
-        tier (str): The tier level
-        k_factor (int): ELO rating K-factor
-        timeout (int): Timeout for scoring backend
-        use_wandb (bool): Whether to use wandb
-    """
+) -> dict[str, list]:
     metrics = get_scoring_metrics(
         valid_responses=valid_responses,
         ground_truth_synapse=ground_truth_synapse,
@@ -177,7 +150,6 @@ def process_and_score_responses(
     metrics["invalid_reasons"] = reasons
     if use_wandb:
         log_wandb(metrics, total_uids, tier=tier)
-
     return metrics
 
 
@@ -197,10 +169,7 @@ def get_scoring_metrics(
     task_config: SyntheticTaskConfig,
     timeout: int = 120,
     config: bt.config = None,
-):
-    """
-    Get scoring metrics for valid responses.
-    """
+) -> dict[str, list]:
     payload = {
         "miner_responses": [
             {"compressed_kv_b64": r.compressed_kv_b64} for r in valid_responses
@@ -222,16 +191,6 @@ def get_scoring_metrics(
 def get_accelerate_metrics(
     valid_responses: list, tier_config: TierConfig
 ) -> list[float]:
-    """
-    Calculate additional rewards for miners based on compression and processing time.
-
-    Args:
-        valid_responses (list): List of valid responses
-        tier_config (TierConfig): Tier configuration
-
-    Returns:
-        list[float]: List of additional rewards
-    """
     compress_rate_rewards = [
         1 - len(r.compressed_tokens) / tier_config.max_condensed_tokens
         for r in valid_responses
@@ -246,15 +205,6 @@ def get_accelerate_metrics(
 
 
 def get_k_factor(miner_manager: MinerManager, uids: list[int]) -> tuple[int, float]:
-    """
-    Get the ELO K-factor and optimization bounty based on mean ELO rating.
-
-    Args:
-        uids (list[int]): List of miner UIDs
-
-    Returns:
-        tuple[int, float]: K-factor and optimization bounty
-    """
     mean_elo = sum(miner_manager.metadata[uid].elo_rating for uid in uids) / len(uids)
 
     if mean_elo < ncc.constants.ELO_GROUPS["beginner"].max_elo:
@@ -293,15 +243,6 @@ def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
 def get_batched_uids(
     serving_counter: dict[int, ServingCounter], metadata: dict[int, MetadataItem]
 ) -> list[list[int]]:
-    """
-    Get batched UIDs for validation.
-
-    Args:
-        serving_counter (dict[int, ServingCounter]): Serving counter
-
-    Returns:
-        list[list[int]]: Batched UIDs
-    """
     uids = list(serving_counter.keys())
     uids = sorted(uids, key=lambda uid: metadata[uid].elo_rating, reverse=True)
     group_size = max(2, len(uids) // 4)
