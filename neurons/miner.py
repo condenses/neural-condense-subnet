@@ -76,15 +76,9 @@ class Miner(ncc.base.BaseMiner):
                 json=payload,
             )
             response = response.json()
-            compressed_tokens_b64 = response["compressed_tokens_b64"]
-            synapse.compressed_tokens_b64 = compressed_tokens_b64
-            compressed_tokens = ncc.common.base64.base64_to_ndarray(
-                compressed_tokens_b64
-            )
-        bt.logging.info(f"Compressed to shape: {np.array(compressed_tokens).shape}")
-        return ncc.protocol.TextCompressProtocol(
-            compressed_tokens_b64=str(compressed_tokens_b64)
-        )
+            compressed_kv_url = response["compressed_kv_url"]
+        bt.logging.info(f"Compressed & uploaded to {compressed_kv_url}")
+        return ncc.protocol.TextCompressProtocol(compressed_kv_url=compressed_kv_url)
 
     def blacklist_fn(
         self, synapse: ncc.protocol.TextCompressProtocol

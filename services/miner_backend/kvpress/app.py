@@ -15,8 +15,7 @@ class KVPressService:
     def __init__(self):
         self.device = "cuda:0"
         self.ckpt = "Condense-AI/Mistral-7B-Instruct-v0.2"
-        self.bucket_name = "kvpress"
-
+        self.bucket_name = os.getenv("MINIO_BUCKET", "kvpress")
         # Initialize model components
         self.tokenizer = AutoTokenizer.from_pretrained(self.ckpt)
         self.model = AutoModelForCausalLM.from_pretrained(self.ckpt).to(self.device)
@@ -24,7 +23,7 @@ class KVPressService:
 
         # Initialize MinIO client
         self.minio_client = minio.Minio(
-            os.getenv("MINIO_SERVER", "minio.condenses.ai"),
+            os.getenv("MINIO_SERVER", "minio.condenses.ai").split("://")[1],
             access_key=os.getenv("MINIO_ACCESS_KEY"),
             secret_key=os.getenv("MINIO_SECRET_KEY"),
             secure=True,
@@ -72,7 +71,7 @@ class KVPressService:
             self.minio_client, self.bucket_name, filename, numpy_past_key_values
         )
 
-        return f"https://minio.condenses.ai/{self.bucket_name}/{filename}"
+        return f"{self.minio_client.endpoint_url}/{self.bucket_name}/{filename}"
 
 
 # Initialize Flask app and KVPress service

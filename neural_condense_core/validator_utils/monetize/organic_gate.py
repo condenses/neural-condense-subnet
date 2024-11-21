@@ -23,7 +23,7 @@ class OrganicPayload(pydantic.BaseModel):
 
 
 class OrganicResponse(pydantic.BaseModel):
-    compressed_tokens_b64: str
+    compressed_kv_url: str
 
 
 class RegisterPayload(pydantic.BaseModel):
@@ -128,13 +128,13 @@ class OrganicGate:
                 timeout=constants.TIER_CONFIG[request.tier].timeout,
                 deserialize=False,
             )
-            response.base64_to_ndarray()
+            # response.verify()  # TODO: Put it into the background
             bt.logging.info(f"Compressed shape: {response.compressed_tokens.shape}")
         except Exception as e:
             bt.logging.error(f"Error: {e}")
             raise HTTPException(status_code=503, detail="Validator error.")
 
-        return OrganicResponse(compressed_tokens_b64=response.compressed_tokens_b64)
+        return OrganicResponse(compressed_kv_url=response.compressed_kv_url)
 
     def start_server(self):
         self.executor = ThreadPoolExecutor(max_workers=1)

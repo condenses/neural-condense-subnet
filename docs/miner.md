@@ -8,6 +8,7 @@
 - GPU with at least 24GB of VRAM (RTX 4090, A6000, A100, H100, etc.) to run Baseline Model
 - CUDA, NVIDIA Driver installed
 - PM2 install (see [Guide to install PM2](./pm2.md))
+- `minio` Public Storage (see [Guide to install MINIO](./minio.md))
 
 ## What does a Miner do?
 
@@ -69,10 +70,14 @@ miner_netuid=47
 miner_subtensor_network="finney"
 ```
 
-4. Run the miner backend. Example of using our baseline ICAE as a backend (https://github.com/getao/icae):
+4. Run the miner backend. Example of using our baseline KVPress as a backend (export the minio credentials):
 ```bash
+export MINIO_ACCESS_KEY="your_minio_access_key"
+export MINIO_SECRET_KEY="your_minio_secret_key"
+export MINIO_BUCKET="your_minio_bucket"
+export MINIO_SERVER="your_minio_server"
 pm2 start python --name condense_miner_backend \
--- -m gunicorn services.miner_backend.soft_token.app:app \
+-- -m gunicorn services.miner_backend.kvpress.app:app \
 --timeout 120 \
 --bind 0.0.0.0:$miner_backend_port
 ```
