@@ -62,9 +62,10 @@ class KVPressService:
             tuple(tensor.cpu().numpy() for tensor in tensors)
             for tensors in past_key_values
         )
+        print(numpy_past_key_values[0][0].shape)
 
         # Generate unique filename using timestamp
-        filename = f"{time.time()}.npy"
+        filename = f"{int(time.time_ns())}.npy"
 
         # Upload to MinIO
         upload_to_minio(
