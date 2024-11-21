@@ -12,6 +12,7 @@ def upload_to_minio(
 ):
     buffer = io.BytesIO()
     np.save(buffer, data)
+    length = buffer.tell()
     buffer.seek(0)
-    result = minio_client.put_object(bucket_name, object_name, buffer, len(data))
+    result = minio_client.put_object(bucket_name, object_name, buffer, length)
     return result
