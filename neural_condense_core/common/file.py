@@ -1,5 +1,6 @@
 import requests
 import numpy as np
+import io
 
 
 def download_file_from_url(url: str, max_size_mb: int = 10):
@@ -21,9 +22,10 @@ def download_file_from_url(url: str, max_size_mb: int = 10):
                     None,
                     f"File too large: {content_length/1024/1024:.1f}MB exceeds {max_size_mb}MB limit",
                 )
-
+            response = requests.get(url)
             # Download and load if size is acceptable
-            data = np.load(response.content)
+            buffer = io.BytesIO(response.content)
+            data = np.load(buffer)
             return data, ""
 
     except Exception as e:
