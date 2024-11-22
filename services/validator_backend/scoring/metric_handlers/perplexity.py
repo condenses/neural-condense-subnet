@@ -64,12 +64,12 @@ def perplexity(
         kv_cache, model, activation_prompt, tokenizer, max_tokens, **kwargs
     )
     print("-" * 100)
-    print(activation_prompt)
-    print("-" * 100)
     print(expected_completion)
     print("-" * 100)
+    print(activation_prompt)
+    print("-" * 100)
     print(completion)
-    return perplexity.item(), completion
+    return perplexity.item()
 
 
 def try_generate(
