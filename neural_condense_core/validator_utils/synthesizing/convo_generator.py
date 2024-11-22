@@ -1,4 +1,4 @@
-import requests
+import httpx
 from typing import Dict, List, Optional
 
 
@@ -13,6 +13,7 @@ class ConvoGenerator:
         self.model_id = model_id
         self.api_key = api_key
         self.url = url
+        self.client = httpx.AsyncClient()
 
     def _get_assistant_messages(self, messages, n_few_shots):
         a_messages = messages[n_few_shots:]  # Skip few shots
@@ -30,13 +31,13 @@ class ConvoGenerator:
             "Authorization": self.api_key,
         }
 
-    def _make_api_call(self, messages, sampling_params):
+    async def _make_api_call(self, messages, sampling_params):
         try:
             payload = sampling_params | {
                 "model": self.model_id,
                 "messages": messages,
             }
-            response = requests.post(
+            response = await self.client.post(
                 self.url, json=payload, headers=self._get_headers()
             )
             data = response.json()
@@ -46,7 +47,7 @@ class ConvoGenerator:
             print(response.text)
             raise e
 
-    def generate_conversation(
+    async def generate_conversation(
         self,
         messages_seed: Optional[List[Dict[str, str]]] = None,
         max_turns: int = 4,
@@ -90,20 +91,20 @@ class ConvoGenerator:
         messages.extend(reversed_messages_seed)
         sampling_params = {"temperature": 0.4, "max_tokens": 1024, "stream": False}
         # Get first response
-        text = self._make_api_call(messages, sampling_params)
+        text = await self._make_api_call(messages, sampling_params)
         messages.append({"role": "assistant", "content": text})
 
         # Generate multiple conversation turns
         assistant_messages = self._get_assistant_messages(messages, n_few_shots)
         for i in range(max_turns):
             # CALL ASSISTANT-MESSAGES -> ASSISTANT-MESSAGES
-            text = self._make_api_call(assistant_messages, sampling_params)
+            text = await self._make_api_call(assistant_messages, sampling_params)
             assistant_messages.append({"role": "assistant", "content": text})
             messages.append({"role": "user", "content": text})
             if i == max_turns - 1:
                 break
             # CALL MESSAGES -> FAKE--MESSAGES
-            text = self._make_api_call(messages, sampling_params)
+            text = await self._make_api_call(messages, sampling_params)
             assistant_messages.append({"role": "user", "content": text})
             messages.append({"role": "assistant", "content": text})
 
@@ -112,7 +113,7 @@ class ConvoGenerator:
             total_chars += len(assistant_messages[i]["content"])
         return assistant_messages, total_chars
 
-    def generate_qa_pairs(self, context_seed: str, num_questions: int = 1):
+    async def generate_qa_pairs(self, context_seed: str, num_questions: int = 1):
         question_description = "The question can vary in complexity, ranging from simple tasks like extracting entities or events to more nuanced queries requiring analysis, summarization, or synthesis based on the given context"
         prompt = f"- Context:\n---\n{context_seed}\n---\n Generate {num_questions} different questions."
         system_message = (
@@ -130,14 +131,14 @@ class ConvoGenerator:
             "max_tokens": 512,
             "stream": False,
         }
-        text = self._make_api_call(messages, sampling_params)
+        text = await self._make_api_call(messages, sampling_params)
         questions = self._extract_questions(text)
         if not questions:
             print(text)
         answers = []
         for question in questions:
             sampling_params = {"temperature": 0.4, "max_tokens": 1024, "stream": False}
-            text = self._make_api_call(
+            text = await self._make_api_call(
                 [{"role": "user", "content": f"{context_seed}\n\n{question}"}],
                 sampling_params,
             )

@@ -66,11 +66,14 @@ class Validator(base.BaseValidator):
             for tier in constants.TIER_CONFIG
         ]
         try:
-            await asyncio.gather(*tasks, timeout=constants.EPOCH_LENGTH * 1.5)
+            await asyncio.wait_for(
+                asyncio.gather(*tasks), timeout=constants.EPOCH_LENGTH * 1.5
+            )
         except asyncio.TimeoutError:
-            bt.logging.error("Timeout waiting for tier tasks to complete")
+            bt.logging.warning("Epoch tasks timed out, continuing to next epoch")
         except Exception as e:
-            bt.logging.error(f"Error running tier tasks: {e}")
+            bt.logging.error(f"Error running epoch tasks: {e}")
+            traceback.print_exc()
 
         try:
             await self.miner_manager.report_metadata()
