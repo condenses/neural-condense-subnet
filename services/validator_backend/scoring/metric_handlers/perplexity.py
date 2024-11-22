@@ -36,8 +36,9 @@ def perplexity(
         ],
         dim=1,
     )
-    print(input_ids.shape)
     outputs = model(input_ids=input_ids, past_key_values=kv_cache)
+    print(outputs.logits.shape)
+    raise Exception("stop here")
     logits = outputs.logits[:, :-1, :]
     labels = input_ids[:, 1:]
     loss = F.cross_entropy(
