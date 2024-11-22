@@ -28,7 +28,7 @@ def perplexity(
         [
             torch.full(
                 (1, num_seen_tokens),
-                tokenizer.pad_token_id,
+                -100,
                 dtype=torch.long,
                 device=device,
             ),
@@ -42,7 +42,7 @@ def perplexity(
     loss = F.cross_entropy(
         logits.view(-1, logits.shape[-1]),
         labels.view(-1),
-        ignore_index=tokenizer.pad_token_id,
+        ignore_index=-100,
     )
     perplexity = torch.exp(loss)
     return perplexity.item()
