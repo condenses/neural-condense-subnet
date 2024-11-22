@@ -59,7 +59,53 @@ def perplexity(
         ignore_index=-100,
     )
     perplexity = torch.exp(loss)
-    return perplexity.item()
+
+    completion = try_generate(
+        kv_cache, model, activation_prompt, tokenizer, max_tokens, **kwargs
+    )
+    print("-" * 100)
+    print(activation_prompt)
+    print("-" * 100)
+    print(expected_completion)
+    print("-" * 100)
+    print(completion)
+    return perplexity.item(), completion
+
+
+def try_generate(
+    kv_cache: DynamicCache,
+    model: AutoModelForCausalLM,
+    activation_prompt: str,
+    tokenizer: AutoTokenizer,
+    max_tokens: int = 4096,
+    **kwargs,
+) -> str:
+    device = model.device
+    completion_ids = tokenizer(
+        activation_prompt,
+        return_tensors="pt",
+        add_special_tokens=False,
+        max_length=max_tokens,
+        **kwargs,
+    ).input_ids.to(device=device, dtype=torch.long)
+    kv_cache = kv_cache.to(device=device)
+    num_seen_tokens = kv_cache._seen_tokens
+    input_ids = torch.cat(
+        [
+            torch.full(
+                (1, num_seen_tokens),
+                0,
+                dtype=torch.long,
+                device=device,
+            ),
+            completion_ids,
+        ],
+        dim=1,
+    )
+    outputs = model.generate(
+        input_ids=input_ids, past_key_values=kv_cache, max_new_tokens=256
+    )
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 
 def preprocess_batch(values: list[float]) -> list[float]:
