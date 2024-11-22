@@ -1,3 +1,4 @@
+import re
 from bittensor import Synapse
 from typing import Any
 import torch
@@ -45,6 +46,9 @@ class TextCompressProtocol(Synapse):
     async def verify(
         response: "TextCompressProtocol", tier_config: TierConfig
     ) -> tuple[bool, str]:
+        if not re.match(r"^https?://.*\.npy$", response.compressed_kv_url):
+            return False, "Compressed KV URL is not a valid URL."
+
         compressed_kv, error = await file.load_npy_from_url(response.compressed_kv_url)
         try:
             kv_cache = DynamicCache.from_legacy_cache(torch.from_numpy(compressed_kv))
