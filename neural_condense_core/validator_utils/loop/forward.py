@@ -23,7 +23,7 @@ def get_task_config() -> SyntheticTaskConfig:
     )[0]
 
 
-def prepare_synapse(
+async def prepare_synapse(
     challenge_generator: ChallengeGenerator,
     tokenizer,
     task_config: SyntheticTaskConfig,
@@ -43,7 +43,7 @@ def prepare_synapse(
         The prepared synapse object
     """
     try:
-        synapse = challenge_generator.generate_challenge(
+        synapse = await challenge_generator.generate_challenge(
             tokenizer=tokenizer,
             task=task_config.task,
             max_context_length_in_chars=tier_config.max_context_length_in_chars,

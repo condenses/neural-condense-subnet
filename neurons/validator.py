@@ -147,7 +147,7 @@ class Validator(base.BaseValidator):
         try:
             dendrite = bt.dendrite(self.wallet)
             task_config = vutils.loop.get_task_config()
-            ground_truth_synapse = vutils.loop.prepare_synapse(
+            ground_truth_synapse = await vutils.loop.prepare_synapse(
                 challenge_generator=self.challenge_generator,
                 tokenizer=tokenizer,
                 task_config=task_config,
