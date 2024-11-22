@@ -2,9 +2,10 @@ import requests
 import numpy as np
 import io
 import httpx
+import time
 
 
-async def load_npy_from_url(url: str, max_size_mb: int = 10):
+async def load_npy_from_url(url: str, max_size_mb: int = 1024):
     try:
         async with httpx.AsyncClient() as client:
             # Stream the response to check size first
@@ -25,7 +26,12 @@ async def load_npy_from_url(url: str, max_size_mb: int = 10):
                         )
 
                     # Download and load if size is acceptable
+                    start_time = time.time()
                     content = await response.aread()
+                    end_time = time.time()
+                    bt.logging.info(
+                        f"Time taken to download: {end_time - start_time:.2f} seconds"
+                    )
                     buffer = io.BytesIO(content)
                     data = np.load(buffer)
                     return data, ""
