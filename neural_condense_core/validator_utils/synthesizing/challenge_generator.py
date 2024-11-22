@@ -1,6 +1,7 @@
 from transformers import AutoTokenizer
 import re
 import threading
+import substrateinterface as st
 from .scheduler import Scheduler
 from .convo_generator import ConvoGenerator
 from .schemas import Message, QASchedulerConfig, ConversationSchedulerConfig
@@ -20,11 +21,11 @@ GENERATOR_MODEL_ID = os.getenv("GENERATOR_MODEL_ID", "llama-3-1-8b")
 
 
 class ChallengeGenerator:
-    def __init__(self):
+    def __init__(self, keypair: st.Keypair):
         """
         Initialize the ChallengeGenerator class with various dataset loaders and configuration tokens.
         """
-        self.generator = ConvoGenerator(api_key=CORCEL_API_KEY, url=CORCEL_BASE_URL)
+        self.generator = ConvoGenerator(keypair=keypair)
         self.synthesizer = Scheduler(
             generator=self.generator,
             qa_config=QASchedulerConfig(n_qa_per_context=4, max_items=100),

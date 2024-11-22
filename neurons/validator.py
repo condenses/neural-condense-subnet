@@ -30,7 +30,9 @@ class Validator(base.BaseValidator):
         """Initialize the validator with required components and configurations."""
         super().__init__()
         self.miner_manager = vutils.managing.MinerManager(self)
-        self.challenge_generator = vutils.synthesizing.ChallengeGenerator()
+        self.challenge_generator = vutils.synthesizing.ChallengeGenerator(
+            keypair=self.dendrite.keypair
+        )
 
         if self.config.validator.gate_port:
             try:

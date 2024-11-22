@@ -1,19 +1,27 @@
 import httpx
 from typing import Dict, List, Optional
+import substrateinterface as st
 
 
 class ConvoGenerator:
     def __init__(
         self,
-        model_id="llama-3-1-8b",
-        api_key=None,
-        url="https://api.corcel.io/v1/text/vision/chat",
+        keypair: st.Keypair,
     ):
-        assert api_key is not None, f"api_key is required for host {url}"
-        self.model_id = model_id
-        self.api_key = api_key
-        self.url = url
-        self.client = httpx.AsyncClient()
+        self.model_id = "chat-llama-3-1-8b"
+        self.url = "https://api.nineteen.ai/v1/chat/completions"
+        self.keypair = keypair
+
+    def _get_headers(self):
+        nonce = str(time.time_ns())
+        signature = f"0x{self.keypair.sign(nonce).hex()}"
+        return {
+            "validator-hotkey": self.keypair.ss58_address,
+            "signature": signature,
+            "nonce": nonce,
+            "netuid": "47",
+            "Content-Type": "application/json",
+        }
 
     def _get_assistant_messages(self, messages, n_few_shots):
         a_messages = messages[n_few_shots:]  # Skip few shots
@@ -24,14 +32,7 @@ class ConvoGenerator:
                 a_messages[i]["role"] = "assistant"
         return a_messages
 
-    def _get_headers(self):
-        return {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "Authorization": self.api_key,
-        }
-
-    async def _make_api_call(self, messages, sampling_params):
+    def _make_api_call(self, messages, sampling_params):
         try:
             payload = sampling_params | {
                 "model": self.model_id,
