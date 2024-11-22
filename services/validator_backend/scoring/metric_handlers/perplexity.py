@@ -36,6 +36,7 @@ def perplexity(
         ],
         dim=1,
     )
+    print(input_ids.shape)
     outputs = model(input_ids=input_ids, past_key_values=kv_cache)
     logits = outputs.logits[:, :-1, :]
     labels = input_ids[:, 1:]
