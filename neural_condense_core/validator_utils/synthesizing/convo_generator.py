@@ -15,7 +15,7 @@ class ConvoGenerator:
 
     def _get_headers(self):
         nonce = str(time.time_ns())
-        signature = self.keypair.sign(f"0x{nonce}").hex()
+        signature = f"0x{self.keypair.sign(nonce).hex()}"
         return {
             "validator-hotkey": self.keypair.ss58_address,
             "signature": signature,
