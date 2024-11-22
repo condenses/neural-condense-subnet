@@ -12,3 +12,4 @@ httpx==0.27.2
 wandb==0.18.6
 redis==5.2.0
 kvpress==0.0.2
+hf_transfer==0.1.8
