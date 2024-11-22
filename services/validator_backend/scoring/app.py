@@ -43,7 +43,9 @@ class ScoringService:
         for miner_response in request.miner_responses:
             miner_response.decode()
             kv_cache = DynamicCache.from_legacy_cache(
-                torch.from_numpy(miner_response.compressed_kv)
+                torch.from_numpy(miner_response.compressed_kv).to(
+                    device=self.device, dtype=self.dtype
+                )
             )
             try:
                 value = metric_handler(
