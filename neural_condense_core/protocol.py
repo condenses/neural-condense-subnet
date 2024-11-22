@@ -16,6 +16,7 @@ class TextCompressProtocol(Synapse):
     compressed_kv_url: str = ""
     compressed_kv_b64: str = ""
     compressed_kv: Any = None
+    compressed_length: int = 0
     expected_completion: str = ""
     activation_prompt: str = ""
     target_model: str = ""
@@ -63,4 +64,6 @@ class TextCompressProtocol(Synapse):
             return False, "Compressed tokens are not within the expected range."
 
         response.compressed_kv_b64 = base64.ndarray_to_base64(compressed_kv)
+
+        response.compressed_length = compressed_kv[0][0].shape[2]
         return True, ""

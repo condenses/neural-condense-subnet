@@ -129,7 +129,7 @@ class OrganicGate:
                 deserialize=False,
             )
             # response.verify()  # TODO: Put it into the background
-            bt.logging.info(f"Compressed shape: {response.compressed_tokens.shape}")
+            bt.logging.info(f"Compressed to url: {response.compressed_kv_url}")
         except Exception as e:
             bt.logging.error(f"Error: {e}")
             raise HTTPException(status_code=503, detail="Validator error.")
