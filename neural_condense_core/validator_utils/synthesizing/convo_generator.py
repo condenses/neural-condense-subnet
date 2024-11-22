@@ -20,7 +20,7 @@ class ConvoGenerator:
             "validator-hotkey": self.keypair.ss58_address,
             "signature": signature,
             "nonce": nonce,
-            "netuid": 47,
+            "netuid": "47",
             "Content-Type": "application/json",
         }
 
