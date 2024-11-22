@@ -9,7 +9,7 @@ class ConvoGenerator:
         self,
         keypair: st.Keypair,
     ):
-        self.model_id = "llama-3-1-8b"
+        self.model_id = "chat-llama-3-1-8b"
         self.url = "https://api.nineteen.ai/v1/chat/completions"
         self.keypair = keypair
 
