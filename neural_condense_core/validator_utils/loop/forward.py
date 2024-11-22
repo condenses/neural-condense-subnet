@@ -194,7 +194,7 @@ def get_accelerate_metrics(
     valid_responses: list[TextCompressProtocol], tier_config: TierConfig
 ) -> list[float]:
     compress_rate_rewards = [
-        1 - len(r.compressed_length) / tier_config.max_condensed_tokens
+        1 - r.compressed_length / tier_config.max_condensed_tokens
         for r in valid_responses
     ]
     process_time_rewards = [
