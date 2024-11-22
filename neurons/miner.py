@@ -68,7 +68,7 @@ class Miner(ncc.base.BaseMiner):
         )
         bt.logging.info(f"Context length: {len(synapse.context)}")
 
-        payload = synapse.get_miner_payload()
+        payload = synapse.miner_payload
 
         async with httpx.AsyncClient(timeout=synapse.timeout) as client:
             response = await client.post(
