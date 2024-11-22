@@ -11,6 +11,7 @@ from typing import List, Tuple
 from ...protocol import TextCompressProtocol
 from ...constants import constants
 from .utils import retry
+import asyncio
 
 CORCEL_API_KEY = os.getenv("CORCEL_API_KEY")
 CORCEL_BASE_URL = os.getenv(
@@ -49,22 +50,22 @@ class ChallengeGenerator:
         self.lock = threading.Lock()  # Ensures thread safety for dataset access
 
     @retry(max_attempts=3)
-    def generate_challenge(
+    async def generate_challenge(
         self,
         tokenizer: AutoTokenizer,
         task: str = "question_answering",
         max_context_length_in_chars: int = 10000,
     ) -> TextCompressProtocol:
-        messages, hidden_messages = self.task_to_builder[task](
+        messages, hidden_messages = await self.task_to_builder[task](
             max_context_length_in_chars
         )
         return self._build_protocol(tokenizer, messages, hidden_messages)
 
     @retry(max_attempts=3)
-    def _build_trivial_qa_conversation(
+    async def _build_trivial_qa_conversation(
         self, max_chars: int
     ) -> Tuple[List[Message], List[Message]]:
-        messages, _ = self._build_causal_conversation(max_chars)
+        messages, _ = await self._build_causal_conversation(max_chars)
         # Trivial question answering: Ask about fill in the blank sentences
         # Select a random sentence from the conversation and 2 nearby sentences
         content_sentences = [len(msg.content.split(".")) for msg in messages]
@@ -89,10 +90,10 @@ class ChallengeGenerator:
         return messages, hidden_messages
 
     @retry(max_attempts=3)
-    def _build_reconstruct_conversation(
+    async def _build_reconstruct_conversation(
         self, max_chars: int
     ) -> Tuple[List[Message], List[Message]]:
-        messages, _ = self._build_causal_conversation(max_chars)
+        messages, _ = await self._build_causal_conversation(max_chars)
 
         turn_format = """[Role]: [Message]
 Example:
@@ -101,8 +102,9 @@ Example:
 - User: What is your name?
 - Assistant: I am a helpful assistant.
 ... other turns
+
 """
-        activation_prompt = f"Please paraphrase all the messages in the conversation above in the format {turn_format}."
+        activation_prompt = f"Please paraphrase all the messages in the conversation above in the format {turn_format}"
         formatted_messages = [
             f"- {msg.role.capitalize()}: {msg.content}" for msg in messages
         ]
@@ -113,10 +115,10 @@ Example:
         return messages, hidden_messages
 
     @retry(max_attempts=3)
-    def _build_causal_conversation(
+    async def _build_causal_conversation(
         self, max_chars: int
     ) -> Tuple[List[Message], List[Message]]:
-        conversations = self._ensemble_conversations(n=10)
+        conversations = await self._ensemble_conversations(n=10)
         messages = []
         for conversation in conversations:
             messages.extend(conversation)
@@ -133,10 +135,11 @@ Example:
         return messages[:i], hidden_messages
 
     @retry(max_attempts=3)
-    def _build_qa_conversation(
+    async def _build_qa_conversation(
         self, max_chars: int
     ) -> Tuple[List[Message], List[Message]]:
-        main_qa_set = self.synthesizer.get_qas(n=1)[0]
+        main_qa_set = await self.synthesizer.get_qas(n=1)
+        main_qa_set = main_qa_set[0]
         context = main_qa_set.context_seed
         qa_pairs = [
             (main_qa_set.questions[i], main_qa_set.answers[i])
@@ -159,7 +162,7 @@ Example:
             Message(role="assistant", content=selected_answer),
         ]
 
-        conversations = self._ensemble_conversations(10)
+        conversations = await self._ensemble_conversations(10)
         if not conversations:
             return qa_seed, hidden_messages
 
@@ -211,9 +214,9 @@ Example:
             expected_completion=expected_completion,
         )
 
-    def _ensemble_conversations(self, n: int) -> List[List[Message]]:
-        qa_conversations = self._get_qa_as_conversation(n=n)
-        causal_conversations = self.synthesizer.get_conversations(n=n)
+    async def _ensemble_conversations(self, n: int) -> List[List[Message]]:
+        qa_conversations = await self._get_qa_as_conversation(n=n)
+        causal_conversations = await self.synthesizer.get_conversations(n=n)
         if not causal_conversations:
             return qa_conversations
 
@@ -223,9 +226,9 @@ Example:
         random.shuffle(all_conversations)
         return all_conversations
 
-    def _get_qa_as_conversation(self, n: int) -> List[List[Message]]:
+    async def _get_qa_as_conversation(self, n: int) -> List[List[Message]]:
         multiple_conversations: List[List[Message]] = []
-        qa_sets = self.synthesizer.get_qas(n=n)
+        qa_sets = await self.synthesizer.get_qas(n=n)
         if not qa_sets:
             return []
 

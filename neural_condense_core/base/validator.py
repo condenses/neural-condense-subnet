@@ -110,17 +110,17 @@ class Validator(ABC):
             bt.logging.debug("Started")
 
     @abstractmethod
-    def start_epoch(self):
+    async def start_epoch(self):
         pass
 
-    def run(self):
+    async def run(self):
         self.setup_axon()
         bt.logging.info("Starting validator loop.")
         while True:
             start_epoch = time.time()
 
             try:
-                self.start_epoch()
+                await self.start_epoch()
             except Exception as e:
                 bt.logging.error(f"Forward error: {e}")
                 traceback.print_exc()

@@ -20,7 +20,7 @@ class Miner(ncc.base.BaseMiner):
         Initializes the rate limits for the miners.
         """
         self.rate_limits = {
-            uid: ncc.validator_utils.ServingCounter(rate_limit)
+            uid: ncc.validator_utils.managing.ServingCounter(rate_limit)
             for uid, rate_limit in ncc.common.build_rate_limit(
                 self.metagraph, self.config
             ).items()
@@ -68,7 +68,7 @@ class Miner(ncc.base.BaseMiner):
         )
         bt.logging.info(f"Context length: {len(synapse.context)}")
 
-        payload = synapse.get_miner_payload()
+        payload = synapse.miner_payload
 
         async with httpx.AsyncClient(timeout=synapse.timeout) as client:
             response = await client.post(
@@ -76,15 +76,9 @@ class Miner(ncc.base.BaseMiner):
                 json=payload,
             )
             response = response.json()
-            compressed_tokens_b64 = response["compressed_tokens_b64"]
-            synapse.compressed_tokens_b64 = compressed_tokens_b64
-            compressed_tokens = ncc.common.base64.base64_to_ndarray(
-                compressed_tokens_b64
-            )
-        bt.logging.info(f"Compressed to shape: {np.array(compressed_tokens).shape}")
-        return ncc.protocol.TextCompressProtocol(
-            compressed_tokens_b64=str(compressed_tokens_b64)
-        )
+            compressed_kv_url = response["compressed_kv_url"]
+        bt.logging.info(f"Compressed & uploaded to {compressed_kv_url}")
+        return ncc.protocol.TextCompressProtocol(compressed_kv_url=compressed_kv_url)
 
     def blacklist_fn(
         self, synapse: ncc.protocol.TextCompressProtocol

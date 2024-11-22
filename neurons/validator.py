@@ -12,6 +12,7 @@ import numpy as np
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
+import asyncio
 
 
 class Validator(base.BaseValidator):
@@ -53,37 +54,36 @@ class Validator(base.BaseValidator):
         bt.logging.info(f"Uids: {self.metagraph.uids}")
 
         # Add a thread pool executor
-        self.thread_pool = ThreadPoolExecutor(
-            max_workers=min(32, (threading.active_count() + 4) * 2),
-            thread_name_prefix="validator_pool",
-        )
+        self.loop = asyncio.get_event_loop()
 
-    def start_epoch(self):
+    async def start_epoch(self):
         """
         Main validation loop that processes miners across all tiers.
         Syncs miner state and runs validation in parallel threads.
         """
         bt.logging.info("Running epoch.")
         self.miner_manager.sync()
-        threads = [
-            threading.Thread(target=self._forward_tier, args=(tier,))
+        tasks = [
+            self.loop.create_task(self._forward_tier(tier))
             for tier in constants.TIER_CONFIG
         ]
-        for t in threads:
-            t.start()
-        for t in threads:
-            try:
-                t.join(timeout=constants.EPOCH_LENGTH * 1.5)
-            except Exception as e:
-                bt.logging.error(f"Thread join error: {e}")
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*tasks), timeout=constants.EPOCH_LENGTH * 1.5
+            )
+        except asyncio.TimeoutError:
+            bt.logging.warning("Epoch tasks timed out, continuing to next epoch")
+        except Exception as e:
+            bt.logging.error(f"Error running epoch tasks: {e}")
+            traceback.print_exc()
 
         try:
-            self.miner_manager.report()
+            await self.miner_manager.report_metadata()
             self.miner_manager.save_state()
         except Exception as e:
             bt.logging.error(f"Failed to report metadata & save-state: {e}")
 
-    def _forward_tier(self, tier: str):
+    async def _forward_tier(self, tier: str):
         """
         Process validation for a specific tier of miners.
 
@@ -121,16 +121,16 @@ class Validator(base.BaseValidator):
 
                 if len(batched_uids) < 2:
                     continue
-                future = self.thread_pool.submit(
-                    self._forward_batch, tier, model_name, batched_uids, tokenizer
+                future = self.loop.create_task(
+                    self._forward_batch(tier, model_name, batched_uids, tokenizer)
                 )
                 futures.append(future)
-                time.sleep(sleep_per_batch)
+                await asyncio.sleep(sleep_per_batch)
 
         for future in futures:
             future.result()
 
-    def _forward_batch(
+    async def _forward_batch(
         self,
         tier: str,
         model_name: str,
@@ -149,7 +149,7 @@ class Validator(base.BaseValidator):
         try:
             dendrite = bt.dendrite(self.wallet)
             task_config = vutils.loop.get_task_config()
-            ground_truth_synapse = vutils.loop.prepare_synapse(
+            ground_truth_synapse = await vutils.loop.prepare_synapse(
                 challenge_generator=self.challenge_generator,
                 tokenizer=tokenizer,
                 task_config=task_config,
@@ -158,8 +158,7 @@ class Validator(base.BaseValidator):
             )
             if not ground_truth_synapse:
                 return
-            synapse = ground_truth_synapse.model_copy()
-            synapse.hide_ground_truth()
+            synapse = ground_truth_synapse.miner_synapse
             k_factor = vutils.loop.get_k_factor(self.miner_manager, batched_uids)
             responses = vutils.loop.query_miners(
                 dendrite=dendrite,
@@ -168,12 +167,14 @@ class Validator(base.BaseValidator):
                 synapse=synapse,
                 timeout=constants.TIER_CONFIG[tier].timeout,
             )
-            valid_responses, valid_uids, invalid_uids = vutils.loop.validate_responses(
-                responses=responses,
-                uids=batched_uids,
-                tier_config=constants.TIER_CONFIG[tier],
+            valid_responses, valid_uids, invalid_uids, invalid_reasons = (
+                await vutils.loop.validate_responses(
+                    responses=responses,
+                    uids=batched_uids,
+                    tier_config=constants.TIER_CONFIG[tier],
+                )
             )
-            metrics = vutils.loop.process_and_score_responses(
+            metrics = await vutils.loop.process_and_score_responses(
                 miner_manager=self.miner_manager,
                 valid_responses=valid_responses,
                 valid_uids=valid_uids,
@@ -186,12 +187,17 @@ class Validator(base.BaseValidator):
                 k_factor=k_factor,
                 use_wandb=self.config.validator.use_wandb,
                 config=self.config,
+                invalid_reasons=invalid_reasons,
             )
 
             batch_information = (
                 f"Batch Metrics - {tier} - {model_name} - {task_config.task}"
             )
-            vutils.loop.logging.log_as_dataframe(metrics, batch_information)
+            batch_report_df = vutils.loop.logging.log_as_dataframe(
+                metrics, batch_information
+            )
+            await self.miner_manager.report(batch_report_df.to_dict(), "batch-report")
+
         except Exception as e:
             traceback.print_exc()
             bt.logging.error(f"Error: {e}")
@@ -225,4 +231,4 @@ class Validator(base.BaseValidator):
 
 if __name__ == "__main__":
     validator = Validator()
-    validator.run()
+    asyncio.run(validator.run())

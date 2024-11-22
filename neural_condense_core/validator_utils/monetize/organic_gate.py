@@ -23,7 +23,7 @@ class OrganicPayload(pydantic.BaseModel):
 
 
 class OrganicResponse(pydantic.BaseModel):
-    compressed_tokens_b64: str
+    compressed_kv_url: str
 
 
 class RegisterPayload(pydantic.BaseModel):
@@ -58,7 +58,7 @@ class OrganicGate:
         )
         self.loop = asyncio.get_event_loop()
         self.client_axon: bt.AxonInfo = None
-        self.message = "".join(random.choices("0123456789abcdef", k=16))
+        self.authentication_key = "".join(random.choices("0123456789abcdef", k=16))
         self.start_server()
         self.register_to_client()
         self.sync_thread = Thread(
@@ -84,7 +84,7 @@ class OrganicGate:
 
     async def _authenticate(self, request: Request):
         message = request.headers["message"]
-        if message != self.message:
+        if message != self.authentication_key:
             raise Exception("Authentication failed.")
 
     async def forward(self, request: Request):
@@ -128,13 +128,13 @@ class OrganicGate:
                 timeout=constants.TIER_CONFIG[request.tier].timeout,
                 deserialize=False,
             )
-            response.base64_to_ndarray()
-            bt.logging.info(f"Compressed shape: {response.compressed_tokens.shape}")
+            # response.verify()  # TODO: Put it into the background
+            bt.logging.info(f"Compressed to url: {response.compressed_kv_url}")
         except Exception as e:
             bt.logging.error(f"Error: {e}")
             raise HTTPException(status_code=503, detail="Validator error.")
 
-        return OrganicResponse(compressed_tokens_b64=response.compressed_tokens_b64)
+        return OrganicResponse(compressed_kv_url=response.compressed_kv_url)
 
     def start_server(self):
         self.executor = ThreadPoolExecutor(max_workers=1)
@@ -170,11 +170,13 @@ class OrganicGate:
         """
 
         url = f"{self.config.validator.organic_client_url}/register"
-        signature = f"0x{self.dendrite.keypair.sign(self.message).hex()}"
+        nonce = str(time.time_ns())
+        message = self.authentication_key + ":" + nonce
+        signature = f"0x{self.dendrite.keypair.sign(message).hex()}"
 
         headers = {
             "Content-Type": "application/json",
-            "message": self.message,
+            "message": message,
             "ss58_address": self.wallet.hotkey.ss58_address,
             "signature": signature,
         }

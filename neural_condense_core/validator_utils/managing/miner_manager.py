@@ -5,6 +5,7 @@ import random
 import httpx
 import pandas as pd
 import threading
+import time
 from pydantic import BaseModel
 from .metric_converter import MetricConverter
 from .elo import ELOSystem
@@ -97,7 +98,6 @@ class MinerManager:
         self.config = validator.config
         self.metadata = self._init_metadata()
         self.state_path = self.config.full_path + "/state.json"
-        self.message = "".join(random.choices("0123456789abcdef", k=16))
         self.metric_converter = MetricConverter()
         self.rate_limit_per_tier = self.get_rate_limit_per_tier()
         bt.logging.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
@@ -240,27 +240,30 @@ class MinerManager:
         metadata_df.columns = ["uid", "tier", "elo_rating"]
         bt.logging.info("\n" + metadata_df.to_string(index=True))
 
-    def report(self):
+    async def report_metadata(self):
         """
         Report current miner metadata to the validator server.
         """
-        url = f"{self.config.validator.report_url}/api/report"
-        signature = f"0x{self.dendrite.keypair.sign(self.message).hex()}"
+        metadata_dict = {k: v.dict() for k, v in self.metadata.items()}
+        await self.report(metadata_dict, "report")
+
+    async def report(self, payload: dict, endpoint: str):
+        """
+        Report current miner metadata to the validator server.
+        """
+        url = f"{self.config.validator.report_url}/{endpoint}"
+        nonce = str(time.time_ns())
+        signature = f"0x{self.dendrite.keypair.sign(nonce).hex()}"
 
         headers = {
             "Content-Type": "application/json",
-            "message": self.message,
+            "message": nonce,
             "ss58_address": self.wallet.hotkey.ss58_address,
             "signature": signature,
         }
 
-        metadata_dict = {k: v.dict() for k, v in self.metadata.items()}
-        payload = {
-            "metadata": metadata_dict,
-        }
-
-        with httpx.Client() as client:
-            response = client.post(
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
                 url,
                 json=payload,
                 headers=headers,

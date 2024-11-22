@@ -1,7 +1,7 @@
 import neural_condense_core as ncc
 import bittensor as bt
-import requests
 import random
+import httpx
 import wandb
 from ...protocol import TextCompressProtocol
 from .logging import log_wandb
@@ -23,13 +23,13 @@ def get_task_config() -> SyntheticTaskConfig:
     )[0]
 
 
-def prepare_synapse(
+async def prepare_synapse(
     challenge_generator: ChallengeGenerator,
     tokenizer,
     task_config: SyntheticTaskConfig,
     tier_config: TierConfig,
     model_name: str,
-):
+) -> TextCompressProtocol:
     """
     Prepare a synapse for validation.
 
@@ -43,7 +43,7 @@ def prepare_synapse(
         The prepared synapse object
     """
     try:
-        synapse = challenge_generator.generate_challenge(
+        synapse = await challenge_generator.generate_challenge(
             tokenizer=tokenizer,
             task=task_config.task,
             max_context_length_in_chars=tier_config.max_context_length_in_chars,
@@ -60,7 +60,7 @@ def query_miners(
     uids: list[int],
     synapse,
     timeout: int,
-):
+) -> list[TextCompressProtocol]:
     """
     Query a group of miners with a synapse.
 
@@ -81,41 +81,26 @@ def query_miners(
     )
 
 
-def validate_responses(responses: list, uids: list[int], tier_config: TierConfig):
-    """
-    Validate responses from miners.
-
-    Args:
-        responses (list): List of miner responses
-        uids (list[int]): List of miner UIDs
-        tier_config (TierConfig): Configuration for the tier
-
-    Returns:
-        tuple: Lists of valid responses, valid UIDs, and invalid UIDs
-    """
-    valid_responses, valid_uids, invalid_uids = [], [], []
+async def validate_responses(
+    responses: list[TextCompressProtocol], uids: list[int], tier_config: TierConfig
+) -> tuple[list[TextCompressProtocol], list[int], list[int], list[str]]:
+    valid_responses, valid_uids, invalid_uids, invalid_reasons = [], [], [], []
     for uid, response in zip(uids, responses):
         try:
-            response.base64_to_ndarray()
-            if (
-                response
-                and response.is_success
-                and len(response.compressed_tokens.shape) == 2
-                and tier_config.min_condensed_tokens
-                <= len(response.compressed_tokens)
-                <= tier_config.max_condensed_tokens
-            ):
+            is_valid, reason = await TextCompressProtocol.verify(response, tier_config)
+            if is_valid:
                 valid_responses.append(response)
                 valid_uids.append(uid)
             else:
                 invalid_uids.append(uid)
+                invalid_reasons.append(reason)
         except Exception as e:
-            bt.logging.error(f"Error: {e}")
             invalid_uids.append(uid)
-    return valid_responses, valid_uids, invalid_uids
+            invalid_reasons.append(str(e))
+    return valid_responses, valid_uids, invalid_uids, invalid_reasons
 
 
-def process_and_score_responses(
+async def process_and_score_responses(
     miner_manager: MinerManager,
     valid_responses: list[TextCompressProtocol],
     valid_uids: list[int],
@@ -128,25 +113,10 @@ def process_and_score_responses(
     k_factor: int,
     use_wandb: bool = False,
     config: bt.config = None,
+    invalid_reasons: list[str] = [],
     timeout: int = 120,
-):
-    """
-    Process and score miner responses.
-
-    Args:
-        valid_responses (list): List of valid responses
-        valid_uids (list[int]): List of valid miner UIDs
-        invalid_uids (list[int]): List of invalid miner UIDs
-        ground_truth_synapse: The ground truth synapse
-        model_name (str): Name of the model used
-        task_config (SyntheticTaskConfig): Task configuration
-        tier_config (TierConfig): Tier configuration
-        tier (str): The tier level
-        k_factor (int): ELO rating K-factor
-        timeout (int): Timeout for scoring backend
-        use_wandb (bool): Whether to use wandb
-    """
-    metrics = get_scoring_metrics(
+) -> dict[str, list]:
+    metrics = await get_scoring_metrics(
         valid_responses=valid_responses,
         ground_truth_synapse=ground_truth_synapse,
         model_name=model_name,
@@ -174,12 +144,12 @@ def process_and_score_responses(
         f"{int(initial_ratings[i])} -> {int(final_ratings[i])}"
         for i in range(len(initial_ratings))
     ]
-
-    metrics["rating_changes"] = rating_changes
-    metrics["UIDs"] = total_uids
+    reasons = [""] * len(valid_uids) + invalid_reasons
+    metrics["rating_change"] = rating_changes
+    metrics["uid"] = total_uids
+    metrics["invalid_reasons"] = reasons
     if use_wandb:
         log_wandb(metrics, total_uids, tier=tier)
-
     return metrics
 
 
@@ -192,50 +162,39 @@ def update_metrics_of_invalid_miners(
     return metrics
 
 
-def get_scoring_metrics(
+async def get_scoring_metrics(
     valid_responses: list,
-    ground_truth_synapse,
+    ground_truth_synapse: TextCompressProtocol,
     model_name: str,
     task_config: SyntheticTaskConfig,
     timeout: int = 120,
     config: bt.config = None,
-):
-    """
-    Get scoring metrics for valid responses.
-    """
+) -> dict[str, list]:
     payload = {
         "miner_responses": [
-            {"compressed_tokens_b64": r.compressed_tokens_b64} for r in valid_responses
+            {"compressed_kv_b64": r.compressed_kv_b64} for r in valid_responses
         ],
-        "ground_truth_request": ground_truth_synapse.deserialize()
+        "ground_truth_request": ground_truth_synapse.validator_payload
         | {"model_name": model_name, "criterias": task_config.criterias},
     }
 
-    scoring_response = requests.post(
-        f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics",
-        json=payload,
-        timeout=timeout,
-    ).json()
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics",
+            json=payload,
+            timeout=timeout,
+        )
+        scoring_response = response.json()
 
     metrics = scoring_response["metrics"]
     return metrics
 
 
 def get_accelerate_metrics(
-    valid_responses: list, tier_config: TierConfig
+    valid_responses: list[TextCompressProtocol], tier_config: TierConfig
 ) -> list[float]:
-    """
-    Calculate additional rewards for miners based on compression and processing time.
-
-    Args:
-        valid_responses (list): List of valid responses
-        tier_config (TierConfig): Tier configuration
-
-    Returns:
-        list[float]: List of additional rewards
-    """
     compress_rate_rewards = [
-        1 - len(r.compressed_tokens) / tier_config.max_condensed_tokens
+        1 - r.compressed_length / tier_config.max_condensed_tokens
         for r in valid_responses
     ]
     process_time_rewards = [
@@ -248,15 +207,6 @@ def get_accelerate_metrics(
 
 
 def get_k_factor(miner_manager: MinerManager, uids: list[int]) -> tuple[int, float]:
-    """
-    Get the ELO K-factor and optimization bounty based on mean ELO rating.
-
-    Args:
-        uids (list[int]): List of miner UIDs
-
-    Returns:
-        tuple[int, float]: K-factor and optimization bounty
-    """
     mean_elo = sum(miner_manager.metadata[uid].elo_rating for uid in uids) / len(uids)
 
     if mean_elo < ncc.constants.ELO_GROUPS["beginner"].max_elo:
@@ -295,15 +245,6 @@ def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
 def get_batched_uids(
     serving_counter: dict[int, ServingCounter], metadata: dict[int, MetadataItem]
 ) -> list[list[int]]:
-    """
-    Get batched UIDs for validation.
-
-    Args:
-        serving_counter (dict[int, ServingCounter]): Serving counter
-
-    Returns:
-        list[list[int]]: Batched UIDs
-    """
     uids = list(serving_counter.keys())
     uids = sorted(uids, key=lambda uid: metadata[uid].elo_rating, reverse=True)
     group_size = max(2, len(uids) // 4)

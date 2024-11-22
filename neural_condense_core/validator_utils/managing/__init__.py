@@ -1,4 +1,4 @@
-from .miner_manager import MinerManager
+from .miner_manager import MinerManager, ServingCounter
 
 __all__ = [
     "MinerManager",

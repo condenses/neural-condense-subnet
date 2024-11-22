@@ -4,11 +4,13 @@ import torch
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
+    DynamicCache,
 )
 import random
 import logging
 import gc
 from .datatypes import BatchedScoringRequest
+import traceback
 from .metric_handlers import metric_handlers
 
 gc.enable()
@@ -40,9 +42,14 @@ class ScoringService:
         preprocess_batch = metric_handlers[criteria]["preprocess_batch"]
         for miner_response in request.miner_responses:
             miner_response.decode()
+            kv_cache = DynamicCache.from_legacy_cache(
+                torch.from_numpy(miner_response.compressed_kv).to(
+                    device=self.device, dtype=self.dtype
+                )
+            )
             try:
                 value = metric_handler(
-                    compressed_tokens=miner_response.compressed_tokens,
+                    kv_cache=kv_cache,
                     activation_prompt=request.ground_truth_request.activation_prompt,
                     expected_completion=request.ground_truth_request.expected_completion,
                     tokenizer=self.tokenizer,
@@ -50,6 +57,7 @@ class ScoringService:
                     max_tokens=4096,
                 )
             except Exception as e:
+                traceback.print_exc()
                 logger.error(f"Error in scoring: {e}")
                 value = None
             values.append(value)

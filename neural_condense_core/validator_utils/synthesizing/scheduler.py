@@ -15,6 +15,7 @@ from .schemas import (
     ConversationSchedulerConfig,
 )
 import traceback
+import asyncio
 
 
 class Scheduler:
@@ -40,6 +41,7 @@ class Scheduler:
         self.convo_key = "conversations"
         self._prefill_queues()
         self.running = False
+        self.loop = asyncio.get_event_loop()
 
     def _prefill_queues(self):
         self.redis.delete(self.qa_key)
@@ -73,13 +75,15 @@ class Scheduler:
         item = next(ds)
         return item["messages"]
 
-    def _refresh_qa_queue(self):
+    async def _refresh_qa_queue(self):
         while self.running:
             if self.redis.scard(self.qa_key) < self.qa_config.max_items:
                 try:
                     context_seed = self._get_next_context_seed()
-                    questions, answers, total_chars = self.generator.generate_qa_pairs(
-                        context_seed, num_questions=self.qa_config.n_qa_per_context
+                    questions, answers, total_chars = (
+                        await self.generator.generate_qa_pairs(
+                            context_seed, num_questions=self.qa_config.n_qa_per_context
+                        )
                     )
                     qa_set = QASet(
                         questions=questions,
@@ -92,18 +96,17 @@ class Scheduler:
                         f"✅ QA set added. Current size: {self.redis.scard(self.qa_key)}. Total characters: {total_chars}"
                     )
                 except Exception as e:
-                    print(f"Error generating QA pairs: {e}")
-                    traceback.print_exc()
+                    pass
             else:
                 self.redis.spop(self.qa_key)
-            time.sleep(self.refresh_time)
+            await asyncio.sleep(self.refresh_time)
 
-    def _refresh_convo_queue(self):
+    async def _refresh_convo_queue(self):
         while self.running:
             if self.redis.scard(self.convo_key) < self.convo_config.max_items:
                 try:
                     messages_seed = self._get_next_messages_seed()
-                    messages, total_chars = self.generator.generate_conversation(
+                    messages, total_chars = await self.generator.generate_conversation(
                         messages_seed
                     )
                     conversation = Conversation(
@@ -116,33 +119,24 @@ class Scheduler:
                         f"✅ Conversation added. Current size: {self.redis.scard(self.convo_key)}. Total characters: {total_chars}"
                     )
                 except Exception as e:
-                    print(f"Error generating conversations: {e}")
-                    traceback.print_exc()
+                    pass
             else:
                 self.redis.spop(self.convo_key)
-            time.sleep(self.refresh_time)
+            await asyncio.sleep(self.refresh_time)
 
     def start(self):
         self.running = True
-        self.qa_thread = threading.Thread(target=self._refresh_qa_queue, daemon=True)
-        self.convo_thread = threading.Thread(
-            target=self._refresh_convo_queue, daemon=True
-        )
-        self.qa_thread.start()
-        self.convo_thread.start()
+        self.loop.create_task(self._refresh_qa_queue())
+        self.loop.create_task(self._refresh_convo_queue())
 
     def stop(self):
         self.running = False
-        if self.qa_thread.is_alive():
-            self.qa_thread.join()
-        if self.convo_thread.is_alive():
-            self.convo_thread.join()
 
-    def get_qas(self, n: int = 1) -> Optional[List[QASet]]:
+    async def get_qas(self, n: int = 1) -> Optional[List[QASet]]:
         items = self.redis.srandmember(self.qa_key, n)
         return [QASet.model_validate_json(item) for item in items] if items else None
 
-    def get_conversations(self, n: int = 1) -> Optional[List[Conversation]]:
+    async def get_conversations(self, n: int = 1) -> Optional[List[Conversation]]:
         items = self.redis.srandmember(self.convo_key, n)
         return (
             [Conversation.model_validate_json(item) for item in items]
@@ -164,8 +158,6 @@ if __name__ == "__main__":
         refresh_time=5.0,
     )
     scheduler.start()
-    import pdb
-
-    pdb.set_trace()
-    print(scheduler.get_next_qa())
-    print(scheduler.get_next_conversation())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(scheduler.get_qas())
+    loop.run_until_complete(scheduler.get_conversations())
