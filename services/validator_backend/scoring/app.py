@@ -10,6 +10,7 @@ import random
 import logging
 import gc
 from .datatypes import BatchedScoringRequest
+import traceback
 from .metric_handlers import metric_handlers
 
 gc.enable()
@@ -54,6 +55,7 @@ class ScoringService:
                     max_tokens=4096,
                 )
             except Exception as e:
+                traceback.print_exc()
                 logger.error(f"Error in scoring: {e}")
                 value = None
             values.append(value)
