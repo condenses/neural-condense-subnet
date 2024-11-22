@@ -18,7 +18,10 @@ class MetricConverter:
             try:
                 converter = self.converters[metric]
                 scores = converter(values)
-                scores = [s * (1 + a) for s, a in zip(scores, accelerate_bonuses)]
+                scores = [
+                    s * (1 + a) if a is not None else s
+                    for s, a in zip(scores, accelerate_bonuses)
+                ]
                 total_scores[metric] = scores
             except KeyError:
                 continue
