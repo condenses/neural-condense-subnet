@@ -3,6 +3,7 @@ import numpy as np
 import io
 import httpx
 import time
+import bittensor as bt
 
 
 async def load_npy_from_url(url: str, max_size_mb: int = 1024):
