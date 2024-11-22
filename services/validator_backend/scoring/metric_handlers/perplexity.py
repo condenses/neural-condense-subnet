@@ -28,6 +28,18 @@ def perplexity(
         [
             torch.full(
                 (1, num_seen_tokens),
+                0,
+                dtype=torch.long,
+                device=device,
+            ),
+            completion_ids,
+        ],
+        dim=1,
+    )
+    labels = torch.cat(
+        [
+            torch.full(
+                (1, num_seen_tokens),
                 -100,
                 dtype=torch.long,
                 device=device,
@@ -38,9 +50,8 @@ def perplexity(
     )
     outputs = model(input_ids=input_ids, past_key_values=kv_cache)
     print(outputs.logits.shape)
-    raise Exception("stop here")
     logits = outputs.logits[:, :-1, :]
-    labels = input_ids[:, 1:]
+    labels = labels[:, 1:]
     loss = F.cross_entropy(
         logits.view(-1, logits.shape[-1]),
         labels.view(-1),
