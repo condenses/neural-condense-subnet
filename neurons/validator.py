@@ -12,6 +12,7 @@ import numpy as np
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
+import asyncio
 
 
 class Validator(base.BaseValidator):
@@ -51,37 +52,33 @@ class Validator(base.BaseValidator):
         bt.logging.info(f"Uids: {self.metagraph.uids}")
 
         # Add a thread pool executor
-        self.thread_pool = ThreadPoolExecutor(
-            max_workers=min(32, (threading.active_count() + 4) * 2),
-            thread_name_prefix="validator_pool",
-        )
+        self.loop = asyncio.get_event_loop()
 
-    def start_epoch(self):
+    async def start_epoch(self):
         """
         Main validation loop that processes miners across all tiers.
         Syncs miner state and runs validation in parallel threads.
         """
         bt.logging.info("Running epoch.")
         self.miner_manager.sync()
-        threads = [
-            threading.Thread(target=self._forward_tier, args=(tier,))
+        tasks = [
+            self.loop.create_task(self._forward_tier(tier))
             for tier in constants.TIER_CONFIG
         ]
-        for t in threads:
-            t.start()
-        for t in threads:
-            try:
-                t.join(timeout=constants.EPOCH_LENGTH * 1.5)
-            except Exception as e:
-                bt.logging.error(f"Thread join error: {e}")
+        try:
+            await asyncio.gather(*tasks, timeout=constants.EPOCH_LENGTH * 1.5)
+        except asyncio.TimeoutError:
+            bt.logging.error("Timeout waiting for tier tasks to complete")
+        except Exception as e:
+            bt.logging.error(f"Error running tier tasks: {e}")
 
         try:
-            self.miner_manager.report_metadata()
+            await self.miner_manager.report_metadata()
             self.miner_manager.save_state()
         except Exception as e:
             bt.logging.error(f"Failed to report metadata & save-state: {e}")
 
-    def _forward_tier(self, tier: str):
+    async def _forward_tier(self, tier: str):
         """
         Process validation for a specific tier of miners.
 
@@ -119,16 +116,16 @@ class Validator(base.BaseValidator):
 
                 if len(batched_uids) < 2:
                     continue
-                future = self.thread_pool.submit(
-                    self._forward_batch, tier, model_name, batched_uids, tokenizer
+                future = self.loop.create_task(
+                    self._forward_batch(tier, model_name, batched_uids, tokenizer)
                 )
                 futures.append(future)
-                time.sleep(sleep_per_batch)
+                await asyncio.sleep(sleep_per_batch)
 
         for future in futures:
             future.result()
 
-    def _forward_batch(
+    async def _forward_batch(
         self,
         tier: str,
         model_name: str,
@@ -166,13 +163,13 @@ class Validator(base.BaseValidator):
                 timeout=constants.TIER_CONFIG[tier].timeout,
             )
             valid_responses, valid_uids, invalid_uids, invalid_reasons = (
-                vutils.loop.validate_responses(
+                await vutils.loop.validate_responses(
                     responses=responses,
                     uids=batched_uids,
                     tier_config=constants.TIER_CONFIG[tier],
                 )
             )
-            metrics = vutils.loop.process_and_score_responses(
+            metrics = await vutils.loop.process_and_score_responses(
                 miner_manager=self.miner_manager,
                 valid_responses=valid_responses,
                 valid_uids=valid_uids,
@@ -194,7 +191,7 @@ class Validator(base.BaseValidator):
             batch_report_df = vutils.loop.logging.log_as_dataframe(
                 metrics, batch_information
             )
-            self.miner_manager.report(batch_report_df.to_dict(), "batch-report")
+            await self.miner_manager.report(batch_report_df.to_dict(), "batch-report")
 
         except Exception as e:
             traceback.print_exc()
@@ -229,4 +226,4 @@ class Validator(base.BaseValidator):
 
 if __name__ == "__main__":
     validator = Validator()
-    validator.run()
+    asyncio.run(validator.run())

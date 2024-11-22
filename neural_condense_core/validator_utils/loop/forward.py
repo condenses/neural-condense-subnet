@@ -1,7 +1,7 @@
 import neural_condense_core as ncc
 import bittensor as bt
-import requests
 import random
+import httpx
 import wandb
 from ...protocol import TextCompressProtocol
 from .logging import log_wandb
@@ -81,13 +81,13 @@ def query_miners(
     )
 
 
-def validate_responses(
+async def validate_responses(
     responses: list[TextCompressProtocol], uids: list[int], tier_config: TierConfig
 ) -> tuple[list[TextCompressProtocol], list[int], list[int], list[str]]:
     valid_responses, valid_uids, invalid_uids, invalid_reasons = [], [], [], []
     for uid, response in zip(uids, responses):
         try:
-            is_valid, reason = TextCompressProtocol.verify(response, tier_config)
+            is_valid, reason = await TextCompressProtocol.verify(response, tier_config)
             if is_valid:
                 valid_responses.append(response)
                 valid_uids.append(uid)
@@ -100,7 +100,7 @@ def validate_responses(
     return valid_responses, valid_uids, invalid_uids, invalid_reasons
 
 
-def process_and_score_responses(
+async def process_and_score_responses(
     miner_manager: MinerManager,
     valid_responses: list[TextCompressProtocol],
     valid_uids: list[int],
@@ -116,7 +116,7 @@ def process_and_score_responses(
     invalid_reasons: list[str] = [],
     timeout: int = 120,
 ) -> dict[str, list]:
-    metrics = get_scoring_metrics(
+    metrics = await get_scoring_metrics(
         valid_responses=valid_responses,
         ground_truth_synapse=ground_truth_synapse,
         model_name=model_name,
@@ -162,7 +162,7 @@ def update_metrics_of_invalid_miners(
     return metrics
 
 
-def get_scoring_metrics(
+async def get_scoring_metrics(
     valid_responses: list,
     ground_truth_synapse: TextCompressProtocol,
     model_name: str,
@@ -178,11 +178,13 @@ def get_scoring_metrics(
         | {"model_name": model_name, "criterias": task_config.criterias},
     }
 
-    scoring_response = requests.post(
-        f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics",
-        json=payload,
-        timeout=timeout,
-    ).json()
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics",
+            json=payload,
+            timeout=timeout,
+        )
+        scoring_response = response.json()
 
     metrics = scoring_response["metrics"]
     return metrics

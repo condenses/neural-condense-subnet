@@ -240,14 +240,14 @@ class MinerManager:
         metadata_df.columns = ["uid", "tier", "elo_rating"]
         bt.logging.info("\n" + metadata_df.to_string(index=True))
 
-    def report_metadata(self):
+    async def report_metadata(self):
         """
         Report current miner metadata to the validator server.
         """
         metadata_dict = {k: v.dict() for k, v in self.metadata.items()}
-        self.report(metadata_dict, "report")
+        await self.report(metadata_dict, "report")
 
-    def report(self, payload: dict, endpoint: str):
+    async def report(self, payload: dict, endpoint: str):
         """
         Report current miner metadata to the validator server.
         """
@@ -262,8 +262,8 @@ class MinerManager:
             "signature": signature,
         }
 
-        with httpx.Client() as client:
-            response = client.post(
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
                 url,
                 json=payload,
                 headers=headers,

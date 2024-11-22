@@ -110,7 +110,7 @@ class Validator(ABC):
             bt.logging.debug("Started")
 
     @abstractmethod
-    def start_epoch(self):
+    async def start_epoch(self):
         pass
 
     def run(self):
