@@ -101,8 +101,9 @@ Example:
 - User: What is your name?
 - Assistant: I am a helpful assistant.
 ... other turns
+
 """
-        activation_prompt = f"Please paraphrase all the messages in the conversation above in the format {turn_format}."
+        activation_prompt = f"Please paraphrase all the messages in the conversation above in the format {turn_format}"
         formatted_messages = [
             f"- {msg.role.capitalize()}: {msg.content}" for msg in messages
         ]
