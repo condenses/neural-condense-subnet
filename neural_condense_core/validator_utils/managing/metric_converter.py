@@ -26,6 +26,8 @@ class MetricConverter:
 
     def perplexity_to_score(self, perplexities: list[float]):
         valid_perplexities = [p for p in perplexities if p is not None]
+        if not valid_perplexities:
+            return perplexities
         pivot = min(valid_perplexities)
         scores = [pivot / p if p is not None else None for p in perplexities]
         return scores
