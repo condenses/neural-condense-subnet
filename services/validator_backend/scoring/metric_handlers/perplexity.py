@@ -23,7 +23,7 @@ def perplexity(
         max_length=max_tokens,
         **kwargs,
     ).input_ids.to(device=device, dtype=torch.long)
-    num_seen_tokens = len(kv_cache._seen_tokens)
+    num_seen_tokens = kv_cache._seen_tokens
     input_ids = torch.cat(
         [
             torch.full(
