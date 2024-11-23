@@ -8,7 +8,12 @@
 - GPU with at least 24GB of VRAM (RTX 4090, A6000, A100, H100, etc.) to run Baseline Model
 - CUDA, NVIDIA Driver installed
 - PM2 install (see [Guide to install PM2](./pm2.md))
-- `minio` Public Storage (see [Guide to install MINIO](./minio.md))
+- Setup a cloud storage for uploading miner outputs. Here are some recommended options:
+    - `Huggingface Hub` (free but has some limitations)
+    - `AWS S3`
+    - `minio` (open-source version of AWS S3) (see [Guide to install MINIO](./minio.md))
+    - `Google Cloud Storage`
+    - `Azure Blob Storage`
 
 ## What does a Miner do?
 
