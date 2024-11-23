@@ -188,7 +188,7 @@ class MinerManager:
             }
             self.metadata = metadata_items
             self._log_metadata()
-            logger.success("Loaded state.")
+            logger.info("Loaded state.")
         except Exception as e:
             logger.error(f"Failed to load state: {e}")
 
@@ -200,7 +200,7 @@ class MinerManager:
             metadata_dict = {k: v.dict() for k, v in self.metadata.items()}
             state = {"metadata": metadata_dict}
             json.dump(state, open(self.state_path, "w"))
-            logger.success("Saved state.")
+            logger.info("Saved state.")
         except Exception as e:
             logger.error(f"Failed to save state: {e}")
 
@@ -276,7 +276,7 @@ class MinerManager:
                 f"Failed to report metadata to the Validator Server. Response: {response.text}"
             )
         else:
-            logger.success("Reported metadata to the Validator Server.")
+            logger.info("Reported metadata to the Validator Server.")
 
     def _update_metadata(self):
         """
@@ -327,7 +327,7 @@ class MinerManager:
 
         # Update self.metadata with the newly computed metadata
         self.metadata = metadata
-        logger.success(f"Updated metadata for {len(uids)} uids.")
+        logger.info(f"Updated metadata for {len(uids)} uids.")
         return self.metadata
 
     def get_rate_limit_per_tier(self):
