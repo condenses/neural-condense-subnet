@@ -40,18 +40,19 @@ class Validator(ABC):
         return config
 
     def setup_logging(self):
-        bt.logging.enable_default()
-        bt.logging.enable_info()
+        # bt.logging.enable_default()
+        # bt.logging.enable_info()
 
-        if self.config.logging.debug:
-            bt.logging.enable_debug()
-        if self.config.logging.trace:
-            bt.logging.enable_trace()
-        bt.logging(config=self.config, logging_dir=self.config.full_path)
-        bt.logging.info(
-            f"Running validator for subnet: {self.config.netuid} on network: {self.config.subtensor.network} with config:"
-        )
-        bt.logging.info(self.config)
+        # if self.config.logging.debug:
+        #     bt.logging.enable_debug()
+        # if self.config.logging.trace:
+        #     bt.logging.enable_trace()
+        # bt.logging(config=self.config, logging_dir=self.config.full_path)
+        # bt.logging.info(
+        #     f"Running validator for subnet: {self.config.netuid} on network: {self.config.subtensor.network} with config:"
+        # )
+        # bt.logging.info(self.config)
+        pass
 
     def setup_bittensor_objects(self):
         bt.logging.info("Setting up Bittensor objects.")

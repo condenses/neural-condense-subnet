@@ -3,8 +3,6 @@ import wandb
 import pandas as pd
 import structlog
 
-bt.logging.disable_logging()
-
 logger = structlog.get_logger()
 
 
