@@ -40,7 +40,6 @@ class Validator(ABC):
         return config
 
     def setup_logging(self):
-        bt.logging.disable_logging()
         # bt.logging.enable_default()
         # bt.logging.enable_info()
 
