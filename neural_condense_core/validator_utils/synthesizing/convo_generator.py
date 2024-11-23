@@ -1,6 +1,7 @@
 import httpx
 from typing import Dict, List, Optional
 import substrateinterface as st
+import time
 
 
 class ConvoGenerator:
@@ -32,7 +33,7 @@ class ConvoGenerator:
                 a_messages[i]["role"] = "assistant"
         return a_messages
 
-    def _make_api_call(self, messages, sampling_params):
+    async def _make_api_call(self, messages, sampling_params):
         try:
             payload = sampling_params | {
                 "model": self.model_id,
