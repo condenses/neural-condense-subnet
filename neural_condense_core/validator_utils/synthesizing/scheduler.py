@@ -12,6 +12,7 @@ from .schemas import (
     QASchedulerConfig,
     ConversationSchedulerConfig,
 )
+import time
 from ...logger import logger
 import asyncio
 
@@ -60,7 +61,7 @@ class Scheduler:
             self.redis.sadd(self.convo_key, item.model_dump_json())
 
         logger.info(
-            f"✅ Prefilled QA queue with {self.redis.scard(self.qa_key)} items. Prefilled Conversation queue with {self.redis.scard(self.convo_key)} items."
+            f"✅ Prefilled QA: {self.redis.scard(self.qa_key)} items. Conversations: {self.redis.scard(self.convo_key)} items."
         )
 
     def _get_next_context_seed(self):
@@ -92,8 +93,9 @@ class Scheduler:
                         context_seed=context_seed,
                     )
                     self.redis.sadd(self.qa_key, qa_set.model_dump_json())
+                    current_time = time.strftime("%H:%M:%S")
                     logger.info(
-                        f"✅ QA set added. Current size: {self.redis.scard(self.qa_key)}. Total characters: {total_chars}"
+                        f"✅ QA Set: {self.redis.scard(self.qa_key)} - last_time: {current_time} - {total_chars} chars"
                     )
                 except Exception as e:
                     logger.error(f"❌ Error generating QA set: {e}")
@@ -115,8 +117,9 @@ class Scheduler:
                         messages_seed=[Message(**msg) for msg in messages_seed],
                     )
                     self.redis.sadd(self.convo_key, conversation.model_dump_json())
-                    print(
-                        f"✅ Conversation added. Current size: {self.redis.scard(self.convo_key)}. Total characters: {total_chars}"
+                    current_time = time.strftime("%H:%M:%S")
+                    logger.info(
+                        f"✅ Conversation: {self.redis.scard(self.convo_key)} - last_time: {current_time} - {total_chars} chars"
                     )
                 except Exception as e:
                     logger.error(f"❌ Error generating conversation: {e}")

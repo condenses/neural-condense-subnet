@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 import httpx
-import substrateinterface as st 
+import substrateinterface as st
 import time
 
 
@@ -43,6 +43,8 @@ class ConvoGenerator:
             response = await self.client.post(
                 self.url, json=payload, headers=self._get_headers()
             )
+            if response.status_code != 200:
+                raise Exception(f"❌ Nineteen API Error: {response.text}")
             data = response.json()
             content = data["choices"][0]["message"]["content"]
             return content
