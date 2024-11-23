@@ -1,6 +1,10 @@
 import torch
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM, DynamicCache
+import os
+
+IS_DEBUG = os.environ["DEBUG"] == "True"
+
 
 DEFAULT_VALUE = 30
 
@@ -60,15 +64,14 @@ def perplexity(
     )
     perplexity = torch.exp(loss)
 
-    completion = try_generate(
-        kv_cache, model, activation_prompt, tokenizer, max_tokens, **kwargs
-    )
-    print("-" * 100)
-    print(expected_completion)
-    print("-" * 100)
-    print(activation_prompt)
-    print("-" * 100)
-    print(completion)
+    if IS_DEBUG:
+        completion = try_generate(
+            kv_cache, model, activation_prompt, tokenizer, max_tokens, **kwargs
+        )
+        print("-" * 100)
+        print(expected_completion)
+        print("-" * 100)
+        print(completion)
     return perplexity.item()
 
 
