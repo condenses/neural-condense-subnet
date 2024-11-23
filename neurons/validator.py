@@ -10,7 +10,6 @@ from transformers import AutoTokenizer
 import numpy as np
 import traceback
 import asyncio
-import pandas as pd
 
 logger = vutils.loop.logging.logger
 
@@ -194,12 +193,9 @@ class Validator(base.BaseValidator):
                 f"Batch Metrics - {tier} - {model_name} - {task_config.task}"
             )
             batch_report_df = vutils.loop.logging.log_as_dataframe(metrics)
-            with pd.option_context(
-                "display.max_columns", None, "display.max_rows", None
-            ):
-                logger.info(
-                    f"Logging dataframe {batch_information}:\n{batch_report_df}"
-                )
+            logger.info(
+                f"Logging dataframe {batch_information}:\n{batch_report_df.to_markdown()}"
+            )
 
             if self.config.validator.use_wandb:
                 vutils.loop.log_wandb(metrics, total_uids, tier=tier)
