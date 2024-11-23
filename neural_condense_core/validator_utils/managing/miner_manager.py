@@ -273,10 +273,10 @@ class MinerManager:
 
         if response.status_code != 200:
             logger.error(
-                f"Failed to report metadata to the Validator Server. Response: {response.text}"
+                f"Failed to report to the {endpoint}. Response: {response.text}"
             )
         else:
-            logger.info("Reported metadata to the Validator Server.")
+            logger.info(f"Reported to the {endpoint}.")
 
     def _update_metadata(self):
         """
