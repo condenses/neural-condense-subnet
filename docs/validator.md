@@ -27,8 +27,7 @@ cd neural-condense-subnet
 2. Install the dependencies
 ```bash
 pip install uv
-uv pip install -e .
-
+uv sync --prerelease=allow
 . scripts/install_redis.sh
 ```
 To test if Redis is working correctly, run `redis-cli ping` and it should return `PONG`.

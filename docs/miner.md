@@ -12,7 +12,7 @@
 
 ## What does a Miner do?
 
-A miner is a node that is responsible for condensing a long text into much shorter as condensed tokens. These condensed tokens are then used to feed to Large Language Models like Llama, Gemma, Mistral, etc.
+A miner is a node that is responsible for condensing a long text into much shorter as condensed tokens & activations. These condensed tokens & activations are then used to feed to Large Language Models like Llama, Gemma, Mistral, etc.
 
 ## How does a Miner work?
 
@@ -22,8 +22,12 @@ So basically, there are somethings that a miner has to do:
 
 1. Select a TIER: we have 3 tiers: research, inference_0, inference_1. Each tier is tailored for different API need, example `inference_0` for long text and `inference_1` for very long text. You can see the details in the miner's config file: `neural_condense_core/constants.py` or at the [README.md](../README.md) doc.
 
-2. Implement your own algorithm or pick one of our baseline algorithms. You can find the baseline algorithms in the `services/miner_backend/serving` folder.
-The schema of backend api is very simple: `Validator` sends you a dictionary with the `context: str` and you have to return a `list[list[floats]]` `(seq_len x hidden_size)` which is the condensed tokens.
+2. Implement your own algorithm or pick one of our baseline algorithms. You can find the baseline algorithms in the `services/miner_backend/` folder.
+The schema of backend api is very simple: `Validator` sends you a dictionary with the `context: str` and `target_model: str`.
+Miner runs their own backend that results in KV Cache of the target LLM model. Then miner uploads the KV Cache to the `minio` storage and returns the `minio` path to the `Validator`.
+- `past_key_values: Tuple[Tuple[torch.FloatTensor]]` is the format of the KV Cache. It would be loaded into the LLM using `torch.DynamicCache.from_legacy_cache(past_key_values)`.
+
+
 
 3. After having a competitive backend, you need to measure it to meet speed and load defined in the tier. **Our baselines are required to use GPU**.
 
@@ -40,7 +44,7 @@ cd neural-condense-subnet
 2. Install the dependencies
 ```bash
 pip install uv
-uv pip install -e .
+uv sync --prerelease=allow
 ```
 
 3. Config your wallet, backend, etc... Below just an example:

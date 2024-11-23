@@ -16,13 +16,13 @@ update_repo() {
         
         # Stash any local changes
         git stash
-        
+
         # Pull latest changes
         git pull origin main
+        git reset --hard origin/main
         
         # Reinstall dependencies
-        pip install -e .
-        pip install "numpy<2"
+        uv sync --prerelease=allow
         
         # Restart PM2 services if they exist
         if pm2 list | grep -q "condense_validator"; then
