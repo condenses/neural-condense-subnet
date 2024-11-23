@@ -239,7 +239,7 @@ class MinerManager:
         metadata_df = pd.DataFrame(metadata_dict).T
         metadata_df = metadata_df.reset_index()
         metadata_df.columns = ["uid", "tier", "elo_rating"]
-        logger.info("\n" + metadata_df.to_string(index=True))
+        logger.info("Metadata:\n" + metadata_df.to_markdown())
 
     async def report_metadata(self):
         """
