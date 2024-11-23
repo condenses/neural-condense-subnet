@@ -15,7 +15,7 @@ class KVPressService:
     def __init__(self):
         self.device = "cuda:0"
         self.ckpt = "Condense-AI/Mistral-7B-Instruct-v0.2"
-        self.bucket_name = os.getenv("MINIO_BUCKET", "kvpress")
+        self.bucket_name = os.getenv("MINIO_BUCKET", "condense_miner")
         # Initialize model components
         self.tokenizer = AutoTokenizer.from_pretrained(self.ckpt)
         self.model = AutoModelForCausalLM.from_pretrained(self.ckpt).to(self.device)

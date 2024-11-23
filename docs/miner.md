@@ -70,11 +70,11 @@ miner_netuid=47
 miner_subtensor_network="finney"
 ```
 
-4. Run the miner backend. Example of using our baseline KVPress as a backend (export the minio credentials):
+4. Run the miner backend. Example of using our baseline KVPress as a backend. You have to collect the `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_SERVER` from the minio setup (see [minio.md](./minio.md)):
 ```bash
 export MINIO_ACCESS_KEY="your_minio_access_key"
 export MINIO_SECRET_KEY="your_minio_secret_key"
-export MINIO_BUCKET="your_minio_bucket"
+export MINIO_BUCKET="condense_miner"
 export MINIO_SERVER="your_minio_server"
 pm2 start python --name condense_miner_backend \
 -- -m gunicorn services.miner_backend.kvpress.app:app \

@@ -28,7 +28,7 @@ class KVPressService:
     def __init__(self):
         self.device = "cuda:0"
         self.ckpt = "Condense-AI/Mistral-7B-Instruct-v0.2"
-        self.bucket_name = os.getenv("MINIO_BUCKET", "kvpress")
+        self.bucket_name = os.getenv("MINIO_BUCKET", "condense_miner")
         self.repo_id = "Condense-AI/Soft-Token-Condenser-Llama-3.2-1B"
         # Initialize model components
 
