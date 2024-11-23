@@ -154,7 +154,7 @@ class Validator(ABC):
                 traceback.print_exc()
 
             except KeyboardInterrupt:
-                logger.success("Keyboard interrupt detected. Exiting validator.")
+                logger.info("Keyboard interrupt detected. Exiting validator.")
                 exit()
 
     @abstractmethod
