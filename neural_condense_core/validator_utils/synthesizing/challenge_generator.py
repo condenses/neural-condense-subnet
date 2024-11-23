@@ -11,7 +11,6 @@ from typing import List, Tuple
 from ...protocol import TextCompressProtocol
 from ...constants import constants
 from .utils import retry
-import asyncio
 
 CORCEL_API_KEY = os.getenv("CORCEL_API_KEY")
 CORCEL_BASE_URL = os.getenv(

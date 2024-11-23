@@ -1,6 +1,6 @@
-import httpx
 from typing import Dict, List, Optional
-import substrateinterface as st
+import httpx
+import substrateinterface as st 
 import time
 
 
@@ -12,6 +12,7 @@ class ConvoGenerator:
         self.model_id = "chat-llama-3-1-8b"
         self.url = "https://api.nineteen.ai/v1/chat/completions"
         self.keypair = keypair
+        self.client = httpx.AsyncClient()
 
     def _get_headers(self):
         nonce = str(time.time_ns())

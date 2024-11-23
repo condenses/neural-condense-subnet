@@ -1,5 +1,4 @@
 import minio
-import os
 import io
 import numpy as np
 

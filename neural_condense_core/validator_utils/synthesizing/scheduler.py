@@ -1,6 +1,4 @@
 import redis
-import threading
-import time
 import os
 from typing import Optional, List
 import random
@@ -14,7 +12,7 @@ from .schemas import (
     QASchedulerConfig,
     ConversationSchedulerConfig,
 )
-import traceback
+from ...logger import logger
 import asyncio
 
 
@@ -61,7 +59,7 @@ class Scheduler:
             item = Conversation(**conversation)
             self.redis.sadd(self.convo_key, item.model_dump_json())
 
-        print(
+        logger.info(
             f"✅ Prefilled QA queue with {self.redis.scard(self.qa_key)} items. Prefilled Conversation queue with {self.redis.scard(self.convo_key)} items."
         )
 
@@ -80,10 +78,12 @@ class Scheduler:
             if self.redis.scard(self.qa_key) < self.qa_config.max_items:
                 try:
                     context_seed = self._get_next_context_seed()
-                    questions, answers, total_chars = (
-                        await self.generator.generate_qa_pairs(
-                            context_seed, num_questions=self.qa_config.n_qa_per_context
-                        )
+                    (
+                        questions,
+                        answers,
+                        total_chars,
+                    ) = await self.generator.generate_qa_pairs(
+                        context_seed, num_questions=self.qa_config.n_qa_per_context
                     )
                     qa_set = QASet(
                         questions=questions,
@@ -92,11 +92,11 @@ class Scheduler:
                         context_seed=context_seed,
                     )
                     self.redis.sadd(self.qa_key, qa_set.model_dump_json())
-                    print(
+                    logger.info(
                         f"✅ QA set added. Current size: {self.redis.scard(self.qa_key)}. Total characters: {total_chars}"
                     )
                 except Exception as e:
-                    pass
+                    logger.error(f"❌ Error generating QA set: {e}")
             else:
                 self.redis.spop(self.qa_key)
             await asyncio.sleep(self.refresh_time)
@@ -119,7 +119,7 @@ class Scheduler:
                         f"✅ Conversation added. Current size: {self.redis.scard(self.convo_key)}. Total characters: {total_chars}"
                     )
                 except Exception as e:
-                    pass
+                    logger.error(f"❌ Error generating conversation: {e}")
             else:
                 self.redis.spop(self.convo_key)
             await asyncio.sleep(self.refresh_time)
@@ -143,21 +143,3 @@ class Scheduler:
             if items
             else None
         )
-
-
-if __name__ == "__main__":
-    import os
-
-    generator = ConvoGenerator(api_key=os.environ["CORCEL_API_KEY"])
-    scheduler = Scheduler(
-        generator=generator,
-        qa_config=QASchedulerConfig(n_qa_per_context=4, max_items=100),
-        convo_config=ConversationSchedulerConfig(
-            n_new_conversations=100, n_previous_conversations=2, max_items=100
-        ),
-        refresh_time=5.0,
-    )
-    scheduler.start()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(scheduler.get_qas())
-    loop.run_until_complete(scheduler.get_conversations())

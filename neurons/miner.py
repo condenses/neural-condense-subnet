@@ -2,7 +2,6 @@ import neural_condense_core as ncc
 import httpx
 from typing import Tuple
 import bittensor as bt
-import numpy as np
 import time
 import traceback
 

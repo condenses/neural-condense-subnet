@@ -1,7 +1,4 @@
-import base64
-import io
 from flask import Flask, request, jsonify
-import numpy as np
 import time
 from transformers import AutoModelForCausalLM, AutoTokenizer, DynamicCache
 from kvpress import KnormPress

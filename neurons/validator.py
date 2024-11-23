@@ -167,12 +167,15 @@ class Validator(base.BaseValidator):
                 synapse=synapse,
                 timeout=constants.TIER_CONFIG[tier].timeout,
             )
-            valid_responses, valid_uids, invalid_uids, invalid_reasons = (
-                await vutils.loop.validate_responses(
-                    responses=responses,
-                    uids=batched_uids,
-                    tier_config=constants.TIER_CONFIG[tier],
-                )
+            (
+                valid_responses,
+                valid_uids,
+                invalid_uids,
+                invalid_reasons,
+            ) = await vutils.loop.validate_responses(
+                responses=responses,
+                uids=batched_uids,
+                tier_config=constants.TIER_CONFIG[tier],
             )
             metrics, total_uids = await vutils.loop.process_and_score_responses(
                 miner_manager=self.miner_manager,

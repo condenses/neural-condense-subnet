@@ -1,4 +1,3 @@
-import bittensor as bt
 import wandb
 import pandas as pd
 from ...logger import logger

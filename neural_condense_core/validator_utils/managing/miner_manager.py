@@ -1,7 +1,6 @@
 import json
 import bittensor as bt
 import numpy as np
-import random
 import httpx
 import pandas as pd
 import threading

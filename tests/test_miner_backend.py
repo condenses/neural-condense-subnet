@@ -1,5 +1,4 @@
 import requests
-import pytest
 import argparse
 from neural_condense_core.common.base64 import base64_to_ndarray
 
