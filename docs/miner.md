@@ -37,11 +37,14 @@ git clone https://github.com/condenses/neural-condense-subnet
 cd neural-condense-subnet
 ```
 
-2. Install the dependencies
+2. Install Poetry and dependencies
 ```bash
-pip install -e . --ignore-installed
-pip install "numpy<2"
-. services/miner_backend/serving/download_checkpoint.sh
+# Install Poetry if you haven't already
+curl -sSL https://install.python-poetry.org | python3 -
+# Install project dependencies
+poetry install
+# Install numpy<2 specifically
+poetry run pip install "numpy<2"
 ```
 
 3. Config your wallet, backend, etc... Below just an example:
@@ -76,16 +79,16 @@ export MINIO_ACCESS_KEY="your_minio_access_key"
 export MINIO_SECRET_KEY="your_minio_secret_key"
 export MINIO_BUCKET="condense_miner"
 export MINIO_SERVER="your_minio_server"
-pm2 start python --name condense_miner_backend \
--- -m gunicorn services.miner_backend.kvpress.app:app \
+pm2 start poetry --name condense_miner_backend \
+-- run python -m gunicorn services.miner_backend.kvpress.app:app \
 --timeout 120 \
 --bind 0.0.0.0:$miner_backend_port
 ```
 
 5. Run the mining script
 ```bash
-pm2 start python --name condense_miner \
--- -m neurons.miner \
+pm2 start poetry --name condense_miner \
+-- run python -m neurons.miner \
 --netuid $miner_netuid \
 --subtensor.network $miner_subtensor_network \
 --wallet.name $miner_wallet \
