@@ -5,6 +5,7 @@ import bittensor as bt
 import threading
 import time
 from substrateinterface import SubstrateInterface
+import concurrent.futures
 from .config import add_common_config, add_validator_config
 from abc import abstractmethod, ABC
 from ..constants import constants
@@ -133,14 +134,15 @@ class Validator(ABC):
             time.sleep(time_to_sleep)
 
             try:
-                set_weights_thread = threading.Thread(target=self.set_weights)
-                set_weights_thread.start()
-                set_weights_thread.join(timeout=constants.SET_WEIGHTS_TIMEOUT)
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(self.set_weights)
+                    try:
+                        future.result(timeout=constants.SET_WEIGHTS_TIMEOUT)
+                    except concurrent.futures.TimeoutError:
+                        logger.warning(
+                            "Set weights timeout reached, continuing to next epoch"
+                        )
 
-                if set_weights_thread.is_alive():
-                    logger.warning(
-                        "Set weights timeout reached, continuing to next epoch"
-                    )
             except Exception as e:
                 logger.error(f"Set weights error: {e}")
                 traceback.print_exc()

@@ -221,6 +221,7 @@ class Validator(base.BaseValidator):
         weight_info_df = pd.DataFrame(weight_info, columns=["uid", "weight"])
         logger.info(f"Weight info:\n{weight_info_df.to_markdown()}")
         if self.current_block > self.last_update + constants.SUBNET_TEMPO:
+            logger.info("Actually trying to set weights.")
             result = self.subtensor.set_weights(
                 netuid=self.config.netuid,
                 wallet=self.wallet,
