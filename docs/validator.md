@@ -24,15 +24,11 @@ git clone https://github.com/condenses/neural-condense-subnet
 cd neural-condense-subnet
 ```
 
-2. Install Poetry and dependencies
+2. Install the dependencies
 ```bash
-# Install Poetry if you haven't already
-curl -sSL https://install.python-poetry.org | python3 -
+pip install uv
+uv pip install -e .
 
-# Install project dependencies
-poetry install
-
-# Install Redis
 . scripts/install_redis.sh
 ```
 To test if Redis is working correctly, run `redis-cli ping` and it should return `PONG`.
@@ -40,17 +36,40 @@ To test if Redis is working correctly, run `redis-cli ping` and it should return
 **Optional**
 - Login to Weights & Biases to use the logging feature
 ```bash
-poetry run wandb login
+wandb login
 ```
 
 3. Config your wallet, backend host, and port. Below just an example:
 
-[rest of the documentation remains the same until step 4]
+**Parameters**
+- `--netuid` - The network UID of the subnet.
+- `--subtensor.network` - The Subtensor network to connect to. `finney` for the mainnet. `test` for the testnet.
+- `--wallet.name` - The name of the wallet to use.
+- `--wallet.hotkey` - The hotkey of the wallet to use.
+- `--axon.port` - The port to be posted to metagraph.
+- `--validator.scoring_backend.host` - The host of the validator backend for scoring.
+- `--validator.scoring_backend.port` - The port of the validator backend for scoring.
+- `--validator.gate_port` - The port to open for the validator to forward the request from end-users to the miner. It should be an open port in your firewall. It's optional
+- `--validator.use_wandb` - Use Weights & Biases for logging. It's optional.
+
+**Important**: `axon_port` and `gate_port` must be opened in your firewall.
+
+**Define bash variable in your terminal**
+```bash
+val_wallet="my_wallet"
+val_hotkey="my_hotkey"
+val_backend_host="localhost"
+val_backend_port=8080
+val_axon_port=12345
+val_gate_port=12346
+val_netuid=47
+val_subtensor_network="finney"
+```
 
 4. Run the validator backend.
 ```bash
-pm2 start poetry --name condense_validator_backend \
--- run python -m gunicorn services.validator_backend.scoring.app:app \
+pm2 start python --name condense_validator_backend \
+-- -m gunicorn services.validator_backend.scoring.app:app \
 --workers 1 \
 --bind $val_backend_host:$val_backend_port \
 --timeout 0
@@ -58,8 +77,8 @@ pm2 start poetry --name condense_validator_backend \
 
 5. Run the validator script
 ```bash
-pm2 start poetry --name condense_validator \
--- run python -m neurons.validator \
+pm2 start python --name condense_validator \
+-- -m neurons.validator \
 --netuid $val_netuid \
 --subtensor.network $val_subtensor_network \
 --wallet.name $val_wallet \
