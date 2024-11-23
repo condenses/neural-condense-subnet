@@ -4,6 +4,7 @@ from . import miner_utils
 from . import protocol
 from . import common
 from .constants import constants
+from .logger import logger
 
 __version__ = "0.0.1"
 version_split = __version__.split(".")
@@ -20,4 +21,5 @@ __all__ = [
     "protocol",
     "common",
     "constants",
+    "logger",
 ]

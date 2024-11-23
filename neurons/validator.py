@@ -3,6 +3,7 @@ from neural_condense_core import (
     validator_utils as vutils,
     constants,
     __spec_version__,
+    logger,
 )
 import pandas as pd
 import bittensor as bt
@@ -11,8 +12,6 @@ from transformers import AutoTokenizer
 import numpy as np
 import traceback
 import asyncio
-
-logger = vutils.loop.logging.logger
 
 
 class Validator(base.BaseValidator):

@@ -1,4 +1,4 @@
-from ..validator_utils.loop.logging import logger
+from ..logger import logger
 from ..constants import constants
 
 

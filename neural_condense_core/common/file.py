@@ -5,7 +5,7 @@ import time
 import httpx
 import os
 from tqdm import tqdm
-from ..validator_utils.loop.logging import logger
+from ..logger import logger
 
 os.makedirs("tmp", exist_ok=True)
 

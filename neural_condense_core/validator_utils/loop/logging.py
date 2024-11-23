@@ -1,9 +1,7 @@
 import bittensor as bt
 import wandb
 import pandas as pd
-import structlog
-
-logger = structlog.get_logger()
+from ...logger import logger
 
 
 def log_wandb(logs: dict, uids: list[int], tier=""):

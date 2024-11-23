@@ -12,7 +12,7 @@ import time
 from ...constants import constants
 from ...protocol import TextCompressProtocol
 from ..managing import MinerManager
-from ..loop.logging import logger
+from ...logger import logger
 
 
 class OrganicPayload(pydantic.BaseModel):

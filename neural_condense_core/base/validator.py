@@ -8,7 +8,7 @@ from substrateinterface import SubstrateInterface
 from .config import add_common_config, add_validator_config
 from abc import abstractmethod, ABC
 from ..constants import constants
-from ..validator_utils.loop.logging import logger
+from ..logger import logger
 
 
 class Validator(ABC):

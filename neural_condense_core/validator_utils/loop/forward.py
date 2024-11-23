@@ -4,7 +4,7 @@ import random
 import httpx
 import wandb
 from ...protocol import TextCompressProtocol
-from .logging import logger
+from ...logger import logger
 from ..synthesizing.challenge_generator import ChallengeGenerator
 from ..managing.miner_manager import MinerManager, ServingCounter, MetadataItem
 from ...constants import SyntheticTaskConfig, TierConfig
