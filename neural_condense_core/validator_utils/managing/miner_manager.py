@@ -246,7 +246,7 @@ class MinerManager:
         Report current miner metadata to the validator server.
         """
         metadata_dict = {k: v.dict() for k, v in self.metadata.items()}
-        await self.report(metadata_dict, "report")
+        await self.report(metadata_dict, "api/report-metadata")
 
     async def report(self, payload: dict, endpoint: str):
         """

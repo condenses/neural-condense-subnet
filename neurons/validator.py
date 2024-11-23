@@ -200,7 +200,9 @@ class Validator(base.BaseValidator):
             if self.config.validator.use_wandb:
                 vutils.loop.log_wandb(metrics, total_uids, tier=tier)
 
-            await self.miner_manager.report(batch_report_df.to_dict(), "batch-report")
+            await self.miner_manager.report(
+                batch_report_df.to_dict(), "api/batch-report"
+            )
 
         except Exception as e:
             traceback.print_exc()

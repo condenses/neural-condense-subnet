@@ -3,7 +3,6 @@ from typing import List
 import os
 
 
-
 class TierConfig(BaseModel):
     incentive_percentage: float
     requests_per_epoch: int
@@ -120,6 +119,10 @@ class Constants(BaseModel):
             self.ORGANIC_CLIENT_URL = os.getenv(
                 "ORGANIC_CLIENT_URL", "https://testnet-ncs-client.condenses.ai"
             )
+            self.REPORT_URL = os.getenv(
+                "REPORT_URL", "https://testnet-report.condenses.ai"
+            )
+            self.NETUID = int(os.getenv("NETUID", 245))
 
 
 constants = Constants()
