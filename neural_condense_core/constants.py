@@ -122,7 +122,6 @@ class Constants(BaseModel):
             self.REPORT_URL = os.getenv(
                 "REPORT_URL", "https://testnet-report.condenses.ai"
             )
-            self.NETUID = int(os.getenv("NETUID", 245))
 
 
 constants = Constants()
