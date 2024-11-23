@@ -50,6 +50,7 @@ cd neural-condense-subnet
 ```bash
 pip install uv
 uv sync --prerelease=allow
+. .venv/bin/activate
 ```
 
 3. Config your wallet, backend, etc... Below just an example:

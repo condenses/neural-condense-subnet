@@ -28,6 +28,7 @@ cd neural-condense-subnet
 ```bash
 pip install uv
 uv sync --prerelease=allow
+. .venv/bin/activate
 . scripts/install_redis.sh
 ```
 To test if Redis is working correctly, run `redis-cli ping` and it should return `PONG`.
