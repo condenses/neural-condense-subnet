@@ -58,10 +58,10 @@ class ScoringService:
                 )
             except Exception as e:
                 traceback.print_exc()
-                logger.error(f"Error in scoring: {e}")
+                logger.error(f"{metric_handler.__name__}: {e}")
                 value = None
             values.append(value)
-            logger.info(f"Value{value}")
+            logger.info(f"{metric_handler.__name__}: {value}")
         values = preprocess_batch(values)
         return {"metrics": {criteria: values}}
 
