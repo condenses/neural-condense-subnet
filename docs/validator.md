@@ -46,8 +46,8 @@ wandb login
 - `--wallet.name` - The name of the wallet to use.
 - `--wallet.hotkey` - The hotkey of the wallet to use.
 - `--axon.port` - The port to be posted to metagraph.
-- `--validator.scoring_backend.host` - The host of the validator backend for scoring.
-- `--validator.scoring_backend.port` - The port of the validator backend for scoring.
+- `--validator.score_backend.host` - The host of the validator backend for scoring.
+- `--validator.score_backend.port` - The port of the validator backend for scoring.
 - `--validator.gate_port` - The port to open for the validator to forward the request from end-users to the miner. It should be an open port in your firewall. It's optional
 - `--validator.use_wandb` - Use Weights & Biases for logging. It's optional.
 

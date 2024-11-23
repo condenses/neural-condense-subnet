@@ -84,6 +84,9 @@ pm2 start python --name condense_miner_backend \
 --timeout 120 \
 --bind 0.0.0.0:$miner_backend_port
 ```
+*You can choose other backends in the `services/miner_backend/` folder.*
+
+*If you select `soft_token` backend, you can train your own model using our prepared trainer at [Condense-Trainer](https://github.com/condenses/condense-trainer).*
 
 5. Run the mining script
 ```bash
