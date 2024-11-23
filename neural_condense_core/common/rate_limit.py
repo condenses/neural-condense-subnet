@@ -1,4 +1,4 @@
-import bittensor as bt
+from ..validator_utils.loop.logging import logger
 from ..constants import constants
 
 
@@ -8,7 +8,7 @@ def build_rate_limit(metagraph, config, tier=None):
         whitelist_uids = [int(uid) for uid in config.whitelist_uids.split(",")]
     else:
         whitelist_uids = [i for i in range(len(S)) if S[i] > constants.MIN_STAKE]
-    bt.logging.info(f"Whitelist uids: {whitelist_uids}")
+    logger.info(f"Whitelist uids: {whitelist_uids}")
 
     selected_tier_config = constants.TIER_CONFIG[tier or config.miner.tier]
     rpe = selected_tier_config.requests_per_epoch
@@ -27,5 +27,5 @@ def build_rate_limit(metagraph, config, tier=None):
         if uid not in whitelist_uids:
             rate_limits[uid] = 0
 
-    bt.logging.debug(f"Rate limits: {rate_limits}")
+    logger.debug(f"Rate limits: {rate_limits}")
     return rate_limits

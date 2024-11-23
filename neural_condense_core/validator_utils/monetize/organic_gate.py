@@ -12,6 +12,7 @@ import time
 from ...constants import constants
 from ...protocol import TextCompressProtocol
 from ..managing import MinerManager
+from ..loop.logging import logger
 
 
 class OrganicPayload(pydantic.BaseModel):
@@ -69,13 +70,13 @@ class OrganicGate:
 
     def _run_function_periodically(self, function, interval):
         while True:
-            bt.logging.info(
+            logger.info(
                 f"Running function {function.__name__} every {interval} seconds."
             )
             try:
                 function()
             except Exception as e:
-                bt.logging.error(f"Error running function {function.__name__}: {e}")
+                logger.error(f"Error running function {function.__name__}: {e}")
             time.sleep(interval)
 
     def register_to_client(self):
@@ -90,15 +91,15 @@ class OrganicGate:
     async def forward(self, request: Request):
         try:
             await self._authenticate(request)
-            bt.logging.info("Forwarding organic request.")
+            logger.info("Forwarding organic request.")
             request: OrganicPayload = OrganicPayload(**await request.json())
             synapse = TextCompressProtocol(
                 context=request.context,
                 target_model=request.target_model,
             )
-            bt.logging.info(f"Context: {request.context[:100]}...")
-            bt.logging.info(f"Tier: {request.tier}")
-            bt.logging.info(f"Target model: {request.target_model}")
+            logger.info(f"Context: {request.context[:100]}...")
+            logger.info(f"Tier: {request.tier}")
+            logger.info(f"Target model: {request.target_model}")
 
             targeted_uid = None
             if request.miner_uid != -1:
@@ -129,9 +130,9 @@ class OrganicGate:
                 deserialize=False,
             )
             # response.verify()  # TODO: Put it into the background
-            bt.logging.info(f"Compressed to url: {response.compressed_kv_url}")
+            logger.info(f"Compressed to url: {response.compressed_kv_url}")
         except Exception as e:
-            bt.logging.error(f"Error: {e}")
+            logger.error(f"Error: {e}")
             raise HTTPException(status_code=503, detail="Validator error.")
 
         return OrganicResponse(compressed_kv_url=response.compressed_kv_url)
@@ -190,10 +191,10 @@ class OrganicGate:
             )
 
         if response.status_code != 200:
-            bt.logging.error(
+            logger.error(
                 f"Failed to register to the Organic Client Server. Response: {response.text}"
             )
             return
         else:
-            bt.logging.success("Registered to the Organic Client Server.")
+            logger.success("Registered to the Organic Client Server.")
             return response.json()

@@ -5,7 +5,7 @@ import time
 import httpx
 import os
 from tqdm import tqdm
-import bittensor as bt
+from ..validator_utils.loop.logging import logger
 
 os.makedirs("tmp", exist_ok=True)
 
@@ -71,9 +71,7 @@ async def load_npy_from_url(url: str, max_size_mb: int = 1024):
 
             # Measure end time
             end_time = time.time()
-            bt.logging.info(
-                f"Time taken to download: {end_time - start_time:.2f} seconds"
-            )
+            logger.info(f"Time taken to download: {end_time - start_time:.2f} seconds")
 
         # Load the NumPy array from the downloaded file
         with open(filename, "rb") as f:
