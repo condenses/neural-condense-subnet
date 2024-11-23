@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM, DynamicCache
 import os
 
-IS_DEBUG = os.environ["DEBUG"] == "True"
+IS_DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 
 DEFAULT_VALUE = 30
