@@ -1,0 +1,2 @@
+uv add hf_transfer
+export HF_HUB_ENABLE_HF_TRANSFER=1
