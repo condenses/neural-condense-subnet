@@ -8,6 +8,7 @@ from substrateinterface import SubstrateInterface
 from .config import add_common_config, add_validator_config
 from abc import abstractmethod, ABC
 from ..constants import constants
+from ..validator_utils.loop.logging import logger
 
 
 class Validator(ABC):
@@ -55,18 +56,17 @@ class Validator(ABC):
         pass
 
     def setup_bittensor_objects(self):
-        bt.logging.info("Setting up Bittensor objects.")
+        logger.info("Setting up Bittensor objects.")
         self.wallet = bt.wallet(config=self.config)
-        bt.logging.info(f"Wallet: {self.wallet}")
+        logger.info(f"Wallet: {self.wallet}")
         self.subtensor = bt.subtensor(config=self.config)
-        bt.logging.info(f"Subtensor: {self.subtensor}")
+        logger.info(f"Subtensor: {self.subtensor}")
         self.dendrite = bt.dendrite(wallet=self.wallet)
-        bt.logging.info(f"Dendrite: {self.dendrite}")
+        logger.info(f"Dendrite: {self.dendrite}")
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
-        bt.logging.info(f"Metagraph: {self.metagraph}")
-
+        logger.info(f"Metagraph: {self.metagraph}")
         if self.wallet.hotkey.ss58_address not in self.metagraph.hotkeys:
-            bt.logging.error(
+            logger.error(
                 f"\nYour validator: {self.wallet} is not registered to chain connection: {self.subtensor} \nRun 'btcli register' and try again."
             )
             exit()
@@ -74,16 +74,16 @@ class Validator(ABC):
             self.my_subnet_uid = self.metagraph.hotkeys.index(
                 self.wallet.hotkey.ss58_address
             )
-            bt.logging.info(f"Running validator on uid: {self.my_subnet_uid}")
+            logger.info(f"Running validator on uid: {self.my_subnet_uid}")
 
     def setup_axon(self):
         self.axon = bt.axon(wallet=self.wallet, config=self.config)
-        bt.logging.info(
+        logger.info(
             f"Serving axon on network: {self.config.subtensor.network} with netuid: {self.config.netuid}"
         )
         self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
-        bt.logging.info(f"Axon: {self.axon}")
-        bt.logging.info(f"Starting axon server on port: {self.config.axon.port}")
+        logger.info(f"Axon: {self.axon}")
+        logger.info(f"Starting axon server on port: {self.config.axon.port}")
         self.axon.start()
 
     def node_query(self, module, method, params):
@@ -103,12 +103,12 @@ class Validator(ABC):
         This method facilitates the use of the validator in a 'with' statement.
         """
         if not self.is_running:
-            bt.logging.debug("Starting validator in background thread.")
+            logger.debug("Starting validator in background thread.")
             self.should_exit = False
             self.thread = threading.Thread(target=self.run, daemon=True)
             self.thread.start()
             self.is_running = True
-            bt.logging.debug("Started")
+            logger.debug("Started")
 
     @abstractmethod
     async def start_epoch(self):
@@ -116,20 +116,21 @@ class Validator(ABC):
 
     async def run(self):
         self.setup_axon()
-        bt.logging.info("Starting validator loop.")
+        logger.info("Starting validator loop.")
         while True:
             start_epoch = time.time()
 
             try:
                 await self.start_epoch()
             except Exception as e:
-                bt.logging.error(f"Forward error: {e}")
+                logger.error(f"Forward error: {e}")
                 traceback.print_exc()
 
             end_epoch = time.time()
             elapsed = end_epoch - start_epoch
             time_to_sleep = max(0, constants.EPOCH_LENGTH - elapsed)
-            bt.logging.info(f"Epoch finished. Sleeping for {time_to_sleep} seconds.")
+
+            logger.info(f"Epoch finished. Sleeping for {time_to_sleep} seconds.")
             time.sleep(time_to_sleep)
 
             try:
@@ -138,21 +139,21 @@ class Validator(ABC):
                 set_weights_thread.join(timeout=constants.SET_WEIGHTS_TIMEOUT)
 
                 if set_weights_thread.is_alive():
-                    bt.logging.warning(
+                    logger.warning(
                         "Set weights timeout reached, continuing to next epoch"
                     )
             except Exception as e:
-                bt.logging.error(f"Set weights error: {e}")
+                logger.error(f"Set weights error: {e}")
                 traceback.print_exc()
 
             try:
                 self.resync_metagraph()
             except Exception as e:
-                bt.logging.error(f"Resync metagraph error: {e}")
+                logger.error(f"Resync metagraph error: {e}")
                 traceback.print_exc()
 
             except KeyboardInterrupt:
-                bt.logging.success("Keyboard interrupt detected. Exiting validator.")
+                logger.success("Keyboard interrupt detected. Exiting validator.")
                 exit()
 
     @abstractmethod
