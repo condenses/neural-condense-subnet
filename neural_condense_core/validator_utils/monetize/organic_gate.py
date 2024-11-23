@@ -196,5 +196,5 @@ class OrganicGate:
             )
             return
         else:
-            logger.success("Registered to the Organic Client Server.")
+            logger.info("Registered to the Organic Client Server.")
             return response.json()
