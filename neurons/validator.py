@@ -50,8 +50,9 @@ class Validator(base.BaseValidator):
             vutils.loop.initialize_wandb(self.dendrite, self.metagraph, self.uid)
 
         weights = self.miner_manager.get_normalized_ratings()
-        logger.info(f"Weights: {weights}")
-        logger.info(f"Uids: {self.metagraph.uids}")
+        weight_info = list(zip(self.metagraph.uids, weights))
+        weight_info_df = pd.DataFrame(weight_info, columns=["uid", "weight"])
+        logger.info(f"Weight info:\n{weight_info_df.to_markdown()}")
 
         # Add a thread pool executor
         self.loop = asyncio.get_event_loop()
