@@ -4,6 +4,7 @@ from neural_condense_core import (
     constants,
     __spec_version__,
 )
+import pandas as pd
 import bittensor as bt
 import random
 from transformers import AutoTokenizer
@@ -216,8 +217,9 @@ class Validator(base.BaseValidator):
         if np.all(weights == 0):
             weights = np.ones(len(self.metagraph.uids))
             logger.info("All weights are zero, setting to ones.")
-        logger.info(f"Weights: {weights}")
-        logger.info(f"Uids: {self.metagraph.uids}")
+        weight_info = list(zip(self.metagraph.uids, weights))
+        weight_info_df = pd.DataFrame(weight_info, columns=["uid", "weight"])
+        logger.info(f"Weight info:\n{weight_info_df.to_markdown()}")
         if self.current_block > self.last_update + constants.SUBNET_TEMPO:
             result = self.subtensor.set_weights(
                 netuid=self.config.netuid,
