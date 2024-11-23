@@ -4,7 +4,8 @@ from typing import Any
 import torch
 from transformers import DynamicCache
 import time
-from .common import base64, file
+from .common.base64 import ndarray_to_base64
+from .common.file import load_npy_from_url
 from .constants import TierConfig
 
 
@@ -58,7 +59,7 @@ class TextCompressProtocol(Synapse):
             return False, "Compressed KV URL must use HTTP or HTTPS."
 
         start_time = time.time()
-        compressed_kv, error = await file.load_npy_from_url(response.compressed_kv_url)
+        compressed_kv, error = await load_npy_from_url(response.compressed_kv_url)
         response.download_time = time.time() - start_time
         try:
             kv_cache = DynamicCache.from_legacy_cache(torch.from_numpy(compressed_kv))
@@ -76,7 +77,6 @@ class TextCompressProtocol(Synapse):
             kv_cache._seen_tokens / tier_config.max_condensed_tokens
         )
 
-        response.compressed_kv_b64 = base64.ndarray_to_base64(compressed_kv)
-
+        response.compressed_kv_b64 = ndarray_to_base64(compressed_kv)
         response.compressed_length = compressed_kv[0][0].shape[2]
         return True, ""
