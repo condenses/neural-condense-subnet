@@ -4,7 +4,7 @@ import random
 import httpx
 import wandb
 from ...protocol import TextCompressProtocol
-from .logging import log_wandb
+from .logging import logger
 from ..synthesizing.challenge_generator import ChallengeGenerator
 from ..managing.miner_manager import MinerManager, ServingCounter, MetadataItem
 from ...constants import SyntheticTaskConfig, TierConfig
@@ -118,20 +118,12 @@ async def process_and_score_responses(
 ) -> dict[str, list]:
     metrics = await get_scoring_metrics(
         valid_responses=valid_responses,
+        invalid_uids=invalid_uids,
         ground_truth_synapse=ground_truth_synapse,
         model_name=model_name,
         task_config=task_config,
         timeout=timeout,
         config=config,
-    )
-    accelerate_metrics = get_accelerate_metrics(
-        valid_responses=valid_responses,
-        tier_config=tier_config,
-    )
-    metrics["accelerate_metrics"] = accelerate_metrics
-    metrics = update_metrics_of_invalid_miners(
-        invalid_uids=invalid_uids,
-        metrics=metrics,
     )
     total_uids = valid_uids + invalid_uids
     final_ratings, initial_ratings = miner_manager.update_ratings(
@@ -148,9 +140,7 @@ async def process_and_score_responses(
     metrics["rating_change"] = rating_changes
     metrics["uid"] = total_uids
     metrics["invalid_reasons"] = reasons
-    if use_wandb:
-        log_wandb(metrics, total_uids, tier=tier)
-    return metrics
+    return metrics, total_uids
 
 
 def update_metrics_of_invalid_miners(
@@ -164,6 +154,7 @@ def update_metrics_of_invalid_miners(
 
 async def get_scoring_metrics(
     valid_responses: list,
+    invalid_uids: list[int],
     ground_truth_synapse: TextCompressProtocol,
     model_name: str,
     task_config: SyntheticTaskConfig,
@@ -185,25 +176,13 @@ async def get_scoring_metrics(
             timeout=timeout,
         )
         scoring_response = response.json()
-
     metrics = scoring_response["metrics"]
+    metrics["accelerate_metrics"] = [r.accelerate_score for r in valid_responses]
+    metrics = update_metrics_of_invalid_miners(
+        invalid_uids=invalid_uids,
+        metrics=metrics,
+    )
     return metrics
-
-
-def get_accelerate_metrics(
-    valid_responses: list[TextCompressProtocol], tier_config: TierConfig
-) -> list[float]:
-    compress_rate_rewards = [
-        1 - r.compressed_length / tier_config.max_condensed_tokens
-        for r in valid_responses
-    ]
-    process_time_rewards = [
-        1 - r.dendrite.process_time / tier_config.timeout for r in valid_responses
-    ]
-    rewards = [
-        max(0, (c + p) / 2) for c, p in zip(compress_rate_rewards, process_time_rewards)
-    ]
-    return rewards
 
 
 def get_k_factor(miner_manager: MinerManager, uids: list[int]) -> tuple[int, float]:
@@ -239,7 +218,7 @@ def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
             },
         )
     except Exception as e:
-        bt.logging.error(f"Starting wandb error: {e}")
+        logger.error(f"Starting wandb error: {e}")
 
 
 def get_batched_uids(

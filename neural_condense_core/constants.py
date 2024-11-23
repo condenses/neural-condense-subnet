@@ -3,6 +3,7 @@ from typing import List
 import os
 
 
+
 class TierConfig(BaseModel):
     incentive_percentage: float
     requests_per_epoch: int

@@ -12,6 +12,7 @@ from .elo import ELOSystem
 from ...common import build_rate_limit
 from ...protocol import Metadata
 from ...constants import constants, TierConfig
+from ..loop.logging import logger
 
 
 class MetadataItem(BaseModel):
@@ -100,7 +101,7 @@ class MinerManager:
         self.state_path = self.config.full_path + "/state.json"
         self.metric_converter = MetricConverter()
         self.rate_limit_per_tier = self.get_rate_limit_per_tier()
-        bt.logging.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
+        logger.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
         self.load_state()
         self.sync()
 
@@ -187,9 +188,9 @@ class MinerManager:
             }
             self.metadata = metadata_items
             self._log_metadata()
-            bt.logging.success("Loaded state.")
+            logger.success("Loaded state.")
         except Exception as e:
-            bt.logging.error(f"Failed to load state: {e}")
+            logger.error(f"Failed to load state: {e}")
 
     def save_state(self):
         """
@@ -199,9 +200,9 @@ class MinerManager:
             metadata_dict = {k: v.dict() for k, v in self.metadata.items()}
             state = {"metadata": metadata_dict}
             json.dump(state, open(self.state_path, "w"))
-            bt.logging.success("Saved state.")
+            logger.success("Saved state.")
         except Exception as e:
-            bt.logging.error(f"Failed to save state: {e}")
+            logger.error(f"Failed to save state: {e}")
 
     def _init_metadata(self):
         """
@@ -217,9 +218,9 @@ class MinerManager:
         """
         Synchronize metadata and serving counters for all miners.
         """
-        bt.logging.info("Synchronizing metadata and serving counters.")
+        logger.info("Synchronizing metadata and serving counters.")
         self.rate_limit_per_tier = self.get_rate_limit_per_tier()
-        bt.logging.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
+        logger.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
         self.metadata = self._update_metadata()
         self.serving_counter: dict[str, dict[int, ServingCounter]] = (
             self._create_serving_counter()
@@ -238,7 +239,7 @@ class MinerManager:
         metadata_df = pd.DataFrame(metadata_dict).T
         metadata_df = metadata_df.reset_index()
         metadata_df.columns = ["uid", "tier", "elo_rating"]
-        bt.logging.info("\n" + metadata_df.to_string(index=True))
+        logger.info("\n" + metadata_df.to_string(index=True))
 
     async def report_metadata(self):
         """
@@ -271,11 +272,11 @@ class MinerManager:
             )
 
         if response.status_code != 200:
-            bt.logging.error(
+            logger.error(
                 f"Failed to report metadata to the Validator Server. Response: {response.text}"
             )
         else:
-            bt.logging.success("Reported metadata to the Validator Server.")
+            logger.success("Reported metadata to the Validator Server.")
 
     def _update_metadata(self):
         """
@@ -317,7 +318,7 @@ class MinerManager:
 
             # Reset ELO rating if tier changed
             if new_tier != current_tier:
-                bt.logging.info(
+                logger.info(
                     f"Tier of uid {uid} changed from {current_tier} to {new_tier}."
                 )
                 current_elo = constants.INITIAL_ELO_RATING
@@ -326,7 +327,7 @@ class MinerManager:
 
         # Update self.metadata with the newly computed metadata
         self.metadata = metadata
-        bt.logging.success(f"Updated metadata for {len(uids)} uids.")
+        logger.success(f"Updated metadata for {len(uids)} uids.")
         return self.metadata
 
     def get_rate_limit_per_tier(self):

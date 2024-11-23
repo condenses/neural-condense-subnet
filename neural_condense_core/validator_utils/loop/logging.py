@@ -1,6 +1,11 @@
 import bittensor as bt
 import wandb
 import pandas as pd
+import structlog
+
+bt.logging.disable_default_logging()
+
+logger = structlog.get_logger()
 
 
 def log_wandb(logs: dict, uids: list[int], tier=""):
@@ -12,10 +17,10 @@ def log_wandb(logs: dict, uids: list[int], tier=""):
                         continue
                     wandb.log({f"{tier}-{uid}/perplexity": abs(value)})
     except Exception as e:
-        bt.logging.error(f"Error logging to wandb: {e}")
+        logger.error(f"Error logging to wandb: {e}")
 
 
-def log_as_dataframe(data: dict, name: str):
+def log_as_dataframe(data: dict):
     for metric, values in data.items():
         for i in range(len(values)):
             if values[i] is None:
@@ -23,5 +28,4 @@ def log_as_dataframe(data: dict, name: str):
             if isinstance(values[i], float):
                 values[i] = round(values[i], 2)
     df = pd.DataFrame(data)
-    bt.logging.info(f"Logging dataframe {name}:\n{df}")
     return df

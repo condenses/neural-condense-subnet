@@ -5,14 +5,14 @@ from neural_condense_core import (
     __spec_version__,
 )
 import bittensor as bt
-import threading
 import random
 from transformers import AutoTokenizer
 import numpy as np
-import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor
 import asyncio
+import pandas as pd
+
+logger = vutils.loop.logging.logger
 
 
 class Validator(base.BaseValidator):
@@ -42,16 +42,16 @@ class Validator(base.BaseValidator):
                     config=self.config,
                     metagraph=self.metagraph,
                 )
-                bt.logging.info("Starting organic gate.")
+                logger.info("Starting organic gate.")
             except Exception as e:
-                bt.logging.error(f"Starting organic gate error: {e}")
+                logger.error(f"Starting organic gate error: {e}")
 
         if self.config.validator.use_wandb:
             vutils.loop.initialize_wandb(self.dendrite, self.metagraph, self.uid)
 
         weights = self.miner_manager.get_normalized_ratings()
-        bt.logging.info(f"Weights: {weights}")
-        bt.logging.info(f"Uids: {self.metagraph.uids}")
+        logger.info(f"Weights: {weights}")
+        logger.info(f"Uids: {self.metagraph.uids}")
 
         # Add a thread pool executor
         self.loop = asyncio.get_event_loop()
@@ -61,7 +61,7 @@ class Validator(base.BaseValidator):
         Main validation loop that processes miners across all tiers.
         Syncs miner state and runs validation in parallel threads.
         """
-        bt.logging.info("Running epoch.")
+        logger.info("Running epoch.")
         self.miner_manager.sync()
         tasks = [
             self.loop.create_task(self._forward_tier(tier))
@@ -72,16 +72,16 @@ class Validator(base.BaseValidator):
                 asyncio.gather(*tasks), timeout=constants.EPOCH_LENGTH * 1.5
             )
         except asyncio.TimeoutError:
-            bt.logging.warning("Epoch tasks timed out, continuing to next epoch")
+            logger.warning("Epoch tasks timed out, continuing to next epoch")
         except Exception as e:
-            bt.logging.error(f"Error running epoch tasks: {e}")
+            logger.error(f"Error running epoch tasks: {e}")
             traceback.print_exc()
 
         try:
             await self.miner_manager.report_metadata()
             self.miner_manager.save_state()
         except Exception as e:
-            bt.logging.error(f"Failed to report metadata & save-state: {e}")
+            logger.error(f"Failed to report metadata & save-state: {e}")
 
     async def _forward_tier(self, tier: str):
         """
@@ -91,7 +91,7 @@ class Validator(base.BaseValidator):
             tier (str): The tier level to process
         """
         if constants.TIER_CONFIG[tier].incentive_percentage == 0:
-            bt.logging.info(f"Tier {tier} has no incentive percentage.")
+            logger.info(f"Tier {tier} has no incentive percentage.")
             return
 
         model_name = random.choice(constants.TIER_CONFIG[tier].supporting_models)
@@ -99,7 +99,7 @@ class Validator(base.BaseValidator):
         serving_counter = self.miner_manager.serving_counter.get(tier, {})
 
         if not serving_counter:
-            bt.logging.info(f"No miners in tier {tier}.")
+            logger.info(f"No miners in tier {tier}.")
             return
         rate_limit = self.miner_manager.rate_limit_per_tier[tier]
         n_sets = max(
@@ -174,7 +174,7 @@ class Validator(base.BaseValidator):
                     tier_config=constants.TIER_CONFIG[tier],
                 )
             )
-            metrics = await vutils.loop.process_and_score_responses(
+            metrics, total_uids = await vutils.loop.process_and_score_responses(
                 miner_manager=self.miner_manager,
                 valid_responses=valid_responses,
                 valid_uids=valid_uids,
@@ -193,14 +193,22 @@ class Validator(base.BaseValidator):
             batch_information = (
                 f"Batch Metrics - {tier} - {model_name} - {task_config.task}"
             )
-            batch_report_df = vutils.loop.logging.log_as_dataframe(
-                metrics, batch_information
-            )
+            batch_report_df = vutils.loop.logging.log_as_dataframe(metrics)
+            with pd.option_context(
+                "display.max_columns", None, "display.max_rows", None
+            ):
+                logger.info(
+                    f"Logging dataframe {batch_information}:\n{batch_report_df}"
+                )
+
+            if self.config.validator.use_wandb:
+                vutils.loop.log_wandb(metrics, total_uids, tier=tier)
+
             await self.miner_manager.report(batch_report_df.to_dict(), "batch-report")
 
         except Exception as e:
             traceback.print_exc()
-            bt.logging.error(f"Error: {e}")
+            logger.error(f"Error: {e}")
 
     def set_weights(self):
         """Set weights for miners based on their performance."""
@@ -209,9 +217,9 @@ class Validator(base.BaseValidator):
         weights = self.miner_manager.get_normalized_ratings()
         if np.all(weights == 0):
             weights = np.ones(len(self.metagraph.uids))
-            bt.logging.info("All weights are zero, setting to ones.")
-        bt.logging.info(f"Weights: {weights}")
-        bt.logging.info(f"Uids: {self.metagraph.uids}")
+            logger.info("All weights are zero, setting to ones.")
+        logger.info(f"Weights: {weights}")
+        logger.info(f"Uids: {self.metagraph.uids}")
         if self.current_block > self.last_update + constants.SUBNET_TEMPO:
             result = self.subtensor.set_weights(
                 netuid=self.config.netuid,
@@ -221,10 +229,10 @@ class Validator(base.BaseValidator):
                 wait_for_inclusion=True,
                 version_key=__spec_version__,
             )
-            bt.logging.info(f"Set weights result: {result}")
+            logger.info(f"Set weights result: {result}")
             self.resync_metagraph()
         else:
-            bt.logging.info(
+            logger.info(
                 f"Not setting weights because current block {self.current_block} is not greater than last update {self.last_update} + tempo {constants.SUBNET_TEMPO}"
             )
 
