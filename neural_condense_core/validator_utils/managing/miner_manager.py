@@ -165,9 +165,9 @@ class MinerManager:
             uids_ratings = list(zip(tier_uids, tier_ratings))
             if uids_ratings:
                 # Give zeros to rating of miners not in top_percentage
-                top_miners = int(len(tier_ratings) * top_percentage)
+                n_top_miners = max(1, int(len(tier_ratings) * top_percentage))
                 top_miners = sorted(uids_ratings, key=lambda x: x[1], reverse=True)[
-                    :top_miners
+                    :n_top_miners
                 ]
                 top_uids, _ = zip(*top_miners)
                 thresholded_ratings = tier_ratings.copy()
@@ -181,7 +181,7 @@ class MinerManager:
                     "thresholded_ratings": thresholded_ratings,
                 }
                 logger.info(
-                    f"Thresholded Ratings for Tier {tier} :\n{pd.DataFrame(data).to_markdown()}"
+                    f"Thresholded Ratings for Tier {tier} (thresholded by {top_percentage}) :\n{pd.DataFrame(data).to_markdown()}"
                 )
                 # Normalize ELO ratings to weights, sum to 1
                 normalized_ratings = self.elo_system.normalize_ratings(
