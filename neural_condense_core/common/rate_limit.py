@@ -26,8 +26,6 @@ def build_rate_limit(metagraph, config, tier=None):
     for uid in range(len(S)):
         if uid not in whitelist_uids:
             rate_limits[uid] = 0
-
-    logger.info(
-        f"Rate limits for tier {tier}:\n{pd.DataFrame({"rate_limits": rate_limits}).to_markdown()}"
-    )
+    _df = pd.DataFrame({"rate_limits": rate_limits})
+    logger.info(f"Rate limits for tier {tier}:\n{_df.to_markdown()}")
     return rate_limits
