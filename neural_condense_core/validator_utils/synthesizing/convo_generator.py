@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 import httpx
 import substrateinterface as st
 import time
+import random
 
 
 class ConvoGenerator:
@@ -10,6 +11,11 @@ class ConvoGenerator:
         keypair: st.Keypair,
     ):
         self.model_id = "chat-llama-3-1-8b"
+        self.model_ids = [
+            "chat-llama-3-1-8b",
+            "chat-llama-3-1-70b",
+            "chat-llama-3-2-3b",
+        ]
         self.url = "https://api.nineteen.ai/v1/chat/completions"
         self.keypair = keypair
         self.client = httpx.AsyncClient()
@@ -36,11 +42,11 @@ class ConvoGenerator:
 
     async def _make_api_call(self, messages, sampling_params):
         payload = sampling_params | {
-            "model": self.model_id,
+            "model": random.choice(self.model_ids),
             "messages": messages,
         }
         response = await self.client.post(
-            self.url, json=payload, headers=self._get_headers()
+            self.url, json=payload, headers=self._get_headers(), timeout=32
         )
         if response.status_code != 200:
             raise Exception(f"Nineteen API Error: {response.text}")
