@@ -61,27 +61,24 @@ class OrganicGate:
         self.client_axon: bt.AxonInfo = None
         self.authentication_key = "".join(random.choices("0123456789abcdef", k=16))
         self.start_server()
-        self.register_to_client()
-        self.sync_thread = Thread(
-            target=self._run_function_periodically,
-            args=(self.register_to_client, 60),
+        asyncio.create_task(
+            self._run_function_periodically(self.register_to_client, 60)
         )
-        self.sync_thread.start()
 
-    def _run_function_periodically(self, function, interval):
+    async def _run_function_periodically(self, function, interval):
         while True:
             logger.info(
                 f"Running function {function.__name__} every {interval} seconds."
             )
             try:
-                function()
+                await function()
             except Exception as e:
                 logger.error(f"Error running function {function.__name__}: {e}")
-            time.sleep(interval)
+            await asyncio.sleep(interval)
 
-    def register_to_client(self):
+    async def register_to_client(self):
         payload = RegisterPayload(port=self.config.validator.gate_port)
-        self.call(payload, timeout=12)
+        await self.call(payload, timeout=12)
 
     async def _authenticate(self, request: Request):
         message = request.headers["message"]
@@ -108,14 +105,34 @@ class OrganicGate:
                 ]
                 if counter.increment():
                     targeted_uid = request.miner_uid
+                else:
+                    logger.warning(f"Miner {request.miner_uid} is under rate limit.")
+                    return HTTPException(
+                        status_code=503,
+                        detail="Miner is under rate limit.",
+                    )
             else:
-                # Get list of items and shuffle them
-                items = list(self.miner_manager.serving_counter[request.tier].items())
-                random.shuffle(items)
-                for uid, counter in items:
-                    if counter.increment():
-                        targeted_uid = uid
-                        break
+                # Get miners in the requested tier sorted by ELO rating
+                tier_miners = [
+                    (uid, metadata.elo_rating)
+                    for uid, metadata in self.miner_manager.metadata.items()
+                    if metadata.tier == request.tier
+                ]
+                tier_miners.sort(key=lambda x: x[1], reverse=True)
+
+                # Try top miners until we find one under rate limit
+                top_k = max(1, int(len(tier_miners) * request.top_incentive))
+                top_miners = tier_miners[:top_k]
+                random.shuffle(top_miners)  # Randomize among top performers
+                logger.info(f"Top {top_k} miners: {top_miners}")
+
+                for uid, _ in top_miners:
+                    if uid in self.miner_manager.serving_counter[request.tier]:
+                        counter = self.miner_manager.serving_counter[request.tier][uid]
+                        if counter.increment():
+                            targeted_uid = uid
+                            break
+
             if targeted_uid is None:
                 raise HTTPException(
                     status_code=503,
@@ -129,13 +146,24 @@ class OrganicGate:
                 timeout=constants.TIER_CONFIG[request.tier].timeout,
                 deserialize=False,
             )
-            # response.verify()  # TODO: Put it into the background
+            asyncio.create_task(self._organic_validating(response, request.tier))
             logger.info(f"Compressed to url: {response.compressed_kv_url}")
         except Exception as e:
             logger.error(f"Error: {e}")
             raise HTTPException(status_code=503, detail="Validator error.")
 
         return OrganicResponse(compressed_kv_url=response.compressed_kv_url)
+
+    async def _organic_validating(self, response, tier):
+        if random.random() < constants.ORGANIC_VERIFY_FREQUENCY:
+            is_valid, reason = await TextCompressProtocol.verify(
+                response, constants.TIER_CONFIG[tier]
+            )
+
+            if not is_valid:
+                logger.warning(f"Invalid response: {reason}")
+
+            # TODO: Update miner's ELO rating
 
     def start_server(self):
         self.executor = ThreadPoolExecutor(max_workers=1)
@@ -152,7 +180,7 @@ class OrganicGate:
     async def health_check(self):
         return {"status": "healthy"}
 
-    def call(
+    async def call(
         self,
         payload: RegisterPayload,
         timeout: float = 12.0,
@@ -182,8 +210,8 @@ class OrganicGate:
             "signature": signature,
         }
 
-        with httpx.Client() as client:
-            response = client.post(
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
                 url,
                 json=payload.model_dump(),
                 headers=headers,

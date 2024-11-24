@@ -1,6 +1,5 @@
 from transformers import AutoTokenizer
 import re
-import threading
 import substrateinterface as st
 from .scheduler import Scheduler
 from .convo_generator import ConvoGenerator
@@ -46,7 +45,6 @@ class ChallengeGenerator:
             assert (
                 task.task in self.task_to_builder
             ), f"Task {task.task} not supported. Supported tasks: {list(self.task_to_builder.keys())}"
-        self.lock = threading.Lock()  # Ensures thread safety for dataset access
 
     @retry(max_attempts=3)
     async def generate_challenge(

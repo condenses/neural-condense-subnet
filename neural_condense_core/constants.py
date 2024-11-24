@@ -105,6 +105,7 @@ class Constants(BaseModel):
         "intermediate": EloGroup(min_elo=800, max_elo=1600, k_factor=16),
         "advanced": EloGroup(min_elo=1600, max_elo=3000, k_factor=4),
     }
+    ORGANIC_VERIFY_FREQUENCY: float = 0.1
 
     # Adjust values based on NETWORK environment variable
     def __init__(self, **data):
