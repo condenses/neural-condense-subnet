@@ -35,22 +35,18 @@ class ConvoGenerator:
         return a_messages
 
     async def _make_api_call(self, messages, sampling_params):
-        try:
-            payload = sampling_params | {
-                "model": self.model_id,
-                "messages": messages,
-            }
-            response = await self.client.post(
-                self.url, json=payload, headers=self._get_headers()
-            )
-            if response.status_code != 200:
-                raise Exception(f"❌ Nineteen API Error: {response.text}")
-            data = response.json()
-            content = data["choices"][0]["message"]["content"]
-            return content
-        except Exception as e:
-            print(response.text)
-            raise e
+        payload = sampling_params | {
+            "model": self.model_id,
+            "messages": messages,
+        }
+        response = await self.client.post(
+            self.url, json=payload, headers=self._get_headers()
+        )
+        if response.status_code != 200:
+            raise Exception(f"❌ Nineteen API Error: {response.text}")
+        data = response.json()
+        content = data["choices"][0]["message"]["content"]
+        return content
 
     async def generate_conversation(
         self,
