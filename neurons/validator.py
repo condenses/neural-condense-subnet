@@ -201,7 +201,13 @@ class Validator(base.BaseValidator):
                 vutils.loop.logging.log_wandb(metrics, total_uids, tier=tier)
 
             await self.miner_manager.report(
-                batch_report_df.to_dict(), "api/report-batch"
+                {
+                    "comparision": batch_report_df.to_dict(),
+                    "challenge": ground_truth_synapse.validator_payload,
+                    "task": task_config.task,
+                    "tier": tier,
+                },
+                "api/report-batch",
             )
 
         except Exception as e:
