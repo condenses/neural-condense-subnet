@@ -202,7 +202,7 @@ class Validator(base.BaseValidator):
             )
 
             if self.config.validator.use_wandb:
-                vutils.loop.log_wandb(metrics, total_uids, tier=tier)
+                vutils.loop.logging.log_wandb(metrics, total_uids, tier=tier)
 
             await self.miner_manager.report(
                 batch_report_df.to_dict(), "api/report-batch"
