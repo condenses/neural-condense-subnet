@@ -8,7 +8,7 @@ def log_wandb(logs: dict, uids: list[int], tier=""):
         for metric, values in logs.items():
             if metric == "perplexity":
                 for uid, value in zip(uids, values):
-                    if value is None:
+                    if value is None or not isinstance(value, float):
                         continue
                     wandb.log({f"{tier}-{uid}/perplexity": abs(value)})
     except Exception as e:
