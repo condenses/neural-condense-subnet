@@ -216,7 +216,9 @@ class Validator(base.BaseValidator):
         """Set weights for miners based on their performance."""
         self.current_block = self.subtensor.get_current_block()
         self.last_update = self.metagraph.last_update[self.uid]
-        weights = self.miner_manager.get_normalized_ratings()
+        weights = self.miner_manager.get_normalized_ratings(
+            top_percentage=constants.TOP_PERCENTAGE_FOR_ALLOCATING_WEIGHTS
+        )
         if np.all(weights == 0):
             weights = np.ones(len(self.metagraph.uids))
             logger.info("All weights are zero, setting to ones.")

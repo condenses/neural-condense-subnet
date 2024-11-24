@@ -142,9 +142,12 @@ class MinerManager:
             )
         return final_ratings, initial_ratings
 
-    def get_normalized_ratings(self) -> np.ndarray:
+    def get_normalized_ratings(self, top_percentage: float = 1.0) -> np.ndarray:
         """
         Calculate normalized ratings for all miners based on their tier and ELO rating.
+
+        Args:
+            top_percentage (float): Percentage of miners to consider for normalization
 
         Returns:
             np.ndarray: Array of normalized ratings for all miners
@@ -159,10 +162,31 @@ class MinerManager:
                 if metadata.tier == tier:
                     tier_ratings.append(metadata.elo_rating)
                     tier_uids.append(uid)
+            uids_ratings = list(zip(tier_uids, tier_ratings))
+            if uids_ratings:
+                # Give zeros to rating of miners not in top_percentage
+                top_miners = int(len(tier_ratings) * top_percentage)
+                top_miners = sorted(uids_ratings, key=lambda x: x[1], reverse=True)[
+                    :top_miners
+                ]
+                top_uids, _ = zip(*top_miners)
+                thresholded_ratings = tier_ratings.copy()
+                for i in range(len(tier_ratings)):
+                    if tier_uids[i] not in top_uids:
+                        thresholded_ratings[i] = 0
 
-            if tier_ratings:
+                data = {
+                    "uids": tier_uids,
+                    "original_ratings": tier_ratings,
+                    "thresholded_ratings": thresholded_ratings,
+                }
+                logger.info(
+                    f"Thresholded Ratings for Tier {tier} :\n{pd.DataFrame(data).to_markdown()}"
+                )
                 # Normalize ELO ratings to weights, sum to 1
-                normalized_ratings = self.elo_system.normalize_ratings(tier_ratings)
+                normalized_ratings = self.elo_system.normalize_ratings(
+                    thresholded_ratings
+                )
 
                 # Apply tier incentive percentage
                 tier_weights = (

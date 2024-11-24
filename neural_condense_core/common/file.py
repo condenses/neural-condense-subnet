@@ -77,6 +77,7 @@ async def load_npy_from_url(url: str, max_size_mb: int = 1024):
         with open(filename, "rb") as f:
             buffer = io.BytesIO(f.read())
             data = np.load(buffer)
+        os.remove(filename)
         return data, ""
 
     except Exception as e:
