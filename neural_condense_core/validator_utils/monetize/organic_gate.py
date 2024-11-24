@@ -7,7 +7,6 @@ import uvicorn
 from concurrent.futures import ThreadPoolExecutor
 import random
 import httpx
-from threading import Thread
 import time
 from ...constants import constants
 from ...protocol import TextCompressProtocol

@@ -2,7 +2,6 @@ import os
 import argparse
 import traceback
 import bittensor as bt
-import threading
 import time
 from substrateinterface import SubstrateInterface
 import concurrent.futures

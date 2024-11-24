@@ -35,6 +35,11 @@
 </div>
 
 ---
+
+## Changelogs
+- (25/11/2024) Version 0.0.2 Update: Added condensing activations layers, Switched to Distributed Storage from Restful API Transfer, Emissions now allocated only to the top 30% miners. 
+
+
 ## 🌟 Key Features:
 
 ### ⚡ Subnet as an Accelerate Adapter for LLM Inference

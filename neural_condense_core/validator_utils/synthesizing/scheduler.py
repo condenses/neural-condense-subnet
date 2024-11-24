@@ -1,5 +1,4 @@
 import redis
-import os
 from typing import Optional, List
 import random
 from datasets import load_dataset
