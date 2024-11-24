@@ -61,7 +61,7 @@ class OrganicGate:
         self.authentication_key = "".join(random.choices("0123456789abcdef", k=16))
         self.start_server()
         self.loop = asyncio.get_event_loop()
-        asyncio.create_task(
+        self.loop.create_task(
             self._run_function_periodically(self.register_to_client, 60)
         )
 
