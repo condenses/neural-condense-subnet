@@ -98,7 +98,7 @@ class Scheduler:
                         f"✅ QA Set: {self.redis.scard(self.qa_key)} - last_time: {current_time} - {total_chars} chars"
                     )
                 except Exception as e:
-                    logger.error(f"❌ Error generating QA set: {e}")
+                    logger.warning(f"❌ Error generating QA set: {e}")
             else:
                 self.redis.spop(self.qa_key)
             await asyncio.sleep(self.refresh_time)
@@ -122,7 +122,7 @@ class Scheduler:
                         f"✅ Conversation: {self.redis.scard(self.convo_key)} - last_time: {current_time} - {total_chars} chars"
                     )
                 except Exception as e:
-                    logger.error(f"❌ Error generating conversation: {e}")
+                    logger.warning(f"❌ Error generating conversation: {e}")
             else:
                 self.redis.spop(self.convo_key)
             await asyncio.sleep(self.refresh_time)
