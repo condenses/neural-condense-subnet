@@ -57,10 +57,10 @@ class OrganicGate:
             methods=["GET"],
             dependencies=[Depends(self.get_self)],
         )
-        self.loop = asyncio.get_event_loop()
         self.client_axon: bt.AxonInfo = None
         self.authentication_key = "".join(random.choices("0123456789abcdef", k=16))
         self.start_server()
+        self.loop = asyncio.get_event_loop()
         asyncio.create_task(
             self._run_function_periodically(self.register_to_client, 60)
         )

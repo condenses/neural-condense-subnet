@@ -22,7 +22,7 @@ def add_validator_config(parser: ArgumentParser):
     parser.add_argument(
         "--validator.gate_port",
         type=int,
-        default=12345,
+        default=None,
         help="The port of the validator gate server.",
     )
 
