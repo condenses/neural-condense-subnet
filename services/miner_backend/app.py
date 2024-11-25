@@ -15,6 +15,7 @@ logger = structlog.get_logger()
 
 class CompressionService:
     def __init__(self, algorithm: str):
+        self.dtype = torch.bfloat16
         self.algorithm = algorithm
         self._init_minio_client()
         self._init_model()
@@ -40,16 +41,20 @@ class CompressionService:
         if self.algorithm == "kvpress":
             self.ckpt = "Condense-AI/Mistral-7B-Instruct-v0.2"
             self.tokenizer = AutoTokenizer.from_pretrained(self.ckpt)
-            self.model = AutoModelForCausalLM.from_pretrained(self.ckpt).to(self.device)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.ckpt, torch_dtype=self.dtype
+            ).to(self.device)
             self.press = KnormPress(compression_ratio=0.75)
 
         elif self.algorithm == "soft_token":
             self.ckpt = "Condense-AI/Mistral-7B-Instruct-v0.2"
             self.repo_id = "Condense-AI/Soft-Token-Condenser-Llama-3.2-1B"
-            self.condenser = Condenser.from_pretrained(self.repo_id)
+            self.condenser = Condenser.from_pretrained(self.repo_id, dtype=self.dtype)
             self.condenser.eval()
             self.tokenizer = AutoTokenizer.from_pretrained(self.ckpt)
-            self.model = AutoModelForCausalLM.from_pretrained(self.ckpt).to(self.device)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.ckpt, torch_dtype=self.dtype
+            ).to(self.device)
             self.press = KnormPress(compression_ratio=0.75)
 
         elif self.algorithm == "activation_beacon":
@@ -61,7 +66,7 @@ class CompressionService:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.ckpt,
                 trust_remote_code=True,
-                torch_dtype=torch.bfloat16,
+                torch_dtype=self.dtype,
                 attn_implementation="sdpa",
                 ultragist_ratio=[4],
             ).to(self.device)

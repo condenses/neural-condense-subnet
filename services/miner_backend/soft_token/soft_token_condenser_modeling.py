@@ -42,7 +42,7 @@ class Condenser(nn.Module):
         )
 
     @classmethod
-    def from_pretrained(cls, repo_id, local_dir="./"):
+    def from_pretrained(cls, repo_id, local_dir="./", dtype=torch.bfloat16):
         # Download and load checkpoint
         file_path = huggingface_hub.hf_hub_download(
             repo_id=repo_id,
@@ -59,7 +59,7 @@ class Condenser(nn.Module):
 
         # Load model and tokenizer
         condense_model = AutoModelForCausalLM.from_pretrained(
-            repo_id, torch_dtype=torch.bfloat16
+            repo_id, torch_dtype=dtype
         ).to("cuda")
         condense_tokenizer = AutoTokenizer.from_pretrained("unsloth/Llama-3.2-1B")
         condense_tokenizer.pad_token = condense_tokenizer.eos_token
