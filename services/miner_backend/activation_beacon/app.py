@@ -28,7 +28,7 @@ class ABCompressor:
 
         # Initialize MinIO client
         self.minio_client = minio.Minio(
-            os.getenv("MINIO_SERVER", "minio.condenses.ai").split("://")[1],
+            os.getenv("MINIO_SERVER", "minio.condenses.ai"),
             access_key=os.getenv("MINIO_ACCESS_KEY"),
             secret_key=os.getenv("MINIO_SECRET_KEY"),
             secure=True,
