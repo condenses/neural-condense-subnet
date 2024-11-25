@@ -1,22 +1,30 @@
 from flask import Flask, request, jsonify
 import time
 from transformers import AutoModelForCausalLM, AutoTokenizer, DynamicCache
-from kvpress import KnormPress
 import torch
 from .utils import upload_to_minio
 import os
 import minio
 
 
-class KVPressService:
+class ABCompressor:
     def __init__(self):
         self.device = "cuda"
-        self.ckpt = "Condense-AI/Mistral-7B-Instruct-v0.2"
+        self.ckpt = "namespace-Pt/ultragist-mistral-7b-inst"
         self.bucket_name = os.getenv("MINIO_BUCKET", "condense_miner")
         # Initialize model components
-        self.tokenizer = AutoTokenizer.from_pretrained(self.ckpt)
-        self.model = AutoModelForCausalLM.from_pretrained(self.ckpt).to(self.device)
-        self.press = KnormPress(compression_ratio=0.75)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.ckpt,
+            trust_remote_code=True,
+        )
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.ckpt,
+            trust_remote_code=True,
+            torch_dtype=torch.bfloat16,
+            attn_implementation="sdpa",
+            # you can manually set the compression ratio, otherwise the model will automatically choose the most suitable compression ratio from [2,4,8,16,32]
+            ultragist_ratio=[4],
+        ).to(self.device)
 
         # Initialize MinIO client
         self.minio_client = minio.Minio(
@@ -26,31 +34,21 @@ class KVPressService:
             secure=True,
         )
 
-        # Validate model setup
-        self._validate_model_setup()
-
-    def _validate_model_setup(self):
-        """Validate the model setup with dummy inputs"""
-        inputs = self.model.dummy_inputs["input_ids"].to(self.device)
-
-        with torch.no_grad():
-            original_shape = self.model(inputs).past_key_values[0][0].shape
-
-        with torch.no_grad(), self.press(self.model):
-            compressed_shape = self.model(inputs).past_key_values[0][0].shape
-
-        print(f"Original shape: {original_shape}")
-        print(f"Compressed shape: {compressed_shape}")
-
     def compress_context(self, context: str) -> tuple[str, str]:
         """Compress context and store KV pairs"""
         input_ids = self.tokenizer(context, return_tensors="pt").input_ids.to(
             self.device
         )
 
-        with torch.no_grad(), self.press(self.model):
-            past_key_values = self.model(input_ids).past_key_values
-
+        self.model.memory.reset()
+        self.model(input_ids=input_ids)
+        past_key_values = self.model.memory.get_memory()
+        ultragist_size, raw_size, sink_size = self.model.memory.get_memory_size()
+        print(f"UltraGist size:   {ultragist_size}")
+        print(f"Raw size:         {raw_size}")
+        print(f"Sink size:        {sink_size}")
+        print(f"Memory:           {past_key_values[0][0].shape}")
+        print("*" * 20)
         DynamicCache(past_key_values)
 
         # Convert to numpy arrays
@@ -73,7 +71,7 @@ class KVPressService:
 
 # Initialize Flask app and KVPress service
 app = Flask(__name__)
-kv_service = KVPressService()
+kv_service = ABCompressor()
 
 
 @app.route("/condense", methods=["POST"])
