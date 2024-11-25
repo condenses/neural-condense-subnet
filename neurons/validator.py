@@ -68,9 +68,9 @@ class Validator(base.BaseValidator):
             for tier in constants.TIER_CONFIG
         ]
         try:
-            await asyncio.gather(*tasks)
-        except asyncio.TimeoutError:
-            logger.warning("Epoch tasks timed out, continuing to next epoch")
+            await asyncio.gather(*tasks, return_exceptions=True)
+        except asyncio.TimeoutError as e:
+            logger.warning(f"Epoch tasks timed out: {e}")
         except Exception as e:
             logger.error(f"Error running epoch tasks: {e}")
             traceback.print_exc()
@@ -125,8 +125,7 @@ class Validator(base.BaseValidator):
                 futures.append(future)
                 await asyncio.sleep(sleep_per_batch)
 
-        for future in futures:
-            future.result()
+        await asyncio.gather(*futures, return_exceptions=True)
 
     async def _forward_batch(
         self,
