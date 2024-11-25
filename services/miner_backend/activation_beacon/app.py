@@ -27,11 +27,12 @@ class ABCompressor:
         ).to(self.device)
 
         # Initialize MinIO client
+        self.minio_url = f"http://{os.getenv('MINIO_SERVER', 'minio.condenses.ai')}"
         self.minio_client = minio.Minio(
             os.getenv("MINIO_SERVER", "minio.condenses.ai"),
             access_key=os.getenv("MINIO_ACCESS_KEY"),
             secret_key=os.getenv("MINIO_SECRET_KEY"),
-            secure=True,
+            secure=False,
         )
 
     def compress_context(self, context: str) -> tuple[str, str]:
@@ -53,7 +54,7 @@ class ABCompressor:
 
         # Convert to numpy arrays
         numpy_past_key_values = tuple(
-            tuple(tensor.cpu().numpy() for tensor in tensors)
+            tuple(tensor.to(dtype=torch.float32).cpu().numpy() for tensor in tensors)
             for tensors in past_key_values
         )
         print(numpy_past_key_values[0][0].shape)
@@ -66,7 +67,7 @@ class ABCompressor:
             self.minio_client, self.bucket_name, filename, numpy_past_key_values
         )
 
-        return f"{self.minio_client.endpoint_url}/{self.bucket_name}/{filename}"
+        return f"{self.minio_url}/{self.bucket_name}/{filename}"
 
 
 # Initialize Flask app and KVPress service
