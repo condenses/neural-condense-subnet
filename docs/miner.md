@@ -79,20 +79,51 @@ miner_netuid=47
 miner_subtensor_network="finney"
 ```
 
-4. Run the miner backend. Example of using our baseline KVPress as a backend. You have to collect the `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_SERVER` from the minio setup (see [minio.md](./minio.md)):
+4. Run the miner backend. You have to collect the `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_SERVER` from the minio setup (see [minio.md](./minio.md)).
+
+There are three compression algorithms available:
+- `kvpress`: Basic KV-cache compression
+- `soft_token`: Soft token compression (requires additional model)
+- `activation_beacon`: Activation beacon compression
+
 ```bash
 export MINIO_ACCESS_KEY="your_minio_access_key"
 export MINIO_SECRET_KEY="your_minio_secret_key"
 export MINIO_BUCKET="condense_miner"
 export MINIO_SERVER="your_minio_server"
+
+# Choose one of the following commands based on your preferred algorithm:
+
+# For KVPress compression:
 pm2 start python --name condense_miner_backend \
--- -m gunicorn services.miner_backend.kvpress.app:app \
+-- -m gunicorn "services.miner_backend.app:create_app('kvpress')" \
+--timeout 120 \
+--bind 0.0.0.0:$miner_backend_port
+
+# For Soft Token compression:
+pm2 start python --name condense_miner_backend \
+-- -m gunicorn "services.miner_backend.app:create_app('soft_token')" \
+--timeout 120 \
+--bind 0.0.0.0:$miner_backend_port
+
+# For Activation Beacon compression:
+pm2 start python --name condense_miner_backend \
+-- -m gunicorn "services.miner_backend.app:create_app('activation_beacon')" \
 --timeout 120 \
 --bind 0.0.0.0:$miner_backend_port
 ```
-*You can choose other backends in the `services/miner_backend/` folder.*
 
-*If you select `soft_token` backend, you can train your own model using our prepared trainer at [Condense-Trainer](https://github.com/condenses/condense-trainer).*
+**Note**: 
+- If using `soft_token` algorithm, you can train your own model using our prepared trainer at [Condense-Trainer](https://github.com/condenses/condense-trainer).
+- Each algorithm has different GPU memory requirements:
+  - `kvpress`: ~24GB VRAM
+  - `soft_token`: ~24GB VRAM + additional memory for condenser model
+  - `activation_beacon`: ~24GB VRAM
+
+You can also run the backend directly without PM2 for testing:
+```bash
+python -m gunicorn "services.miner_backend.app:create_app('kvpress')" --bind 0.0.0.0:8080
+```
 
 5. Run the mining script
 ```bash
