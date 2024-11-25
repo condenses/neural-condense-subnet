@@ -19,11 +19,12 @@ class KVPressService:
         self.press = KnormPress(compression_ratio=0.75)
 
         # Initialize MinIO client
+        self.endpoint_url = os.getenv("MINIO_SERVER", "http://minio.condenses.ai")
         self.minio_client = minio.Minio(
             os.getenv("MINIO_SERVER", "minio.condenses.ai").split("://")[1],
             access_key=os.getenv("MINIO_ACCESS_KEY"),
             secret_key=os.getenv("MINIO_SECRET_KEY"),
-            secure=True,
+            secure=False,
         )
 
         # Validate model setup
@@ -68,7 +69,7 @@ class KVPressService:
             self.minio_client, self.bucket_name, filename, numpy_past_key_values
         )
 
-        return f"{self.minio_client.endpoint_url}/{self.bucket_name}/{filename}"
+        return f"{self.endpoint_url}/{self.bucket_name}/{filename}"
 
 
 # Initialize Flask app and KVPress service
