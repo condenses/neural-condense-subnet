@@ -120,14 +120,7 @@ class Validator(ABC):
             time.sleep(time_to_sleep)
 
             try:
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(self.set_weights)
-                    try:
-                        future.result(timeout=constants.SET_WEIGHTS_TIMEOUT)
-                    except concurrent.futures.TimeoutError:
-                        logger.warning(
-                            "Set weights timeout reached, continuing to next epoch"
-                        )
+                self.set_weights()
 
             except Exception as e:
                 logger.error(f"Set weights error: {e}")

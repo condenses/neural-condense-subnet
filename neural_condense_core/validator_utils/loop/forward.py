@@ -161,27 +161,30 @@ async def get_scoring_metrics(
     timeout: int = 120,
     config: bt.config = None,
 ) -> dict[str, list]:
-    payload = {
-        "miner_responses": [
-            {"compressed_kv_b64": r.compressed_kv_b64} for r in valid_responses
-        ],
-        "ground_truth_request": ground_truth_synapse.validator_payload
-        | {"model_name": model_name, "criterias": task_config.criterias},
-    }
+    try:
+        payload = {
+            "miner_responses": [
+                {"compressed_kv_b64": r.compressed_kv_b64} for r in valid_responses
+            ],
+            "ground_truth_request": ground_truth_synapse.validator_payload
+            | {"model_name": model_name, "criterias": task_config.criterias},
+        }
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics",
-            json=payload,
-            timeout=timeout,
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics",
+                json=payload,
+                timeout=timeout,
+            )
+            scoring_response = response.json()
+        metrics = scoring_response["metrics"]
+        metrics["accelerate_metrics"] = [r.accelerate_score for r in valid_responses]
+        metrics = update_metrics_of_invalid_miners(
+            invalid_uids=invalid_uids,
+            metrics=metrics,
         )
-        scoring_response = response.json()
-    metrics = scoring_response["metrics"]
-    metrics["accelerate_metrics"] = [r.accelerate_score for r in valid_responses]
-    metrics = update_metrics_of_invalid_miners(
-        invalid_uids=invalid_uids,
-        metrics=metrics,
-    )
+    except Exception as e:
+        logger.warning(f"Error getting scoring metrics: {e}")
     return metrics
 
 
