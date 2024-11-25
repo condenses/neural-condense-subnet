@@ -8,6 +8,7 @@ from ...logger import logger
 from ..synthesizing.challenge_generator import ChallengeGenerator
 from ..managing.miner_manager import MinerManager, ServingCounter, MetadataItem
 from ...constants import SyntheticTaskConfig, TierConfig
+import asyncio
 
 
 def get_task_config() -> SyntheticTaskConfig:
@@ -85,18 +86,31 @@ async def validate_responses(
     responses: list[TextCompressProtocol], uids: list[int], tier_config: TierConfig
 ) -> tuple[list[TextCompressProtocol], list[int], list[int], list[str]]:
     valid_responses, valid_uids, invalid_uids, invalid_reasons = [], [], [], []
-    for uid, response in zip(uids, responses):
+
+    # Add recursion limit protection
+    async def verify_single_response(response):
         try:
-            is_valid, reason = await TextCompressProtocol.verify(response, tier_config)
-            if is_valid:
-                valid_responses.append(response)
-                valid_uids.append(uid)
-            else:
-                invalid_uids.append(uid)
-                invalid_reasons.append(reason)
+            # Add timeout to prevent hanging
+            is_valid, reason = await asyncio.wait_for(
+                TextCompressProtocol.verify(response, tier_config), timeout=16
+            )
+            return is_valid, reason
+        except asyncio.TimeoutError:
+            return False, "Verification timeout"
+        except RecursionError:
+            return False, "Recursion limit exceeded"
         except Exception as e:
+            return False, str(e)
+
+    for uid, response in zip(uids, responses):
+        is_valid, reason = await verify_single_response(response)
+        if is_valid:
+            valid_responses.append(response)
+            valid_uids.append(uid)
+        else:
             invalid_uids.append(uid)
-            invalid_reasons.append(str(e))
+            invalid_reasons.append(reason)
+
     return valid_responses, valid_uids, invalid_uids, invalid_reasons
 
 

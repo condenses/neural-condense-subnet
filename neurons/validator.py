@@ -107,7 +107,10 @@ class Validator(base.BaseValidator):
         sleep_per_set = constants.EPOCH_LENGTH / n_sets
         futures = []
 
-        for _ in range(n_sets):
+        for i in range(n_sets):
+            logger.info(
+                f"Processing set {i}/{n_sets} then sleeping for {sleep_per_set} seconds."
+            )
             pre_batched_uids = vutils.loop.get_batched_uids(
                 serving_counter, self.miner_manager.metadata
             )
@@ -164,6 +167,10 @@ class Validator(base.BaseValidator):
                 synapse=synapse,
                 timeout=constants.TIER_CONFIG[tier].timeout,
             )
+
+            if not responses:
+                logger.warning(f"No responses from {batched_uids}.")
+                return
             (
                 valid_responses,
                 valid_uids,
