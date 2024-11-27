@@ -12,6 +12,8 @@ from transformers import AutoTokenizer
 import numpy as np
 import traceback
 import asyncio
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+import time
 
 
 class Validator(base.BaseValidator):
@@ -251,29 +253,31 @@ class Validator(base.BaseValidator):
         logger.info(f"Weight info:\n{weight_info_df.to_markdown()}")
         if self.current_block > self.last_update + constants.SUBNET_TEMPO:
             logger.info("Actually trying to set weights.")
-            try:
-                # Add timeout using asyncio
-                result = asyncio.run_coroutine_threadsafe(
-                    self.subtensor.set_weights(
+
+            # Use ThreadPoolExecutor to add timeout capability
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                try:
+                    # Submit the task to the executor with a timeout
+                    future = executor.submit(
+                        self.subtensor.set_weights,
                         netuid=self.config.netuid,
                         wallet=self.wallet,
                         uids=self.metagraph.uids,
                         weights=weights,
                         wait_for_inclusion=True,
                         version_key=__spec_version__,
-                    ),
-                    self.loop,
-                ).result(
-                    timeout=300
-                )  # 5 minute timeout
+                    )
 
-                logger.info(f"Set weights result: {result}")
-                self.resync_metagraph()
-            except asyncio.TimeoutError:
-                logger.error("Setting weights timed out after 5 minutes")
-            except Exception as e:
-                logger.error(f"Failed to set weights: {e}")
-                traceback.print_exc()
+                    # Wait for the result with a timeout
+                    result = future.result(timeout=300)  # 5 minute timeout
+                    logger.info(f"Set weights result: {result}")
+                    self.resync_metagraph()
+
+                except TimeoutError:
+                    logger.error("Setting weights timed out after 5 minutes")
+                except Exception as e:
+                    logger.error(f"Failed to set weights: {e}")
+                    traceback.print_exc()
         else:
             logger.info(
                 f"Not setting weights because current block {self.current_block} is not greater than last update {self.last_update} + tempo {constants.SUBNET_TEMPO}"
