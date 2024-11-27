@@ -5,6 +5,7 @@ import time
 import httpx
 import os
 from tqdm import tqdm
+from starlette.concurrency import run_in_threadpool
 from ..logger import logger
 
 os.makedirs("tmp", exist_ok=True)
@@ -58,7 +59,8 @@ async def load_npy_from_url(url: str, max_size_mb: int = 1024):
             start_time = time.time()
 
             # Use hf_transfer to download the file
-            hf_transfer.download(
+            await run_in_threadpool(
+                hf_transfer.download,
                 url=url,
                 filename=filename,
                 max_files=max_files,
