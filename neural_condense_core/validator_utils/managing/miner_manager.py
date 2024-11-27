@@ -5,6 +5,7 @@ import httpx
 import pandas as pd
 import threading
 import time
+import asyncio
 from pydantic import BaseModel
 from .metric_converter import MetricConverter
 from .elo import ELOSystem
@@ -102,7 +103,8 @@ class MinerManager:
         self.rate_limit_per_tier = self.get_rate_limit_per_tier()
         logger.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
         self.load_state()
-        self.sync()
+        self.loop = asyncio.get_event_loop()
+        self.loop.run_until_complete(self.sync())
 
     def update_ratings(
         self,
@@ -237,14 +239,14 @@ class MinerManager:
         metadata = {int(uid): MetadataItem() for uid in self.metagraph.uids}
         return metadata
 
-    def sync(self):
+    async def sync(self):
         """
         Synchronize metadata and serving counters for all miners.
         """
         logger.info("Synchronizing metadata and serving counters.")
         self.rate_limit_per_tier = self.get_rate_limit_per_tier()
         logger.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
-        self.metadata = self._update_metadata()
+        self.metadata = await self._update_metadata()
         self.serving_counter: dict[str, dict[int, ServingCounter]] = (
             self._create_serving_counter()
         )
@@ -301,7 +303,7 @@ class MinerManager:
         else:
             logger.info(f"Reported to the {endpoint}.")
 
-    def _update_metadata(self):
+    async def _update_metadata(self):
         """
         Update metadata for all miners by querying their status.
         Does not consume validator's serving counter.
@@ -314,7 +316,7 @@ class MinerManager:
         uids = [uid for uid in range(len(self.metagraph.hotkeys))]
         axons = [self.metagraph.axons[uid] for uid in uids]
 
-        responses = self.dendrite.query(
+        responses = await self.dendrite.forward(
             axons,
             synapse,
             deserialize=False,

@@ -64,7 +64,7 @@ class Validator(base.BaseValidator):
         Syncs miner state and runs validation in parallel threads.
         """
         logger.info("Running epoch.")
-        self.miner_manager.sync()
+        await self.miner_manager.sync()
         tasks = [
             self.loop.create_task(self._forward_tier(tier))
             for tier in constants.TIER_CONFIG
