@@ -176,31 +176,40 @@ class Validator(base.BaseValidator):
             if not responses:
                 logger.warning(f"No responses from {batched_uids}.")
                 return
-            (
-                valid_responses,
-                valid_uids,
-                invalid_uids,
-                invalid_reasons,
-            ) = await vutils.loop.validate_responses(
-                responses=responses,
-                uids=batched_uids,
-                tier_config=constants.TIER_CONFIG[tier],
-            )
-            metrics, total_uids = await vutils.loop.process_and_score_responses(
-                miner_manager=self.miner_manager,
-                valid_responses=valid_responses,
-                valid_uids=valid_uids,
-                invalid_uids=invalid_uids,
-                ground_truth_synapse=ground_truth_synapse,
-                model_name=model_name,
-                task_config=task_config,
-                tier_config=constants.TIER_CONFIG[tier],
-                tier=tier,
-                k_factor=k_factor,
-                use_wandb=self.config.validator.use_wandb,
-                config=self.config,
-                invalid_reasons=invalid_reasons,
-            )
+            try:
+                (
+                    valid_responses,
+                    valid_uids,
+                    invalid_uids,
+                    invalid_reasons,
+                ) = await vutils.loop.validate_responses(
+                    responses=responses,
+                    uids=batched_uids,
+                    tier_config=constants.TIER_CONFIG[tier],
+                )
+            except Exception as e:
+                logger.error(f"Error validating responses: {e}")
+                traceback.print_exc()
+                return
+            try:
+                metrics, total_uids = await vutils.loop.process_and_score_responses(
+                    miner_manager=self.miner_manager,
+                    valid_responses=valid_responses,
+                    valid_uids=valid_uids,
+                    invalid_uids=invalid_uids,
+                    ground_truth_synapse=ground_truth_synapse,
+                    model_name=model_name,
+                    task_config=task_config,
+                    tier_config=constants.TIER_CONFIG[tier],
+                    tier=tier,
+                    k_factor=k_factor,
+                    use_wandb=self.config.validator.use_wandb,
+                    config=self.config,
+                    invalid_reasons=invalid_reasons,
+                )
+            except Exception as e:
+                logger.error(f"Error processing and scoring responses: {e}")
+                return
 
             batch_information = (
                 f"Batch Metrics - {tier} - {model_name} - {task_config.task}"

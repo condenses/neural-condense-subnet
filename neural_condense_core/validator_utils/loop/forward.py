@@ -172,38 +172,34 @@ async def get_scoring_metrics(
     ground_truth_synapse: TextCompressProtocol,
     model_name: str,
     task_config: SyntheticTaskConfig,
-    timeout: int = 120,
+    timeout: int = 240,
     config: bt.config = None,
 ) -> dict[str, list]:
-    try:
-        payload = {
-            "miner_responses": [
-                {"compressed_kv_b64": r.compressed_kv_b64} for r in valid_responses
-            ],
-            "ground_truth_request": ground_truth_synapse.validator_payload
-            | {"model_name": model_name, "criterias": task_config.criterias},
-        }
+    payload = {
+        "miner_responses": [
+            {"compressed_kv_b64": r.compressed_kv_b64} for r in valid_responses
+        ],
+        "ground_truth_request": ground_truth_synapse.validator_payload
+        | {"model_name": model_name, "criterias": task_config.criterias},
+    }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics",
-                json=payload,
-                timeout=timeout,
-            )
-            if response.status_code != 200:
-                raise Exception(
-                    f"Scoring backend returned status code {response.status_code}"
-                )
-            scoring_response = response.json()
-        metrics = scoring_response["metrics"]
-        metrics["accelerate_metrics"] = [r.accelerate_score for r in valid_responses]
-        metrics = update_metrics_of_invalid_miners(
-            invalid_uids=invalid_uids,
-            metrics=metrics,
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics",
+            json=payload,
+            timeout=timeout,
         )
-    except Exception as e:
-        logger.warning(f"Error getting scoring metrics: {e}")
-        raise e
+        if response.status_code != 200:
+            raise Exception(
+                f"Scoring backend returned status code {response.status_code}"
+            )
+        scoring_response = response.json()
+    metrics = scoring_response["metrics"]
+    metrics["accelerate_metrics"] = [r.accelerate_score for r in valid_responses]
+    metrics = update_metrics_of_invalid_miners(
+        invalid_uids=invalid_uids,
+        metrics=metrics,
+    )
     return metrics
 
 
