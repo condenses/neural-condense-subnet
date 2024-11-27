@@ -54,7 +54,6 @@ def perplexity(
     )
     kv_cache = kv_cache.to(device=device)
     outputs = model(input_ids=input_ids, past_key_values=kv_cache)
-    print(outputs.logits.shape)
     logits = outputs.logits[:, :-1, :]
     labels = labels[:, 1:]
     loss = F.cross_entropy(

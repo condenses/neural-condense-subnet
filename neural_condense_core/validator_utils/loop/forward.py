@@ -190,6 +190,10 @@ async def get_scoring_metrics(
                 json=payload,
                 timeout=timeout,
             )
+            if response.status_code != 200:
+                raise Exception(
+                    f"Scoring backend returned status code {response.status_code}"
+                )
             scoring_response = response.json()
         metrics = scoring_response["metrics"]
         metrics["accelerate_metrics"] = [r.accelerate_score for r in valid_responses]
@@ -199,6 +203,7 @@ async def get_scoring_metrics(
         )
     except Exception as e:
         logger.warning(f"Error getting scoring metrics: {e}")
+        raise e
     return metrics
 
 
