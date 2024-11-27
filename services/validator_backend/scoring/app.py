@@ -7,16 +7,24 @@ from transformers import (
     DynamicCache,
 )
 import random
-import logging
+import structlog
 import gc
 from .datatypes import BatchedScoringRequest
 import traceback
 from .metric_handlers import metric_handlers
 
 gc.enable()
-logging.basicConfig(level=logging.INFO)
+structlog.configure(
+    processors=[
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.add_log_level,
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer()
+    ]
+)
 
-logger = logging.getLogger("Validator-Backend")
+logger = structlog.get_logger("Validator-Backend")
 
 
 class ScoringService:
@@ -57,11 +65,17 @@ class ScoringService:
                     max_tokens=4096,
                 )
             except Exception as e:
-                traceback.print_exc()
-                logger.error(f"{metric_handler.__name__}: {e}")
+                logger.error("metric_handler_error", 
+                    error=str(e),
+                    handler_name=metric_handler.__name__,
+                    traceback=traceback.format_exc()
+                )
                 value = None
             values.append(value)
-            logger.info(f"{metric_handler.__name__}: {value}")
+            logger.info("metric_value", 
+                handler_name=metric_handler.__name__,
+                value=value
+            )
         values = preprocess_batch(values)
         return {"metrics": {criteria: values}}
 
