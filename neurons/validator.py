@@ -149,13 +149,18 @@ class Validator(base.BaseValidator):
         try:
             dendrite = bt.dendrite(self.wallet)
             task_config = vutils.loop.get_task_config()
-            ground_truth_synapse = await vutils.loop.prepare_synapse(
-                challenge_generator=self.challenge_generator,
-                tokenizer=tokenizer,
-                task_config=task_config,
-                tier_config=constants.TIER_CONFIG[tier],
-                model_name=model_name,
-            )
+            try:
+                ground_truth_synapse = await vutils.loop.prepare_synapse(
+                    challenge_generator=self.challenge_generator,
+                    tokenizer=tokenizer,
+                    task_config=task_config,
+                    tier_config=constants.TIER_CONFIG[tier],
+                    model_name=model_name,
+                )
+            except Exception as e:
+                logger.error(f"Error preparing synapse: {e}")
+                traceback.print_exc()
+                return
             if not ground_truth_synapse:
                 return
             synapse = ground_truth_synapse.miner_synapse
