@@ -49,13 +49,13 @@ class ScoringService:
         metric_handler = metric_handlers[criteria]["handler"]
         preprocess_batch = metric_handlers[criteria]["preprocess_batch"]
         for miner_response in request.miner_responses:
-            miner_response.decode()
-            kv_cache = DynamicCache.from_legacy_cache(
-                torch.from_numpy(miner_response.compressed_kv).to(
-                    device=self.device, dtype=self.dtype
-                )
-            )
             try:
+                miner_response.decode()
+                kv_cache = DynamicCache.from_legacy_cache(
+                    torch.from_numpy(miner_response.compressed_kv).to(
+                        device=self.device, dtype=self.dtype
+                    )
+                )
                 value = metric_handler(
                     kv_cache=kv_cache,
                     activation_prompt=request.ground_truth_request.activation_prompt,
