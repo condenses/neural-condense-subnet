@@ -269,12 +269,12 @@ class Validator(base.BaseValidator):
                     )
 
                     # Wait for the result with a timeout
-                    result = future.result(timeout=300)  # 5 minute timeout
+                    result = future.result(timeout=120)  # 2 minute timeout
                     logger.info(f"Set weights result: {result}")
                     self.resync_metagraph()
 
                 except TimeoutError:
-                    logger.error("Setting weights timed out after 5 minutes")
+                    logger.error("Setting weights timed out after 2 minutes")
                 except Exception as e:
                     logger.error(f"Failed to set weights: {e}")
                     traceback.print_exc()
