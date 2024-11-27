@@ -55,7 +55,7 @@ async def prepare_synapse(
     return synapse
 
 
-def query_miners(
+async def query_miners(
     dendrite: bt.dendrite,
     metagraph: bt.metagraph,
     uids: list[int],
@@ -74,7 +74,7 @@ def query_miners(
     Returns:
         list: Responses from the miners
     """
-    return dendrite.query(
+    return await dendrite.forward(
         axons=[metagraph.axons[uid] for uid in uids],
         synapse=synapse,
         deserialize=False,
