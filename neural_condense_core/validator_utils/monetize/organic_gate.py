@@ -145,7 +145,7 @@ class OrganicGate:
                 timeout=constants.TIER_CONFIG[request.tier].timeout,
                 deserialize=False,
             )
-            asyncio.create_task(self._organic_validating(response, request.tier))
+            # asyncio.create_task(self._organic_validating(response, request.tier))
             logger.info(f"Compressed to url: {response.compressed_kv_url}")
         except Exception as e:
             logger.error(f"Error: {e}")
