@@ -146,7 +146,7 @@ class OrganicGate:
             )
             # asyncio.create_task(self._organic_validating(response, request.tier))
             logger.info(
-                f"Compressed to url: {response.compressed_kv_url}. Process time: {response.process_time}"
+                f"Compressed to url: {response.compressed_kv_url}. Process time: {response.dendrite.process_time}"
             )
         except Exception as e:
             logger.error(f"Error: {e}")
