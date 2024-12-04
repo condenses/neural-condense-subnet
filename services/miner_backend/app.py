@@ -82,12 +82,12 @@ class CompressionService:
             return self._compress_activation_beacon(context)
 
     def _compress_kvpress(self, context: str) -> str:
-        input_ids = self.tokenizer(context, return_tensors="pt").input_ids.to(
+        input_ids = self.tokenizer(context, return_tensors="pt", add_special_tokens=False).input_ids.to(
             self.device
         )
 
         with torch.no_grad(), self.press(self.model):
-            past_key_values = self.model(input_ids).past_key_values
+            past_key_values = self.model(input_ids, num_logits_to_keep=1).past_key_values
 
         return self._save_and_return_url(past_key_values)
 

@@ -5,7 +5,6 @@ import time
 import httpx
 import os
 from rich.progress import track
-from ..executor import THREAD_POOL
 from ..logger import logger
 import asyncio
 
@@ -68,12 +67,9 @@ async def load_npy_from_url(url: str, max_size_mb: int = 1024):
 
         # Use run_in_executor with our controlled thread pool
         loop = asyncio.get_running_loop()
-        filename, download_time = await loop.run_in_executor(
-            THREAD_POOL, _download, url
-        )
+        filename, download_time = await asyncio.to_thread(_download, url)
 
-        # Load and cleanup can also use the controlled executor
-        data = await loop.run_in_executor(THREAD_POOL, _load_and_cleanup, filename)
+        data = _load_and_cleanup(filename)
         return data, filename, download_time, ""
     except Exception as e:
         return None, "", 0, str(e)

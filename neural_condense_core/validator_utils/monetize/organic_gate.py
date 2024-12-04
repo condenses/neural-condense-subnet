@@ -138,7 +138,6 @@ class OrganicGate:
                     detail="No miners available.",
                 )
             target_axon = self.metagraph.axons[targeted_uid]
-
             response: TextCompressProtocol = await self.dendrite.forward(
                 axons=target_axon,
                 synapse=synapse,
@@ -146,7 +145,9 @@ class OrganicGate:
                 deserialize=False,
             )
             # asyncio.create_task(self._organic_validating(response, request.tier))
-            logger.info(f"Compressed to url: {response.compressed_kv_url}")
+            logger.info(
+                f"Compressed to url: {response.compressed_kv_url}. Process time: {response.process_time}"
+            )
         except Exception as e:
             logger.error(f"Error: {e}")
             raise HTTPException(status_code=503, detail="Validator error.")
