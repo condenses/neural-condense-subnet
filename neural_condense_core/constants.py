@@ -35,10 +35,7 @@ class RedisConfig(BaseModel):
     port: int = Field(default=6379)
     db: int = Field(default=0)
     expire_time: int = Field(default=3600, description="Default expiration time in seconds")
-
-    @property
-    def serving_counter_key_format(self) -> str:
-        return "serving_counter:{tier}:{uid}:" + datetime.utcnow().strftime("%Y%m%d%H")
+    serving_counter_key_format: str = Field(default="serving_counter:{tier}:{uid}")
 
 class SqlConfig(BaseModel):
     """Configuration for SQL database connection"""

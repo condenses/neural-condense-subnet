@@ -445,10 +445,12 @@ class MinerManager:
                 continue
             if tier not in tier_group:
                 tier_group[tier] = {}
-            tier_group[tier][miner.uid] = ServingCounter(
+            counter = ServingCounter(
                 self.rate_limit_per_tier[tier], 
                 miner.uid, 
                 tier,
                 self.redis_client
             )
+            counter.redis_client.set(counter.key, 0)
+            tier_group[tier][miner.uid] = counter
         return tier_group
