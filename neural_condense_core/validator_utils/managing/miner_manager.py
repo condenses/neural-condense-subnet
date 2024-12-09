@@ -115,6 +115,13 @@ class MinerManager:
         self.wallet = wallet
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.metagraph = metagraph
+        # Create a single Redis client for all counters
+        redis_config = constants.DATABASE_CONFIG.redis
+        self.redis_client = redis.Redis(
+            host=redis_config.host,
+            port=redis_config.port,
+            db=redis_config.db
+        )
         self.elo_system = ELOSystem()
         self.default_metadata_items = [
             ("tier", "unknown"),
@@ -132,14 +139,6 @@ class MinerManager:
         logger.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self.sync())
-        
-        # Create a single Redis client for all counters
-        redis_config = constants.DATABASE_CONFIG.redis
-        self.redis_client = redis.Redis(
-            host=redis_config.host,
-            port=redis_config.port,
-            db=redis_config.db
-        )
 
     def get_metadata(self, uids: list[int]) -> dict[int, MinerMetadata]:
         return {miner.uid: miner for miner in self.session.query(MinerMetadata).filter(MinerMetadata.uid.in_(uids)).all()}
