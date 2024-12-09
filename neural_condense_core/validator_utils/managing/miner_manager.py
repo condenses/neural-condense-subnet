@@ -296,8 +296,10 @@ class MinerManager:
         Initialize metadata for all miners in the network.
         """
         for uid in self.metagraph.uids:
-            miner = self.session.query(MinerMetadata).get(uid)
-            if not miner:
+            try:
+                miner = self.session.query(MinerMetadata).get(uid)
+            except Exception as e:
+                logger.info(f"Reinitialize uid {uid}, {e}")
                 miner = MinerMetadata(uid=uid)
                 self.session.add(miner)
         self.session.commit()
