@@ -6,7 +6,7 @@ import wandb
 from ...protocol import TextCompressProtocol
 from ...logger import logger
 from ..synthesizing.challenge_generator import ChallengeGenerator
-from ..managing.miner_manager import MinerManager, ServingCounter, MetadataItem
+from ..managing.miner_manager import MinerManager, ServingCounter, MinerMetadata
 from ...constants import SyntheticTaskConfig, TierConfig
 import asyncio
 import os
@@ -261,7 +261,7 @@ def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
 
 
 def get_batched_uids(
-    serving_counter: dict[int, ServingCounter], metadata: dict[int, MetadataItem]
+    serving_counter: dict[int, ServingCounter], metadata: dict[int, MinerMetadata]
 ) -> list[list[int]]:
     uids = list(serving_counter.keys())
     uids = sorted(uids, key=lambda uid: metadata[uid].elo_rating, reverse=True)
