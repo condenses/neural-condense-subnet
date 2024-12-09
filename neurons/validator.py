@@ -30,22 +30,15 @@ class Validator(base.BaseValidator):
     def __init__(self):
         """Initialize the validator with required components and configurations."""
         super().__init__()
-        self.miner_manager = vutils.managing.MinerManager(self)
+        self.miner_manager = vutils.managing.MinerManager(
+            uid=self.uid,
+            wallet=self.wallet,
+            metagraph=self.metagraph,
+            config=self.config,
+        )
         self.challenge_generator = vutils.synthesizing.ChallengeGenerator(
             keypair=self.dendrite.keypair
         )
-
-        if self.config.validator.gate_port:
-            try:
-                self.organic_gate = vutils.monetize.OrganicGate(
-                    miner_manager=self.miner_manager,
-                    wallet=self.wallet,
-                    config=self.config,
-                    metagraph=self.metagraph,
-                )
-                logger.info("Starting organic gate.")
-            except Exception as e:
-                logger.error(f"Starting organic gate error: {e}")
 
         if self.config.validator.use_wandb:
             vutils.loop.initialize_wandb(self.dendrite, self.metagraph, self.uid)
@@ -73,7 +66,6 @@ class Validator(base.BaseValidator):
 
         try:
             await self.miner_manager.report_metadata()
-            self.miner_manager.save_state()
         except Exception as e:
             logger.error(f"Failed to report metadata & save-state: {e}")
 

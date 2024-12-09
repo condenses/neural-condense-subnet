@@ -3,9 +3,9 @@ from ..logger import logger
 from ..constants import constants
 
 
-def build_rate_limit(metagraph, config, tier=None):
+def build_rate_limit(metagraph, config=None, tier=None):
     S = metagraph.S
-    if config.whitelist_uids:
+    if config and config.whitelist_uids:
         whitelist_uids = [int(uid) for uid in config.whitelist_uids.split(",")]
     else:
         whitelist_uids = [i for i in range(len(S)) if S[i] > constants.MIN_STAKE]

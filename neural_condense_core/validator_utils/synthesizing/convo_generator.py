@@ -14,7 +14,6 @@ class ConvoGenerator:
         self.model_ids = [
             "chat-llama-3-1-8b",
             "chat-llama-3-1-70b",
-            "chat-llama-3-2-3b",
         ]
         self.url = "https://api.nineteen.ai/v1/chat/completions"
         self.keypair = keypair

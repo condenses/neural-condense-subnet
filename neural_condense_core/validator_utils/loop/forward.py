@@ -224,7 +224,8 @@ async def get_scoring_metrics(
 
 
 def get_k_factor(miner_manager: MinerManager, uids: list[int]) -> tuple[int, float]:
-    mean_elo = sum(miner_manager.metadata[uid].elo_rating for uid in uids) / len(uids)
+    metadatas = miner_manager.get_metadata(uids)
+    mean_elo = sum(metadata.elo_rating for metadata in metadatas.values()) / len(metadatas)
 
     if mean_elo < ncc.constants.ELO_GROUPS["beginner"].max_elo:
         elo_group = ncc.constants.ELO_GROUPS["beginner"]

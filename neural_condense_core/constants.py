@@ -1,6 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 import os
+from datetime import datetime
+
 
 
 class TierConfig(BaseModel):
@@ -25,6 +27,31 @@ class EloGroup(BaseModel):
     min_elo: int
     max_elo: int
     k_factor: int
+
+
+class RedisConfig(BaseModel):
+    """Configuration for Redis connection"""
+    host: str = Field(default="localhost")
+    port: int = Field(default=6379)
+    db: int = Field(default=0)
+    expire_time: int = Field(default=3600, description="Default expiration time in seconds")
+
+    @property
+    def serving_counter_key_format(self) -> str:
+        return "serving_counter:{tier}:{uid}:{epoch_key}:" + datetime.utcnow().strftime("%Y%m%d%H")
+
+class SqlConfig(BaseModel):
+    """Configuration for SQL database connection"""
+    url: str = Field(
+        default="sqlite:///miner_metadata.db",
+        description="Database URL in SQLAlchemy format"
+    )
+
+
+class DatabaseConfig(BaseModel):
+    """Combined database configuration"""
+    redis: RedisConfig = Field(default_factory=RedisConfig)
+    sql: SqlConfig = Field(default_factory=SqlConfig)
 
 
 class Constants(BaseModel):
@@ -109,6 +136,21 @@ class Constants(BaseModel):
     TOP_PERCENTAGE_FOR_ALLOCATING_WEIGHTS: float = 0.3
     EXPECTED_MEAN_ELO_RATING: float = 1000
     EXPECTED_MAX_STD_ELO_RATING: float = 300
+
+    DATABASE_CONFIG: DatabaseConfig = Field(
+        default_factory=lambda: DatabaseConfig(
+            redis=RedisConfig(
+                host=os.getenv("REDIS_HOST", "localhost"),
+                port=int(os.getenv("REDIS_PORT", 6379)),
+                db=int(os.getenv("REDIS_DB", 0)),
+                expire_time=int(os.getenv("REDIS_EXPIRE_TIME", 3600)),
+                serving_counter_key_format=os.getenv("REDIS_SERVING_COUNTER_KEY_FORMAT", "serving_counter:{tier}:{uid}:{epoch_key}")
+            ),
+            sql=SqlConfig(
+                url=os.getenv("SQL_DATABASE_URL", "sqlite:///miner_metadata.db")
+            )
+        )
+    )
 
     # Adjust values based on NETWORK environment variable
     def __init__(self, **data):

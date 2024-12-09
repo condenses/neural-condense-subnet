@@ -13,52 +13,82 @@ from ...common import build_rate_limit
 from ...protocol import Metadata
 from ...constants import constants, TierConfig
 from ...logger import logger
+import redis
+from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
+Base = declarative_base()
 
-class MetadataItem(BaseModel):
-    """
-    Represents metadata for a miner including their tier and ELO rating.
+class MinerMetadata(Base):
+    """SQLAlchemy model for miner metadata with Pydantic-like validation."""
+    __tablename__ = 'miner_metadata'
+    
+    uid = Column(Integer, primary_key=True)
+    tier = Column(String, default="unknown")
+    elo_rating = Column(Float, default=constants.INITIAL_ELO_RATING)
 
-    Attributes:
-        tier (str): The tier level of the miner, defaults to "unknown"
-        elo_rating (float): The ELO rating score of the miner, defaults to initial rating from constants
-    """
+    def __init__(self, uid, tier="unknown", elo_rating=constants.INITIAL_ELO_RATING):
+        self.uid = uid
+        self.tier = tier
+        self.elo_rating = elo_rating
 
-    tier: str = "unknown"
-    elo_rating: float = constants.INITIAL_ELO_RATING
+    def to_dict(self):
+        """Convert to dictionary for easy serialization."""
+        return {
+            "uid": self.uid,
+            "tier": self.tier,
+            "elo_rating": self.elo_rating
+        }
 
 
 class ServingCounter:
     """
-    A counter for rate limiting requests to a miner from this validator.
+    A Redis-based counter for rate limiting requests to a miner from this validator.
 
     Attributes:
         rate_limit (int): The maximum number of requests allowed per epoch
-        counter (int): The current number of requests made in the current epoch
-        lock (threading.Lock): Thread lock for synchronizing counter access
+        redis_client (redis.Redis): Redis client for distributed counting
+        uid (int): Unique identifier for the miner
+        tier (str): Tier of the miner
     """
 
-    def __init__(self, rate_limit: int):
+    def __init__(self, rate_limit: int, uid: int, tier: str, redis_client: redis.Redis):
         """
         Initialize the serving counter.
 
         Args:
             rate_limit (int): Maximum number of requests allowed per epoch
+            uid (int): Unique identifier for the miner
+            tier (str): Tier of the miner
+            redis_client (redis.Redis): Shared Redis client instance
         """
         self.rate_limit = rate_limit
-        self.counter = 0
-        self.lock = threading.Lock()
+        self.redis_client = redis_client
+        self.key = constants.DATABASE_CONFIG.redis.serving_counter_key_format.format(
+            tier=tier,
+            uid=uid,
+        )
+        self.expire_time = constants.DATABASE_CONFIG.redis.expire_time
+
 
     def increment(self) -> bool:
         """
         Increments the counter and checks if rate limit is exceeded.
+        Uses Redis INCR for atomic increment and EXPIRE for automatic cleanup.
 
         Returns:
             bool: True if counter is within rate limit, False otherwise
         """
-        with self.lock:
-            self.counter += 1
-            return self.counter <= self.rate_limit
+        current_key = self.key
+        # Atomic increment operation
+        count = self.redis_client.incr(current_key)
+        
+        # Set expiration for 1 hour if this is the first increment
+        if count == 1:
+            self.redis_client.expire(current_key, self.expire_time)
+        
+        return count <= self.rate_limit
 
 
 class MinerManager:
@@ -66,45 +96,53 @@ class MinerManager:
     Manages metadata and serving counters for miners in the network.
 
     Attributes:
-        validator: The validator instance this manager belongs to
         wallet: Bittensor wallet for the validator
         dendrite: Bittensor dendrite for network communication
         metagraph: Network metagraph containing miner information
         elo_system (ELOSystem): System for managing ELO ratings
         default_metadata_items (list): Default metadata fields
         config: Validator configuration
-        metadata (dict): Miner metadata storage
         state_path (str): Path to save/load state
         message (str): Random message for signing
         metric_converter (MetricConverter): Converts metrics to scores
         serving_counter (dict): Rate limiting counters per tier
     """
 
-    def __init__(self, validator):
-        """
-        Initialize the MinerManager.
-
-        Args:
-            validator: The validator instance this manager belongs to
-        """
-        self.config = validator.config
-        self.uid = validator.uid
-        self.wallet = validator.wallet
+    def __init__(self, uid, wallet, metagraph, config=None):
+        """Initialize the MinerManager."""
+        self.config = config
+        self.uid = uid
+        self.wallet = wallet
         self.dendrite = bt.dendrite(wallet=self.wallet)
-        self.metagraph = validator.metagraph
+        self.metagraph = metagraph
         self.elo_system = ELOSystem()
         self.default_metadata_items = [
             ("tier", "unknown"),
         ]
-        self.config = validator.config
-        self.metadata = self._init_metadata()
-        self.state_path = self.config.full_path + "/state.json"
+        
+        # Initialize SQLAlchemy with configured URL
+        self.engine = create_engine(constants.DATABASE_CONFIG.sql.url)
+        Base.metadata.create_all(self.engine)
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
+        
+        self._init_metadata()
         self.metric_converter = MetricConverter()
         self.rate_limit_per_tier = self.get_rate_limit_per_tier()
         logger.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
-        self.load_state()
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self.sync())
+        
+        # Create a single Redis client for all counters
+        redis_config = constants.DATABASE_CONFIG.redis
+        self.redis_client = redis.Redis(
+            host=redis_config.host,
+            port=redis_config.port,
+            db=redis_config.db
+        )
+
+    def get_metadata(self, uids: list[int]) -> dict[int, MinerMetadata]:
+        return {miner.uid: miner for miner in self.session.query(MinerMetadata).filter(MinerMetadata.uid.in_(uids)).all()}
 
     def update_ratings(
         self,
@@ -123,7 +161,11 @@ class MinerManager:
             tier_config (TierConfig): Tier configuration
         """
         # Get current ELO ratings for participating miners
-        initial_ratings = [self.metadata[uid].elo_rating for uid in total_uids]
+        initial_ratings = []
+        for uid in total_uids:
+            miner = self.session.query(MinerMetadata).get(uid)
+            initial_ratings.append(miner.elo_rating)
+
         performance_scores: dict[str, list[float]] = (
             self.metric_converter.convert_metrics_to_score(metrics, tier_config)
         )
@@ -138,10 +180,12 @@ class MinerManager:
         final_ratings = np.mean(metric_ratings, axis=0)
         # Update metadata with new ratings and scores
         for uid, final_rating in zip(total_uids, final_ratings):
-            self.metadata[uid] = MetadataItem(
-                tier=self.metadata[uid].tier,
-                elo_rating=max(constants.FLOOR_ELO_RATING, final_rating),
-            )
+            miner = self.session.query(MinerMetadata).get(uid)
+            if not miner:
+                miner = MinerMetadata(uid=uid)
+                self.session.add(miner)
+            miner.elo_rating = max(constants.FLOOR_ELO_RATING, final_rating)
+        self.session.commit()
         return final_ratings, initial_ratings
 
     def get_normalized_ratings(self, top_percentage: float = 1.0) -> np.ndarray:
@@ -160,10 +204,11 @@ class MinerManager:
             tier_ratings = []
             tier_uids = []
 
-            for uid, metadata in self.metadata.items():
-                if metadata.tier == tier:
-                    tier_ratings.append(metadata.elo_rating)
-                    tier_uids.append(uid)
+            miners = self.session.query(MinerMetadata).filter_by(tier=tier).all()
+            for miner in miners:
+                tier_ratings.append(miner.elo_rating)
+                tier_uids.append(miner.uid)
+                
             uids_ratings = list(zip(tier_uids, tier_ratings))
             if uids_ratings:
                 # Give zeros to rating of miners not in top_percentage
@@ -246,42 +291,16 @@ class MinerManager:
 
         return weights
 
-    def load_state(self):
-        """
-        Load miner metadata state from disk.
-        """
-        try:
-            state = json.load(open(self.state_path, "r"))
-            metadata_items = {
-                int(k): MetadataItem(**v) for k, v in state["metadata"].items()
-            }
-            self.metadata = metadata_items
-            self._log_metadata()
-            logger.info("Loaded state.")
-        except Exception as e:
-            logger.error(f"Failed to load state: {e}")
-
-    def save_state(self):
-        """
-        Save current miner metadata state to disk.
-        """
-        try:
-            metadata_dict = {k: v.dict() for k, v in self.metadata.items()}
-            state = {"metadata": metadata_dict}
-            json.dump(state, open(self.state_path, "w"))
-            logger.info("Saved state.")
-        except Exception as e:
-            logger.error(f"Failed to save state: {e}")
-
     def _init_metadata(self):
         """
         Initialize metadata for all miners in the network.
-
-        Returns:
-            dict: Initial metadata for all miners
         """
-        metadata = {int(uid): MetadataItem() for uid in self.metagraph.uids}
-        return metadata
+        for uid in self.metagraph.uids:
+            miner = self.session.query(MinerMetadata).get(uid)
+            if not miner:
+                miner = MinerMetadata(uid=uid)
+                self.session.add(miner)
+        self.session.commit()
 
     async def sync(self):
         """
@@ -290,7 +309,7 @@ class MinerManager:
         logger.info("Synchronizing metadata and serving counters.")
         self.rate_limit_per_tier = self.get_rate_limit_per_tier()
         logger.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
-        self.metadata = await self._update_metadata()
+        await self._update_metadata()
         self.serving_counter: dict[str, dict[int, ServingCounter]] = (
             self._create_serving_counter()
         )
@@ -302,8 +321,8 @@ class MinerManager:
         """
         # Log metadata as pandas dataframe with uid, tier, and elo_rating
         metadata_dict = {
-            uid: {"tier": m.tier, "elo_rating": m.elo_rating}
-            for uid, m in self.metadata.items()
+            miner.uid: {"tier": miner.tier, "elo_rating": miner.elo_rating}
+            for miner in self.session.query(MinerMetadata).all()
         }
         metadata_df = pd.DataFrame(metadata_dict).T
         metadata_df = metadata_df.reset_index()
@@ -314,7 +333,13 @@ class MinerManager:
         """
         Report current miner metadata to the validator server.
         """
-        metadata_dict = {k: v.dict() for k, v in self.metadata.items()}
+        metadata_dict = {
+            miner.uid: {
+                "tier": miner.tier,
+                "elo_rating": miner.elo_rating
+            }
+            for miner in self.session.query(MinerMetadata).all()
+        }
         await self.report(metadata_dict, "api/report-metadata")
 
     async def report(self, payload: dict, endpoint: str):
@@ -351,12 +376,8 @@ class MinerManager:
         """
         Update metadata for all miners by querying their status.
         Does not consume validator's serving counter.
-
-        Returns:
-            dict: Updated metadata for all miners
         """
         synapse = Metadata()
-        metadata = self.metadata.copy()
         uids = [uid for uid in range(len(self.metagraph.hotkeys))]
         axons = [self.metagraph.axons[uid] for uid in uids]
 
@@ -368,10 +389,13 @@ class MinerManager:
         )
 
         for uid, response in zip(uids, responses):
+            miner = self.session.query(MinerMetadata).get(uid)
+            if not miner:
+                miner = MinerMetadata(uid=uid)
+                self.session.add(miner)
+
             # Keep track of the current tier
-            current_tier = (
-                self.metadata[uid].tier if uid in self.metadata else "unknown"
-            )
+            current_tier = miner.tier
             new_tier = current_tier
 
             # Update tier based on response
@@ -379,11 +403,7 @@ class MinerManager:
                 new_tier = response.metadata["tier"]
 
             # Get current or initial ELO rating
-            current_elo = (
-                self.metadata[uid].elo_rating
-                if uid in self.metadata
-                else constants.INITIAL_ELO_RATING
-            )
+            current_elo = miner.elo_rating
 
             # Reset ELO rating if tier changed
             if new_tier != current_tier:
@@ -392,12 +412,11 @@ class MinerManager:
                 )
                 current_elo = constants.INITIAL_ELO_RATING
 
-            metadata[uid] = MetadataItem(tier=new_tier, elo_rating=current_elo)
+            miner.tier = new_tier
+            miner.elo_rating = current_elo
 
-        # Update self.metadata with the newly computed metadata
-        self.metadata = metadata
+        self.session.commit()
         logger.info(f"Updated metadata for {len(uids)} uids.")
-        return self.metadata
 
     def get_rate_limit_per_tier(self):
         """
@@ -417,11 +436,16 @@ class MinerManager:
             dict: Serving counters organized by tier and UID
         """
         tier_group = {tier: {} for tier in constants.TIER_CONFIG.keys()}
-        for uid, metadata in self.metadata.items():
-            tier = metadata.tier
+        for miner in self.session.query(MinerMetadata).all():
+            tier = miner.tier
             if tier not in constants.TIER_CONFIG:
                 continue
             if tier not in tier_group:
                 tier_group[tier] = {}
-            tier_group[tier][uid] = ServingCounter(self.rate_limit_per_tier[tier])
+            tier_group[tier][miner.uid] = ServingCounter(
+                self.rate_limit_per_tier[tier], 
+                miner.uid, 
+                tier,
+                self.redis_client
+            )
         return tier_group
