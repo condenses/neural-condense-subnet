@@ -38,7 +38,7 @@ class RedisConfig(BaseModel):
 
     @property
     def serving_counter_key_format(self) -> str:
-        return "serving_counter:{tier}:{uid}:{epoch_key}:" + datetime.utcnow().strftime("%Y%m%d%H")
+        return "serving_counter:{tier}:{uid}:" + datetime.utcnow().strftime("%Y%m%d%H")
 
 class SqlConfig(BaseModel):
     """Configuration for SQL database connection"""
@@ -144,7 +144,6 @@ class Constants(BaseModel):
                 port=int(os.getenv("REDIS_PORT", 6379)),
                 db=int(os.getenv("REDIS_DB", 0)),
                 expire_time=int(os.getenv("REDIS_EXPIRE_TIME", 3600)),
-                serving_counter_key_format=os.getenv("REDIS_SERVING_COUNTER_KEY_FORMAT", "serving_counter:{tier}:{uid}:{epoch_key}")
             ),
             sql=SqlConfig(
                 url=os.getenv("SQL_DATABASE_URL", "sqlite:///miner_metadata.db")
