@@ -76,31 +76,36 @@ class Validator(base.BaseValidator):
         Args:
             tier (str): The tier level to process
         """
-        if constants.TIER_CONFIG[tier].incentive_percentage == 0:
-            logger.info(f"Tier {tier} has no incentive percentage.")
-            return
+        try:
+            if constants.TIER_CONFIG[tier].incentive_percentage == 0:
+                logger.info(f"Tier {tier} has no incentive percentage.")
+                return
 
-        model_name = random.choice(constants.TIER_CONFIG[tier].supporting_models)
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        serving_counter = self.miner_manager.serving_counter.get(tier, {})
+            model_name = random.choice(constants.TIER_CONFIG[tier].supporting_models)
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            serving_counter = self.miner_manager.serving_counter.get(tier, {})
 
-        if not serving_counter:
-            logger.info(f"No miners in tier {tier}.")
+            if not serving_counter:
+                logger.info(f"No miners in tier {tier}.")
+                return
+            rate_limit = self.miner_manager.rate_limit_per_tier[tier]
+            n_sets = max(
+                int(rate_limit * constants.RPE_PERCENTAGE_FOR_SYNTHETIC),
+                1,
+            )
+            sleep_per_set = constants.EPOCH_LENGTH / n_sets
+            futures = []
+        except Exception as e:
+            logger.error(f"Error in _forward_tier: {e}")
+            traceback.print_exc()
             return
-        rate_limit = self.miner_manager.rate_limit_per_tier[tier]
-        n_sets = max(
-            int(rate_limit * constants.RPE_PERCENTAGE_FOR_SYNTHETIC),
-            1,
-        )
-        sleep_per_set = constants.EPOCH_LENGTH / n_sets
-        futures = []
 
         for i in range(n_sets):
             logger.info(
                 f"Processing set {i}/{n_sets} then sleeping for {sleep_per_set} seconds."
             )
             pre_batched_uids = vutils.loop.get_batched_uids(
-                serving_counter, self.miner_manager.metadata
+                serving_counter, self.miner_manager.get_metadata()
             )
             logger.info(f"Pre-batched UIDs: {pre_batched_uids}")
             sleep_per_batch = sleep_per_set / len(pre_batched_uids)

@@ -140,7 +140,9 @@ class MinerManager:
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self.sync())
 
-    def get_metadata(self, uids: list[int]) -> dict[int, MinerMetadata]:
+    def get_metadata(self, uids: list[int] = []) -> dict[int, MinerMetadata]:
+        if not uids:
+            return {miner.uid: miner for miner in self.session.query(MinerMetadata).all()}
         return {miner.uid: miner for miner in self.session.query(MinerMetadata).filter(MinerMetadata.uid.in_(uids)).all()}
 
     def update_ratings(
