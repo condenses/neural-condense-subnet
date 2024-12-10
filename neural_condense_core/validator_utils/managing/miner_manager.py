@@ -88,7 +88,11 @@ class ServingCounter:
         if count == 1:
             self.redis_client.expire(current_key, self.expire_time)
         
-        return count <= self.rate_limit
+        if count <= self.rate_limit:
+            return True
+        else:
+            logger.info(f"Rate limit exceeded for {self.key}")
+            return False
 
 
 class MinerManager:
