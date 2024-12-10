@@ -55,11 +55,7 @@ class OrganicGate:
         )
         self.client_axon: bt.AxonInfo = None
         self.authentication_key = "".join(random.choices("0123456789abcdef", k=16))
-        self.start_server()
-        self.loop = asyncio.get_event_loop()
-        self.loop.create_task(
-            self._run_function_periodically(self.register_to_client, 60)
-        )
+        
 
     async def _run_function_periodically(self, function, interval):
         while True:
@@ -169,6 +165,10 @@ class OrganicGate:
             self.app,
             host="0.0.0.0",
             port=self.config.validator.gate_port,
+        )
+        self.loop = asyncio.get_event_loop()
+        self.loop.create_task(
+            self._run_function_periodically(self.register_to_client, 60)
         )
 
     async def get_self(self):
