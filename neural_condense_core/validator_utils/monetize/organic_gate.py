@@ -72,7 +72,12 @@ class OrganicGate:
     async def register_to_client(self):
         logger.info("Registering to client.")
         payload = RegisterPayload(port=self.config.validator.gate_port)
-        await self.call(payload, timeout=12)
+        logger.info(f"Payload: {payload}")
+        try:
+            response = await self.call(payload, timeout=12)
+            logger.info(f"Registration response: {response}")
+        except Exception as e:
+            logger.error(f"Error during registration: {e}")
 
     async def _authenticate(self, request: Request):
         message = request.headers["message"]
@@ -169,7 +174,7 @@ class OrganicGate:
             port=self.config.validator.gate_port,
         )
         self.loop = asyncio.get_event_loop()
-        logger.info("Starting periodic registration to client.")
+        logger.info("Starting periodic registration to client.", loop=self.loop)
         self.loop.create_task(
             self._run_function_periodically(self.register_to_client, 60)
         )
