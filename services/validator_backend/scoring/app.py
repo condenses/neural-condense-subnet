@@ -58,8 +58,7 @@ class ScoringService:
         preprocess_batch = metric_handlers[criteria]["preprocess_batch"]
         positive_chunk, negative_chunk = (
             self.filter_existance_checker.get_messages_pair(
-                request.ground_truth_request.messages,
-                request.ground_truth_request.hidden_messages,
+                request.ground_truth_request.messages
             )
         )
         for miner_response in request.miner_responses:
