@@ -173,9 +173,8 @@ class OrganicGate:
             host="0.0.0.0",
             port=self.config.validator.gate_port,
         )
-        self.loop = asyncio.get_event_loop()
         logger.info("Starting periodic registration to client.", loop=self.loop)
-        self.loop.create_task(
+        asyncio.run(
             self._run_function_periodically(self.register_to_client, 60)
         )
 
