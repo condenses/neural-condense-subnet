@@ -2,13 +2,14 @@ import neural_condense_core.validator_utils as vutils
 from neural_condense_core.base.config import add_common_config, add_validator_config
 import argparse
 import bittensor as bt
+from neural_condense_core.logger import logger
 
 def setup_config():
     parser = argparse.ArgumentParser()
     parser = add_common_config(parser)
     parser = add_validator_config(parser)
     config = bt.config(parser)
-    bt.logging.info(f"Config: {config}")
+    logger.info(f"Config: {config}")
     return config
     
 def setup_bittensor_objects(config: bt.config):
