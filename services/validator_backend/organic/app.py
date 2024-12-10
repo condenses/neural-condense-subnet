@@ -7,8 +7,7 @@ def setup_config():
     parser = argparse.ArgumentParser()
     parser = add_common_config(parser)
     parser = add_validator_config(parser)
-    args = parser.parse_args()
-    config = bt.config(args)
+    config = bt.config(parser)
     bt.logging.info(f"Config: {config}")
     return config
     
