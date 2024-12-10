@@ -129,7 +129,7 @@ class Scheduler:
     def start(self):
         self.running = True
         self.loop.create_task(self._refresh_qa_queue())
-        self.loop.create_task(self._refresh_convo_queue())
+        # self.loop.create_task(self._refresh_convo_queue())
 
     def stop(self):
         self.running = False
