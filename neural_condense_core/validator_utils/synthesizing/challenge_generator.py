@@ -159,7 +159,7 @@ Example:
         seed_question, seed_answer = qa_pairs.pop()
         hidden_question, hidden_answer = qa_pairs.pop()
         hidden_question = (
-            "Please answer the question based on the above context."
+            "Please answer the question based on the history of the conversation."
             "If there are no relevant information or no context provided, please say 'I don't know'."
             f"\n\nQuestion: {hidden_question}"
         )
@@ -196,7 +196,7 @@ Example:
                     assistant_message.content
                 )
 
-        messages.extend(qa_seed)
+        messages = qa_seed + messages
         return messages, hidden_messages
 
     def _build_protocol(
