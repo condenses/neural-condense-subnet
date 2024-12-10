@@ -34,11 +34,12 @@ class OrganicGate:
     def __init__(
         self,
         miner_manager: MinerManager,
+        config: bt.config,
     ):
         self.metagraph: bt.metagraph.__class__ = miner_manager.metagraph
         self.miner_manager = miner_manager
         self.wallet = miner_manager.wallet
-        self.config = miner_manager.config
+        self.config = config
         self.dendrite = bt.dendrite(wallet=miner_manager.wallet)
         self.app = FastAPI()
         self.app.add_api_route(

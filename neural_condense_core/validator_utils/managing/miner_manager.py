@@ -110,6 +110,10 @@ class MinerManager:
 
     def __init__(self, uid, wallet, metagraph, config=None):
         """Initialize the MinerManager."""
+        if config:
+            self.is_main_process = True
+        else:
+            self.is_main_process = False
         self.config = config
         self.uid = uid
         self.wallet = wallet
@@ -312,11 +316,12 @@ class MinerManager:
         logger.info("Synchronizing metadata and serving counters.")
         self.rate_limit_per_tier = self.get_rate_limit_per_tier()
         logger.info(f"Rate limit per tier: {self.rate_limit_per_tier}")
-        await self._update_metadata()
         self.serving_counter: dict[str, dict[int, ServingCounter]] = (
             self._create_serving_counter()
         )
-        self._log_metadata()
+        if self.is_main_process:
+            await self._update_metadata()
+            self._log_metadata()
 
     def _log_metadata(self):
         """
