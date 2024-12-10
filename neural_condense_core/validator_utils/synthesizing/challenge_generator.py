@@ -38,14 +38,11 @@ class ChallengeGenerator:
         self.end_activation_token = "<END-ACTIVATE-TOKEN>"
         self.task_to_builder = {
             "question_answering": self._build_qa_conversation,
-            "causal_conversation": self._build_causal_conversation,
-            "reconstruct_conversation": self._build_reconstruct_conversation,
-            "trivial_qa_conversation": self._build_trivial_qa_conversation,
         }
-        for task in constants.SYNTHETIC_TASK_CONFIG:
-            assert (
-                task.task in self.task_to_builder
-            ), f"Task {task.task} not supported. Supported tasks: {list(self.task_to_builder.keys())}"
+        # for task in constants.SYNTHETIC_TASK_CONFIG:
+        #     assert (
+        #         task.task in self.task_to_builder
+        #     ), f"Task {task.task} not supported. Supported tasks: {list(self.task_to_builder.keys())}"
 
     @retry(max_attempts=3)
     async def generate_challenge(
@@ -55,212 +52,63 @@ class ChallengeGenerator:
         max_context_length_in_chars: int = 10000,
     ) -> TextCompressProtocol:
         try:
-            messages, hidden_messages = await self.task_to_builder[task](
+            context, challenge_question, challenge_answer = await self.task_to_builder[task](
                 max_context_length_in_chars
             )
-            assert len(hidden_messages) == 2
-            synapse = self._build_protocol(tokenizer, messages, hidden_messages)
-            if task in ["question_answering", "trivial_qa_conversation"]:
-                synapse.expected_completion = hidden_messages[1].content.replace(
-                    self.end_activation_token, ""
-                )
+            synapse = self._build_protocol(tokenizer, context, challenge_question, challenge_answer)
+
         except Exception as e:
             raise e
         return synapse
 
     @retry(max_attempts=3)
-    async def _build_trivial_qa_conversation(
-        self, max_chars: int
-    ) -> Tuple[List[Message], List[Message]]:
-        messages, _ = await self._build_causal_conversation(max_chars)
-        # Trivial question answering: Ask about fill in the blank sentences
-        # Select a random sentence from the conversation and 2 nearby sentences
-        content_sentences = [len(msg.content.split(".")) for msg in messages]
-        # Get msg with most sentences
-        selected_message_index = content_sentences.index(max(content_sentences))
-        selected_message_content = messages[selected_message_index].content
-        sentences = selected_message_content.split(".")
-        sentence_lengths = [len(sentence.split(" ")) for sentence in sentences]
-        max_sentence_length = max(sentence_lengths)
-        sentence_index = sentence_lengths.index(max_sentence_length)
-        hidden_sentence = sentences[sentence_index]
-        sentences[sentence_index] = "______"
-        fill_in_the_blank_sentence = ".".join(
-            sentences[max(sentence_index - 3, 0) : sentence_index + 3]
-        )
-
-        hidden_messages = [
-            Message(
-                role="user",
-                content=f"You will be provided with a paragraph that existed in above conversation. Your task is to find the missing part that is replaced by _______. Return only the missing text without any additional explanation. Here is the paragraph:\n\n---\n{fill_in_the_blank_sentence}\n---",
-            ),
-            Message(role="assistant", content=hidden_sentence),
-        ]
-        return messages, hidden_messages
-
-    @retry(max_attempts=3)
-    async def _build_reconstruct_conversation(
-        self, max_chars: int
-    ) -> Tuple[List[Message], List[Message]]:
-        messages, _ = await self._build_causal_conversation(max_chars)
-
-        turn_format = """Format each conversation turn as follows:
-### **[Role]**: [Message]
-
-Example:
-### **User**: Hello, how are you?
----
-### **Assistant**: I am fine, thank you.
----
-... other turns
-"""
-        activation_prompt = f"Rewrite the conversation above using the following format, maintaining the exact same meaning:\n\n{turn_format}"
-        formatted_messages = [
-            f"### **{msg.role.capitalize()}**: {msg.content}" for msg in messages
-        ]
-        hidden_messages = [
-            Message(role="user", content=activation_prompt),
-            Message(role="assistant", content="\n---\n".join(formatted_messages)),
-        ]
-        return messages, hidden_messages
-
-    @retry(max_attempts=3)
-    async def _build_causal_conversation(
-        self, max_chars: int
-    ) -> Tuple[List[Message], List[Message]]:
-        conversations = await self._ensemble_conversations(n=10)
-        messages = []
-        for conversation in conversations:
-            messages.extend(conversation)
-
-        # Find indext i that is the last index where the sum of the user and assistant messages is less than max_chars
-        condense_chars = 0
-        for i in range(0, len(messages) - 1, 2):
-            user_content = messages[i].content
-            assistant_content = messages[i + 1].content
-            if condense_chars + len(user_content) + len(assistant_content) > max_chars:
-                break
-            condense_chars += len(user_content) + len(assistant_content)
-        hidden_messages = messages[i:]
-        return messages[:i], hidden_messages
-
-    @retry(max_attempts=3)
     async def _build_qa_conversation(
         self, max_chars: int
-    ) -> Tuple[List[Message], List[Message]]:
-        main_qa_set = await self.synthesizer.get_qas(n=1)
-        main_qa_set = main_qa_set[0]
-        context = main_qa_set.context_seed
-        qa_pairs = [
-            (main_qa_set.questions[i], main_qa_set.answers[i])
-            for i in range(len(main_qa_set.questions))
-        ]
-        random.shuffle(qa_pairs)
-        seed_question, seed_answer = qa_pairs.pop()
-        hidden_question, hidden_answer = qa_pairs.pop()
-        hidden_question = (
-            "Please answer the question based on the history of the conversation."
-            "If there are no relevant information or no context provided, please say 'I don't know'."
-            f"\n\nQuestion: {hidden_question}"
-        )
-        hidden_messages: List[Message] = [
-            Message(role="user", content=hidden_question),
-            Message(role="assistant", content=hidden_answer),
-        ]
+    ) -> Tuple[str, str, str]:
+        context_qa_items = await self.synthesizer.get_qas(n=10)
+        context = ""
+        question_answer_pairs = []
+        for qa_item in context_qa_items:
+            if len(context) + len(qa_item.context_seed) > max_chars:
+                break
+            context += f"\n{qa_item.context_seed}"
+            questions = qa_item.questions
+            answers = qa_item.answers
+            question_answer_pairs.extend(list(zip(questions, answers)))
+        
+        challenge_question, challenge_answer = question_answer_pairs.pop()
 
-        qa_seed = [
-            Message(role="user", content=f"{context}\n{seed_question}"),
-            Message(role="assistant", content=seed_answer),
-        ]
-
-        conversations = await self._ensemble_conversations(10)
-        if not conversations:
-            return qa_seed, hidden_messages
-
-        messages: List[Message] = []
-        remaining_chars = (
-            max_chars - len(context) - len(seed_question) - len(seed_answer)
-        )
-
-        while remaining_chars > 0 and conversations:
-            conversation = conversations.pop()
-            for i in range(0, len(conversation) - 1, 2):
-                user_message = conversation[i]
-                assistant_message = conversation[i + 1]
-                if remaining_chars <= len(user_message.content) + len(
-                    assistant_message.content
-                ):
-                    break
-                messages.extend([user_message, assistant_message])
-                remaining_chars -= len(user_message.content) + len(
-                    assistant_message.content
-                )
-
-        messages = qa_seed + messages
-        return messages, hidden_messages
+        return context, challenge_question, challenge_answer
 
     def _build_protocol(
         self,
         tokenizer: AutoTokenizer,
-        messages: List[Message],
-        hidden_messages: List[Message],
+        context: str,
+        challenge_question: str,
+        challenge_answer: str,
     ) -> TextCompressProtocol:
-        original_messages = [msg.model_dump() for msg in messages]
-        original_hidden_messages = [msg.model_dump() for msg in hidden_messages]
-        messages[-1].content = messages[-1].content + self.start_activation_token
-        hidden_messages[1].content = (
-            self.end_activation_token + hidden_messages[1].content
-        )
-
-        all_messages = [msg.model_dump() for msg in messages + hidden_messages]
+        messages = [
+            {
+                "role": "user",
+                "content": f"{context}{self.start_activation_token}\n\nRead the provided information and answer the following question, the answer should be retrieved from the provided information: {challenge_question}",
+            },
+            {
+                "role": "assistant",
+                "content": f"{self.end_activation_token}{challenge_answer}",
+            },
+        ]
         prompt = tokenizer.apply_chat_template(
-            all_messages, tokenize=False, add_generation_prompt=False
+            messages, tokenize=False, add_generation_prompt=False
         )
 
-        context, activation_prompt, expected_completion = re.split(
+        context, activation_prompt, _ = re.split(
             f"{re.escape(self.start_activation_token)}|{re.escape(self.end_activation_token)}",
             prompt,
         )
         return TextCompressProtocol(
             context=context,
             activation_prompt=activation_prompt,
-            expected_completion=expected_completion,
-            messages=original_messages,
-            hidden_messages=original_hidden_messages,
+            expected_completion=challenge_answer,
+            messages=messages,
         )
 
-    async def _ensemble_conversations(self, n: int) -> List[List[Message]]:
-        qa_conversations = await self._get_qa_as_conversation(n=n)
-        causal_conversations = await self.synthesizer.get_conversations(n=n)
-        if not causal_conversations:
-            return qa_conversations
-
-        all_conversations = qa_conversations + [
-            conversation.messages for conversation in causal_conversations
-        ]
-        random.shuffle(all_conversations)
-        return all_conversations
-
-    async def _get_qa_as_conversation(self, n: int) -> List[List[Message]]:
-        multiple_conversations: List[List[Message]] = []
-        qa_sets = await self.synthesizer.get_qas(n=n)
-        if not qa_sets:
-            return []
-
-        for qa_set in qa_sets:
-            conversation: List[Message] = []
-            context = qa_set.context_seed
-            qa_pairs = [
-                (qa_set.questions[i], qa_set.answers[i])
-                for i in range(len(qa_set.questions))
-            ]
-            random.shuffle(qa_pairs)
-            for q, a in qa_pairs:
-                if not conversation:
-                    conversation.append(Message(role="user", content=f"{context}\n{q}"))
-                    conversation.append(Message(role="assistant", content=a))
-                else:
-                    conversation.append(Message(role="user", content=q))
-                    conversation.append(Message(role="assistant", content=a))
-            multiple_conversations.append(conversation)
-        return multiple_conversations
