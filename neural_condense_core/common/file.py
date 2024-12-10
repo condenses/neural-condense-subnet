@@ -7,11 +7,14 @@ import os
 from rich.progress import track
 from ..logger import logger
 import asyncio
+import sys
 
-os.makedirs("tmp", exist_ok=True)
-# Remove all files in the tmp directory
-for file in track(os.listdir("tmp"), description="Cleaning tmp directory"):
-    os.remove(os.path.join("tmp", file))
+# Only clean tmp directory if running as validator
+if __name__ != "__main__" and os.path.basename(os.path.abspath(sys.argv[0])) == "validator.py":
+    os.makedirs("tmp", exist_ok=True)
+    # Remove all files in the tmp directory
+    for file in track(os.listdir("tmp"), description="Cleaning tmp directory"):
+        os.remove(os.path.join("tmp", file))
 
 
 async def load_npy_from_url(url: str, max_size_mb: int = 1024):
