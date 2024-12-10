@@ -167,16 +167,23 @@ class OrganicGate:
 
     def start_server(self):
         self.executor = ThreadPoolExecutor(max_workers=1)
-        self.executor.submit(
-            uvicorn.run,
-            self.app,
-            host="0.0.0.0",
-            port=self.config.validator.gate_port,
-        )
-        logger.info("Starting periodic registration to client.")
-        asyncio.run(
-            self._run_function_periodically(self.register_to_client, 60)
-        )
+        
+        async def startup():
+            config = uvicorn.Config(
+                self.app,
+                host="0.0.0.0",
+                port=self.config.validator.gate_port,
+                loop="asyncio"
+            )
+            server = uvicorn.Server(config)
+            await server.serve()
+
+        async def run_all():
+            registration_task = self._run_function_periodically(self.register_to_client, 60)
+            server_task = startup()
+            await asyncio.gather(registration_task, server_task)
+
+        asyncio.run(run_all())
 
     async def get_self(self):
         return self
