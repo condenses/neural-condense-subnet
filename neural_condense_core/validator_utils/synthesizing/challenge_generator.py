@@ -70,12 +70,12 @@ class ChallengeGenerator:
         question_answer_pairs = []
         for qa_item in context_qa_items:
             if len(context) + len(qa_item.context_seed) > max_chars:
-                break
+                continue
             context += f"\n{qa_item.context_seed}"
             questions = qa_item.questions
             answers = qa_item.answers
             question_answer_pairs.extend(list(zip(questions, answers)))
-        
+        random.shuffle(question_answer_pairs)
         challenge_question, challenge_answer = question_answer_pairs.pop()
 
         return context, challenge_question, challenge_answer
