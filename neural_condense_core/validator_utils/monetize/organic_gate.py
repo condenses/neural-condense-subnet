@@ -70,6 +70,7 @@ class OrganicGate:
             await asyncio.sleep(interval)
 
     async def register_to_client(self):
+        logger.info("Registering to client.")
         payload = RegisterPayload(port=self.config.validator.gate_port)
         await self.call(payload, timeout=12)
 
@@ -168,6 +169,7 @@ class OrganicGate:
             port=self.config.validator.gate_port,
         )
         self.loop = asyncio.get_event_loop()
+        logger.info("Starting periodic registration to client.")
         self.loop.create_task(
             self._run_function_periodically(self.register_to_client, 60)
         )

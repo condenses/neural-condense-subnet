@@ -3,7 +3,7 @@ from neural_condense_core.base.config import add_common_config, add_validator_co
 import argparse
 import bittensor as bt
 from neural_condense_core.logger import logger
-
+import time
 def setup_config():
     parser = argparse.ArgumentParser()
     parser = add_common_config(parser)
@@ -35,3 +35,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+    while True:
+        time.sleep(60)
+        logger.info("Running...")
