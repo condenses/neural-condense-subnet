@@ -22,7 +22,7 @@ def setup_miner_manager(config: bt.config, wallet, metagraph: bt.metagraph):
     return miner_manager
 
 def setup_organic_gate(config: bt.config, miner_manager: vutils.managing.MinerManager):
-    organic_gate = vutils.monetize.OrganicGate(miner_manager=miner_manager)
+    organic_gate = vutils.monetize.OrganicGate(miner_manager=miner_manager, config=config)
     return organic_gate
 
 def main():
