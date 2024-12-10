@@ -96,7 +96,6 @@ class OrganicGate:
             logger.info(f"Context: {request.context[:100]}...")
             logger.info(f"Tier: {request.tier}")
             logger.info(f"Target model: {request.target_model}")
-
             targeted_uid = None
             if request.miner_uid != -1:
                 counter = self.miner_manager.serving_counter[request.tier][
@@ -112,9 +111,10 @@ class OrganicGate:
                     )
             else:
                 # Get miners in the requested tier sorted by ELO rating
+                metadata = self.miner_manager.get_metadata()
                 tier_miners = [
                     (uid, metadata.elo_rating)
-                    for uid, metadata in self.miner_manager.metadata.items()
+                    for uid, metadata in metadata.items()
                     if metadata.tier == request.tier
                 ]
                 tier_miners.sort(key=lambda x: x[1], reverse=True)
