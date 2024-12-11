@@ -163,7 +163,7 @@ async def process_and_score_responses(
         total_uids=total_uids,
     )
     score_changes = [
-        f"{int(previous_scores[i])} -> {int(updated_scores[i])}"
+        f"{round(previous_scores[i], 3)} -> {round(updated_scores[i], 3)}"
         for i in range(len(previous_scores))
     ]
     logs = {
