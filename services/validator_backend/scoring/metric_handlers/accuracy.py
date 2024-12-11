@@ -75,7 +75,7 @@ def accuracy(
     logger.debug(f"Activation prompt: {activation_prompt}")
     logger.debug(f"Completion: {completion}")
     logger.debug(f"Ground truth: {ground_truth}")
-    return get_accuracy_llm(completion, ground_truth, question)
+    return get_accuracy_llm(completion, ground_truth, activation_prompt)
 
 
 def get_accuracy(completion: str, ground_truth: str, embed_model: AutoModel) -> float:
