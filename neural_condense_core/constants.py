@@ -125,8 +125,8 @@ class Constants(BaseModel):
     INITIAL_ELO_RATING: float = 100.0
     FLOOR_ELO_RATING: float = 0.0
     ELO_GROUPS: dict[str, EloGroup] = {
-        "beginner": EloGroup(min_elo=0, max_elo=800, k_factor=24),
-        "intermediate": EloGroup(min_elo=800, max_elo=1600, k_factor=16),
+        "beginner": EloGroup(min_elo=0, max_elo=800, k_factor=8),
+        "intermediate": EloGroup(min_elo=800, max_elo=1600, k_factor=4),
         "advanced": EloGroup(min_elo=1600, max_elo=3000, k_factor=4),
     }
     ORGANIC_VERIFY_FREQUENCY: float = 0.1
