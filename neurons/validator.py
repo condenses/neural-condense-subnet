@@ -159,6 +159,7 @@ class Validator(base.BaseValidator):
         try:
             dendrite = bt.dendrite(self.wallet)
             synapse = ground_truth_synapse.miner_synapse
+            logger.info(f"Querying miners {batched_uids} with synapse {synapse}.")
             responses = await vutils.loop.query_miners(
                 dendrite=dendrite,
                 metagraph=self.metagraph,
@@ -197,8 +198,6 @@ class Validator(base.BaseValidator):
                     model_name=model_name,
                     task_config=task_config,
                     tier_config=constants.TIER_CONFIG[tier],
-                    tier=tier,
-                    use_wandb=self.config.validator.use_wandb,
                     config=self.config,
                     invalid_reasons=invalid_reasons,
                 )
