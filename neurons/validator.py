@@ -126,6 +126,11 @@ class Validator(base.BaseValidator):
             batched_uids = [total_uids[i : i + 4] for i in range(0, len(total_uids), 4)]
             futures = []
             for uids in batched_uids:
+                logger.info(
+                    "Processing batch",
+                    uids=uids,
+                    sleep=sleep_per_set / len(batched_uids),
+                )
                 future = self.loop.create_task(
                     self._forward_batch(
                         tier,
@@ -136,7 +141,7 @@ class Validator(base.BaseValidator):
                     )
                 )
                 futures.append(future)
-            await asyncio.sleep(sleep_per_set)
+                await asyncio.sleep(sleep_per_set / len(batched_uids))
         await asyncio.gather(*futures, return_exceptions=True)
 
     async def _forward_batch(
