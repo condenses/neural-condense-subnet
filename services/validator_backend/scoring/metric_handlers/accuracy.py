@@ -128,5 +128,7 @@ You have to return 'yes' if the response is correct, 'no' if it is incorrect. Th
         temperature=0,
         max_tokens=16,
     )
+    logger.debug(f"LLM Judge Messages: {messages}")
+    logger.debug(f"LLM Judge Response: {response.choices[0].message.content}")
     is_correct = "yes" in response.choices[0].message.content.lower()
     return 1 if is_correct else 0.1
