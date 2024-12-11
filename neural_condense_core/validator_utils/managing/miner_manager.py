@@ -8,7 +8,6 @@ import time
 import asyncio
 from pydantic import BaseModel
 from .metric_converter import MetricConverter
-from .elo import ELOSystem
 from ...common import build_rate_limit
 from ...protocol import Metadata
 from ...constants import constants, TierConfig
@@ -100,7 +99,6 @@ class MinerManager:
         wallet: Bittensor wallet for the validator
         dendrite: Bittensor dendrite for network communication
         metagraph: Network metagraph containing miner information
-        elo_system (ELOSystem): System for managing ELO ratings
         default_metadata_items (list): Default metadata fields
         config: Validator configuration
         state_path (str): Path to save/load state
@@ -125,7 +123,6 @@ class MinerManager:
         self.redis_client = redis.Redis(
             host=redis_config.host, port=redis_config.port, db=redis_config.db
         )
-        self.elo_system = ELOSystem()
         self.default_metadata_items = [
             ("tier", "unknown"),
         ]
@@ -161,8 +158,6 @@ class MinerManager:
         total_uids: list[int],
     ):
         """
-        Updates the ELO ratings of miners based on their performance.
-
         Args:
             metrics (dict[str, list[float]]): Performance metrics for each miner
             total_uids (list[int]): UIDs of all miners
@@ -181,7 +176,7 @@ class MinerManager:
 
     def get_normalized_ratings(self, top_percentage: float = 1.0) -> np.ndarray:
         """
-        Calculate normalized ratings for all miners based on their tier and ELO rating.
+        Calculate normalized ratings for all miners based on their tier and score.
 
         Args:
             top_percentage (float): Percentage of miners to consider for normalization
@@ -381,18 +376,14 @@ class MinerManager:
                 miner = MinerMetadata(uid=uid)
                 self.session.add(miner)
 
-            # Keep track of the current tier
             current_tier = miner.tier
             new_tier = current_tier
 
-            # Update tier based on response
             if response and response.metadata.get("tier") is not None:
                 new_tier = response.metadata["tier"]
 
-            # Get current or initial ELO rating
             current_score = miner.score
 
-            # Reset ELO rating if tier changed
             if new_tier != current_tier:
                 logger.info(
                     f"Tier of uid {uid} changed from {current_tier} to {new_tier}."

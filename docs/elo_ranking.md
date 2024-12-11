@@ -1,3 +1,4 @@
+# DEPRECATED
 ## ELO Rating System
 
 The validator uses an ELO rating system to track and evaluate miner performance over time. Similar to chess rankings, this system provides a dynamic way to rank miners based on their relative performance.

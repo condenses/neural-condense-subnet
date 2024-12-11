@@ -24,6 +24,7 @@ class OrganicPayload(pydantic.BaseModel):
 
 class OrganicResponse(pydantic.BaseModel):
     compressed_kv_url: str
+    miner_uid: int = -1
 
 
 class RegisterPayload(pydantic.BaseModel):
@@ -56,7 +57,6 @@ class OrganicGate:
         )
         self.client_axon: bt.AxonInfo = None
         self.authentication_key = "".join(random.choices("0123456789abcdef", k=16))
-        
 
     async def _run_function_periodically(self, function, interval):
         while True:
@@ -110,10 +110,9 @@ class OrganicGate:
                         detail="Miner is under rate limit.",
                     )
             else:
-                # Get miners in the requested tier sorted by ELO rating
                 metadata = self.miner_manager.get_metadata()
                 tier_miners = [
-                    (uid, metadata.elo_rating)
+                    (uid, metadata.score)
                     for uid, metadata in metadata.items()
                     if metadata.tier == request.tier
                 ]
@@ -152,7 +151,9 @@ class OrganicGate:
             logger.error(f"Error: {e}")
             raise HTTPException(status_code=503, detail="Validator error.")
 
-        return OrganicResponse(compressed_kv_url=response.compressed_kv_url)
+        return OrganicResponse(
+            compressed_kv_url=response.compressed_kv_url, miner_uid=targeted_uid
+        )
 
     async def _organic_validating(self, response, tier):
         if random.random() < constants.ORGANIC_VERIFY_FREQUENCY:
@@ -163,23 +164,25 @@ class OrganicGate:
             if not is_valid:
                 logger.warning(f"Invalid response: {reason}")
 
-            # TODO: Update miner's ELO rating
+            # TODO: Update miner's score
 
     def start_server(self):
         self.executor = ThreadPoolExecutor(max_workers=1)
-        
+
         async def startup():
             config = uvicorn.Config(
                 self.app,
                 host="0.0.0.0",
                 port=self.config.validator.gate_port,
-                loop="asyncio"
+                loop="asyncio",
             )
             server = uvicorn.Server(config)
             await server.serve()
 
         async def run_all():
-            registration_task = self._run_function_periodically(self.register_to_client, 60)
+            registration_task = self._run_function_periodically(
+                self.register_to_client, 60
+            )
             server_task = startup()
             await asyncio.gather(registration_task, server_task)
 

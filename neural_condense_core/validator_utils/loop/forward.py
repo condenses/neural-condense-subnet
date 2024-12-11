@@ -227,22 +227,6 @@ async def get_accuracies(
     accelerate_rewards = [r.accelerate_score for r in valid_responses]
     return accuracies, accelerate_rewards
 
-
-def get_k_factor(miner_manager: MinerManager, uids: list[int]) -> tuple[int, float]:
-    metadatas = miner_manager.get_metadata(uids)
-    mean_elo = sum(metadata.elo_rating for metadata in metadatas.values()) / len(
-        metadatas
-    )
-
-    if mean_elo < ncc.constants.ELO_GROUPS["beginner"].max_elo:
-        elo_group = ncc.constants.ELO_GROUPS["beginner"]
-    elif mean_elo < ncc.constants.ELO_GROUPS["intermediate"].max_elo:
-        elo_group = ncc.constants.ELO_GROUPS["intermediate"]
-    else:
-        elo_group = ncc.constants.ELO_GROUPS["advanced"]
-    return elo_group.k_factor
-
-
 def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
     try:
         message = "incentivized-decentralzied-condensed-ai" + "-".join(

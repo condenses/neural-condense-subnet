@@ -1,4 +1,5 @@
 
+# DEPRECATED
 ## 📊 Score Calculation Overview
 
 This section provides an overview of how challenge items are created for training a token compressor for large language models (LLMs), the purpose of each task, and how scores are calculated. The goal is to compress long contexts into shorter tokens while ensuring the integrity and usefulness of the output.

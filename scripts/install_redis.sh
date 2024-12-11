@@ -20,6 +20,8 @@ $SUDO apt update
 # Install Redis
 $SUDO apt install -y redis
 
+
+
 # Verify installation
 if redis-cli --version; then
     echo "Redis installed successfully."

@@ -22,12 +22,6 @@ class SyntheticTaskConfig(BaseModel):
     weight: float
 
 
-class EloGroup(BaseModel):
-    min_elo: int
-    max_elo: int
-    k_factor: int
-
-
 class RedisConfig(BaseModel):
     """Configuration for Redis connection"""
 
@@ -127,13 +121,6 @@ class Constants(BaseModel):
     SET_WEIGHTS_TIMEOUT: int = 120
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"
     REPORT_URL: str = "https://report.condenses.ai"
-    INITIAL_ELO_RATING: float = 100.0
-    FLOOR_ELO_RATING: float = 0.0
-    ELO_GROUPS: dict[str, EloGroup] = {
-        "beginner": EloGroup(min_elo=0, max_elo=800, k_factor=8),
-        "intermediate": EloGroup(min_elo=800, max_elo=1600, k_factor=4),
-        "advanced": EloGroup(min_elo=1600, max_elo=3000, k_factor=4),
-    }
     ORGANIC_VERIFY_FREQUENCY: float = 0.1
     TOP_PERCENTAGE_FOR_ALLOCATING_WEIGHTS: float = 0.3
     EXPECTED_MEAN_SCORE: float = 0.75
