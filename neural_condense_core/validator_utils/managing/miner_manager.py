@@ -324,7 +324,7 @@ class MinerManager:
         Report current miner metadata to the validator server.
         """
         metadata_dict = {
-            miner.uid: {"tier": miner.tier, "elo_rating": miner.elo_rating}
+            miner.uid: {"tier": miner.tier, "elo_rating": miner.score * 100}
             for miner in self.session.query(MinerMetadata).all()
         }
         await self.report(metadata_dict, "api/report-metadata")
