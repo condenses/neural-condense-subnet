@@ -153,8 +153,11 @@ async def process_and_score_responses(
         config=config,
     )
     scores = [
-        accu * (1 - tier_config.accelerate_reward_scalar)
-        + accel * tier_config.accelerate_reward_scalar
+        (
+            accu * (1 - tier_config.accelerate_reward_scalar)
+            + accel * tier_config.accelerate_reward_scalar
+        )
+        * (accu > 0)
         for accu, accel in zip(accuracies, accelerate_rewards)
     ] + [0] * len(invalid_uids)
     total_uids = valid_uids + invalid_uids

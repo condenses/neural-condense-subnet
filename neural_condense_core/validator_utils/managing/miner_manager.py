@@ -172,7 +172,7 @@ class MinerManager:
         for uid, score in zip(total_uids, scores):
             miner = self.session.query(MinerMetadata).get(uid)
             previous_scores.append(miner.score)
-            miner.score = miner.score * 0.96 + score * 0.04
+            miner.score = miner.score * 0.9 + score * 0.1
             miner.score = max(0, miner.score)
             updated_scores.append(miner.score)
 
