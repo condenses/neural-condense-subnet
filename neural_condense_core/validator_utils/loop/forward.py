@@ -166,13 +166,12 @@ async def process_and_score_responses(
         f"{int(previous_scores[i])} -> {int(updated_scores[i])}"
         for i in range(len(previous_scores))
     ]
-    reasons = [""] * len(valid_uids) + invalid_reasons
     logs = {
         "uid": total_uids,
-        "accuracy": accuracies,
-        "accelerate_reward": accelerate_rewards,
+        "accuracy": accuracies + [0] * len(invalid_uids),
+        "accelerate_reward": accelerate_rewards + [0] * len(invalid_uids),
         "score_change": score_changes,
-        "invalid_reasons": reasons,
+        "invalid_reasons": [""] * len(valid_uids) + invalid_reasons,
     }
     return logs, total_uids
 
