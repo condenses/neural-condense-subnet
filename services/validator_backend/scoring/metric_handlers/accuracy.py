@@ -6,6 +6,10 @@ from copy import deepcopy
 from typing import List
 from ..anti_exploitation.filter_existance import FilterExistanceChecker
 from ..utils import generate_answer
+from openai import OpenAI
+
+
+OPENAI_CLIENT = OpenAI(base_url="https://api.together.xyz/v1")
 
 logger = structlog.get_logger("accuracy")
 
@@ -72,7 +76,7 @@ def accuracy(
     logger.debug(f"Activation prompt: {activation_prompt}")
     logger.debug(f"Completion: {completion}")
     logger.debug(f"Ground truth: {ground_truth}")
-    return get_accuracy(completion, ground_truth, embed_model)
+    return get_accuracy_llm(completion, ground_truth, question)
 
 
 def get_accuracy(completion: str, ground_truth: str, embed_model: AutoModel) -> float:
@@ -103,3 +107,26 @@ def get_accuracy(completion: str, ground_truth: str, embed_model: AutoModel) -> 
 
 def preprocess_batch(values: list[float]) -> list[float]:
     return [value if value is not None else DEFAULT_VALUE for value in values]
+
+
+def get_accuracy_llm(completion: str, ground_truth: str, question: str) -> float:
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant that evaluates the correctness of a response to a question based on the ground truth.",
+        },
+        {
+            "role": "user",
+            "content": f"""Please evaluate the correctness of the following response to the question based on the ground truth.\n\n**Question**: {question}\n\n**Response**: {completion}\n\n**Ground truth**: {ground_truth}
+You have to return 'yes' if the response is correct, 'no' if it is incorrect. The correct response should be have same meaning as the ground truth, don't need to be exactly the same. Please just return only 'yes' or 'no', don't need to explain.
+""",
+        },
+    ]
+    response = OPENAI_CLIENT.chat.completions.create(
+        model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        messages=messages,
+        temperature=0,
+        max_tokens=16,
+    )
+    is_correct = "yes" in response.choices[0].message.content.lower()
+    return 1 if is_correct else 0.1
