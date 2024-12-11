@@ -56,11 +56,6 @@ class ScoringService:
         values = []
         metric_handler = metric_handlers[criteria]["handler"]
         preprocess_batch = metric_handlers[criteria]["preprocess_batch"]
-        positive_chunk, negative_chunk = (
-            self.filter_existance_checker.get_messages_pair(
-                request.ground_truth_request.messages
-            )
-        )
         for miner_response in request.miner_responses:
             try:
                 miner_response.decode()
@@ -79,8 +74,8 @@ class ScoringService:
                     tokenizer=self.tokenizer,
                     model=self.model,
                     context=request.ground_truth_request.context,
-                    positive_chunk=positive_chunk,
-                    negative_chunk=negative_chunk,
+                    positive_chunk=request.ground_truth_request.positive_chunk,
+                    negative_chunk=request.ground_truth_request.negative_chunk,
                 )
                 end_time = time.time()
                 logger.info(

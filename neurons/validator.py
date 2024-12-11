@@ -5,6 +5,7 @@ from neural_condense_core import (
     __spec_version__,
     logger,
 )
+from neural_condense_core.protocol import TextCompressProtocol
 import pandas as pd
 import bittensor as bt
 import random
@@ -99,7 +100,23 @@ class Validator(base.BaseValidator):
             traceback.print_exc()
             return
 
-        for i in range(n_sets):
+        task_config = vutils.loop.get_task_config()
+        model_name = random.choice(constants.TIER_CONFIG[tier].supporting_models)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        ground_truth_synapses = [
+            await vutils.loop.prepare_synapse(
+                challenge_generator=self.challenge_generator,
+                tokenizer=tokenizer,
+                task_config=task_config,
+                tier_config=constants.TIER_CONFIG[tier],
+                model_name=model_name,
+            )
+            for _ in range(n_sets)
+        ]
+
+        logger.info(f"Prepared {len(ground_truth_synapses)} ground truth synapses.")
+
+        for i, ground_truth_synapse in enumerate(ground_truth_synapses):
             logger.info(
                 f"Processing set {i}/{n_sets} then sleeping for {sleep_per_set} seconds."
             )
@@ -118,7 +135,13 @@ class Validator(base.BaseValidator):
                     continue
                 logger.info(f"Batched UIDs: {batched_uids}")
                 future = self.loop.create_task(
-                    self._forward_batch(tier, model_name, batched_uids, tokenizer)
+                    self._forward_batch(
+                        tier,
+                        model_name,
+                        batched_uids,
+                        ground_truth_synapse,
+                        task_config,
+                    )
                 )
                 futures.append(future)
                 await asyncio.sleep(sleep_per_batch)
@@ -130,7 +153,8 @@ class Validator(base.BaseValidator):
         tier: str,
         model_name: str,
         batched_uids: list[int],
-        tokenizer: AutoTokenizer,
+        ground_truth_synapse: TextCompressProtocol,
+        task_config,
     ):
         """
         Process a batch of miners for validation.
@@ -143,23 +167,6 @@ class Validator(base.BaseValidator):
         """
         try:
             dendrite = bt.dendrite(self.wallet)
-            task_config = vutils.loop.get_task_config()
-            logger.info(f"Task config: {task_config}")
-            try:
-                ground_truth_synapse = await vutils.loop.prepare_synapse(
-                    challenge_generator=self.challenge_generator,
-                    tokenizer=tokenizer,
-                    task_config=task_config,
-                    tier_config=constants.TIER_CONFIG[tier],
-                    model_name=model_name,
-                )
-            except Exception as e:
-                logger.error(f"Error preparing synapse: {e}")
-                traceback.print_exc()
-                return
-            if not ground_truth_synapse:
-                logger.warning("No ground truth synapse")
-                return
             synapse = ground_truth_synapse.miner_synapse
             k_factor = vutils.loop.get_k_factor(self.miner_manager, batched_uids)
             responses = await vutils.loop.query_miners(

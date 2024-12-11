@@ -28,6 +28,8 @@ class TextCompressProtocol(Synapse):
     local_filename: str = ""
     download_time: float = 0.0
     bonus_compress_size: float = 0.0
+    negative_chunk: str = ""
+    positive_chunk: str = ""
 
     @property
     def accelerate_score(self) -> float:
@@ -55,6 +57,8 @@ class TextCompressProtocol(Synapse):
             "activation_prompt": self.activation_prompt,
             "messages": self.messages,
             "hidden_messages": self.hidden_messages,
+            "positive_chunk": self.positive_chunk,
+            "negative_chunk": self.negative_chunk,
         }
 
     @staticmethod

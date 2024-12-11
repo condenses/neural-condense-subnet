@@ -68,8 +68,6 @@ async def load_npy_from_url(url: str, max_size_mb: int = 1024):
             logger.info(f"Time taken to download: {end_time - start_time:.2f} seconds")
             return filename, end_time - start_time
 
-        # Use run_in_executor with our controlled thread pool
-        loop = asyncio.get_running_loop()
         filename, download_time = await asyncio.to_thread(_download, url)
 
         data = _load_and_cleanup(filename)
