@@ -45,9 +45,6 @@ class ScoringService:
         self.tokenizer = AutoTokenizer.from_pretrained(
             "Condense-AI/Mistral-7B-Instruct-v0.2"
         )
-        self.embed_model = AutoModel.from_pretrained(
-            "nvidia/NV-Embed-v2", trust_remote_code=True, torch_dtype=self.dtype
-        ).to(device=self.device)
         self.filter_existance_checker = FilterExistanceChecker()
 
     @torch.no_grad()
