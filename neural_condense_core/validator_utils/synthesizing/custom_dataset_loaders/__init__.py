@@ -25,6 +25,7 @@ def load_wikipedia_science_dataset():
     )
     ds = ds.shuffle()
     ds = ds.filter(lambda x: len(x["text"]) > 512)
+    ds = ds.map(lambda x: {"context": x["text"]})
     print("Loaded wikipedia science dataset")
     return ds
 
