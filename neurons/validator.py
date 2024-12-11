@@ -206,6 +206,7 @@ class Validator(base.BaseValidator):
                     tier_config=constants.TIER_CONFIG[tier],
                     config=self.config,
                     invalid_reasons=invalid_reasons,
+                    timeout=300,
                 )
                 end_time = time.time()
                 logger.info(
