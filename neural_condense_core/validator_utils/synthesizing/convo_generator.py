@@ -124,11 +124,7 @@ class ConvoGenerator:
 You are an agent that generates questions from provided text.
 Instructions:
 - For provided text, generate {num_questions} questions that can be answered solely by the facts in the text.
-- Return questions in bullet points format. Example:
-    - Question: <question-1>
-    - Question: <question-2>
-    ...
-    - Question: <question-n>
+- Return questions in a list format. Example: ["Question 1", "Question 2", "Question 3"]
 
 ### Context ###
 ```
@@ -145,14 +141,19 @@ Instructions:
             "stream": False,
         }
         text = await self._make_api_call(messages, sampling_params)
-        questions = self._extract_questions(text)
+        questions = self.extract_questions(text)
         if not questions:
             print(text)
         answers = []
         for question in questions:
             sampling_params = {"temperature": 0.4, "max_tokens": 1024, "stream": False}
             text = await self._make_api_call(
-                [{"role": "user", "content": f"{context_seed}\n\n{question}"}],
+                [
+                    {
+                        "role": "user",
+                        "content": f"{context_seed}\n\nBased on above context, answer the question concisely: {question}",
+                    }
+                ],
                 sampling_params,
             )
             answers.append(text)
@@ -161,12 +162,10 @@ Instructions:
             total_chars += len(q) + len(a)
         return questions, answers, total_chars
 
-    def _extract_questions(self, text: str, prefix: str = "Question: "):
-        lines = text.split("\n")
-        questions = []
-        for line in lines:
-            if prefix in line:
-                question = line[line.index(prefix) + len(prefix) :].strip()
-                if len(question) > 16:
-                    questions.append(question)
+    def extract_questions(self, completion: str):
+        # Extract based on format ["Question 1", "Question 2", "Question 3"]
+        start_list = completion.find("[")
+        end_list = completion.find("]")
+        questions = completion[start_list + 1 : end_list]
+        questions = eval(questions)
         return questions
