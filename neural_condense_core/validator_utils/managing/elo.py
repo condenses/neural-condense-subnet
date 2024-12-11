@@ -58,17 +58,17 @@ class ELOSystem:
                 new_ratings[j] += rating_change_j
         return new_ratings
 
-    def normalize_ratings(
-        self, ratings: List[float], min_val: float = 0, max_val: float = 1
+    def normalize_scores(
+        self, scores: List[float], min_val: float = 0, max_val: float = 1
     ) -> List[float]:
-        """Normalize ratings to sum to 1 for weight setting using numpy."""
-        if len(ratings) == 0:
+        """Normalize scores to sum to 1 for weight setting using numpy."""
+        if len(scores) == 0:
             return []
 
-        ratings_array = np.array(ratings)
-        if np.all(ratings_array == ratings_array[0]):
-            # If all ratings are equal, return equal weights that sum to 1
-            return (np.ones(len(ratings)) / len(ratings)).tolist()
+        scores_array = np.array(scores)
+        if np.all(scores_array == scores_array[0]):
+            # If all scores are equal, return equal weights that sum to 1
+            return (np.ones(len(scores)) / len(scores)).tolist()
 
         # Normalize to sum to 1
-        return (ratings_array / np.sum(ratings_array)).tolist()
+        return (scores_array / np.sum(scores_array)).tolist()

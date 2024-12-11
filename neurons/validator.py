@@ -114,38 +114,29 @@ class Validator(base.BaseValidator):
             for _ in range(n_sets)
         ]
 
+        sleep_per_set = constants.EPOCH_LENGTH / n_sets / 2
+
         logger.info(f"Prepared {len(ground_truth_synapses)} ground truth synapses.")
 
         for i, ground_truth_synapse in enumerate(ground_truth_synapses):
             logger.info(
                 f"Processing set {i}/{n_sets} then sleeping for {sleep_per_set} seconds."
             )
-            pre_batched_uids = vutils.loop.get_batched_uids(
-                serving_counter, self.miner_manager.get_metadata()
-            )
-            logger.info(f"Pre-batched UIDs: {pre_batched_uids}")
-            sleep_per_batch = sleep_per_set / len(pre_batched_uids)
-            logger.info(f"Sleep per batch: {sleep_per_batch}")
-            for batch_uids in pre_batched_uids:
-                batched_uids = [
-                    uid for uid in batch_uids if serving_counter[uid].increment()
-                ][: constants.BATCH_SIZE]
-
-                if len(batched_uids) < 2:
-                    continue
-                logger.info(f"Batched UIDs: {batched_uids}")
+            total_uids = list(serving_counter.keys())
+            batched_uids = [total_uids[i : i + 4] for i in range(0, len(total_uids), 4)]
+            futures = []
+            for uids in batched_uids:
                 future = self.loop.create_task(
                     self._forward_batch(
                         tier,
                         model_name,
-                        batched_uids,
+                        uids,
                         ground_truth_synapse,
                         task_config,
                     )
                 )
                 futures.append(future)
-                await asyncio.sleep(sleep_per_batch)
-
+            await asyncio.sleep(sleep_per_set)
         await asyncio.gather(*futures, return_exceptions=True)
 
     async def _forward_batch(
@@ -168,7 +159,6 @@ class Validator(base.BaseValidator):
         try:
             dendrite = bt.dendrite(self.wallet)
             synapse = ground_truth_synapse.miner_synapse
-            k_factor = vutils.loop.get_k_factor(self.miner_manager, batched_uids)
             responses = await vutils.loop.query_miners(
                 dendrite=dendrite,
                 metagraph=self.metagraph,
@@ -198,7 +188,7 @@ class Validator(base.BaseValidator):
             try:
                 logger.info("Processing and scoring responses.")
                 start_time = time.time()
-                metrics, total_uids = await vutils.loop.process_and_score_responses(
+                logs, total_uids = await vutils.loop.process_and_score_responses(
                     miner_manager=self.miner_manager,
                     valid_responses=valid_responses,
                     valid_uids=valid_uids,
@@ -208,7 +198,6 @@ class Validator(base.BaseValidator):
                     task_config=task_config,
                     tier_config=constants.TIER_CONFIG[tier],
                     tier=tier,
-                    k_factor=k_factor,
                     use_wandb=self.config.validator.use_wandb,
                     config=self.config,
                     invalid_reasons=invalid_reasons,
@@ -224,13 +213,13 @@ class Validator(base.BaseValidator):
             batch_information = (
                 f"Batch Metrics - {tier} - {model_name} - {task_config.task}"
             )
-            batch_report_df = vutils.loop.logging.log_as_dataframe(metrics)
+            batch_report_df = vutils.loop.logging.log_as_dataframe(logs)
             logger.info(
                 f"Logging dataframe {batch_information}:\n{batch_report_df.to_markdown()}"
             )
 
             if self.config.validator.use_wandb:
-                vutils.loop.logging.log_wandb(metrics, total_uids, tier=tier)
+                vutils.loop.logging.log_wandb(logs, total_uids, tier=tier)
 
             await self.miner_manager.report(
                 {

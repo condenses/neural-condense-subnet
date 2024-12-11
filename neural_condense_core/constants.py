@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 
 
-
 class TierConfig(BaseModel):
     incentive_percentage: float
     requests_per_epoch: int
@@ -31,22 +30,28 @@ class EloGroup(BaseModel):
 
 class RedisConfig(BaseModel):
     """Configuration for Redis connection"""
+
     host: str = Field(default="localhost")
     port: int = Field(default=6379)
     db: int = Field(default=0)
-    expire_time: int = Field(default=3600, description="Default expiration time in seconds")
+    expire_time: int = Field(
+        default=3600, description="Default expiration time in seconds"
+    )
     serving_counter_key_format: str = Field(default="serving_counter:{tier}:{uid}")
+
 
 class SqlConfig(BaseModel):
     """Configuration for SQL database connection"""
+
     url: str = Field(
         default="sqlite:///miner_metadata.db",
-        description="Database URL in SQLAlchemy format"
+        description="Database URL in SQLAlchemy format",
     )
 
 
 class DatabaseConfig(BaseModel):
     """Combined database configuration"""
+
     redis: RedisConfig = Field(default_factory=RedisConfig)
     sql: SqlConfig = Field(default_factory=SqlConfig)
 
@@ -131,8 +136,8 @@ class Constants(BaseModel):
     }
     ORGANIC_VERIFY_FREQUENCY: float = 0.1
     TOP_PERCENTAGE_FOR_ALLOCATING_WEIGHTS: float = 0.3
-    EXPECTED_MEAN_ELO_RATING: float = 1000
-    EXPECTED_MAX_STD_ELO_RATING: float = 300
+    EXPECTED_MEAN_SCORE: float = 0.75
+    EXPECTED_MAX_STD_SCORE: float = 0.1
 
     DATABASE_CONFIG: DatabaseConfig = Field(
         default_factory=lambda: DatabaseConfig(
@@ -144,7 +149,7 @@ class Constants(BaseModel):
             ),
             sql=SqlConfig(
                 url=os.getenv("SQL_DATABASE_URL", "sqlite:///miner_metadata.db")
-            )
+            ),
         )
     )
 

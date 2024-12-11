@@ -9,6 +9,7 @@ import os
 from typing import List, Tuple
 from ...protocol import TextCompressProtocol
 from ...constants import constants
+from .filter_chunker import FilterExistanceChecker
 from .utils import retry
 from copy import deepcopy
 
@@ -39,6 +40,7 @@ class ChallengeGenerator:
         self.task_to_builder = {
             "question_answering": self._build_qa_conversation,
         }
+        self.filter_checker = FilterExistanceChecker()
         # for task in constants.SYNTHETIC_TASK_CONFIG:
         #     assert (
         #         task.task in self.task_to_builder
@@ -55,8 +57,10 @@ class ChallengeGenerator:
             context, challenge_question, challenge_answer = await self.task_to_builder[task](
                 max_context_length_in_chars
             )
+            positive_chunk, negative_chunk = self.filter_checker.get_chunks(context)
             synapse = self._build_protocol(tokenizer, context, challenge_question, challenge_answer)
-
+            synapse.positive_chunk = positive_chunk
+            synapse.negative_chunk = negative_chunk
         except Exception as e:
             raise e
         return synapse

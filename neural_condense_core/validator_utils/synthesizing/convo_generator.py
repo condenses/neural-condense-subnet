@@ -120,15 +120,22 @@ class ConvoGenerator:
         return assistant_messages, total_chars
 
     async def generate_qa_pairs(self, context_seed: str, num_questions: int = 1):
-        question_description = "The question can vary in complexity, ranging from simple tasks like extracting entities or events to more nuanced queries requiring analysis, summarization, or synthesis based on the given context"
-        prompt = f"- Context:\n---\n{context_seed}\n---\n Generate {num_questions} different questions."
-        system_message = (
-            "Your task is to understand the provided context and generate questions about it."
-            f"{question_description}"
-            "Each question should be in the following format: - Question: <question>?\n"
-        )
+        prompt = f"""
+You are an agent that generates questions from provided text.
+Instructions:
+- For provided text, generate {num_questions} questions that can be answered solely by the facts in the text.
+- Return questions in bullet points format. Example:
+    - Question: <question-1>
+    - Question: <question-2>
+    ...
+    - Question: <question-n>
+
+### Context ###
+```
+{context_seed}
+```
+"""
         messages = [
-            {"role": "system", "content": system_message},
             {"role": "user", "content": prompt},
         ]
         sampling_params = {
