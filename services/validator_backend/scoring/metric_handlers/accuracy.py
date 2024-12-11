@@ -18,7 +18,6 @@ DEFAULT_VALUE = 0
 
 def accuracy(
     filter_existance_checker: FilterExistanceChecker,
-    embed_model: AutoModel,
     kv_cache: DynamicCache,
     activation_prompt: str,
     expected_completion: str,

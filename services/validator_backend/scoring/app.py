@@ -65,7 +65,6 @@ class ScoringService:
                 start_time = time.time()
                 value = metric_handler(
                     filter_existance_checker=self.filter_existance_checker,
-                    embed_model=self.embed_model,
                     kv_cache=kv_cache,
                     activation_prompt=request.ground_truth_request.activation_prompt,
                     expected_completion=request.ground_truth_request.expected_completion,
