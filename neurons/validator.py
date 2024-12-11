@@ -123,6 +123,7 @@ class Validator(base.BaseValidator):
                 f"Processing set {i}/{n_sets} then sleeping for {sleep_per_set} seconds."
             )
             total_uids = list(serving_counter.keys())
+            random.shuffle(total_uids)
             batched_uids = [total_uids[i : i + 4] for i in range(0, len(total_uids), 4)]
             futures = []
             for uids in batched_uids:
