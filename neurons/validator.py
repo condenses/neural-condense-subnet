@@ -159,7 +159,7 @@ class Validator(base.BaseValidator):
         try:
             dendrite = bt.dendrite(self.wallet)
             synapse = ground_truth_synapse.miner_synapse
-            logger.info(f"Querying miners {batched_uids} with synapse {synapse}.")
+            logger.info(f"Querying miners {batched_uids}.")
             responses = await vutils.loop.query_miners(
                 dendrite=dendrite,
                 metagraph=self.metagraph,
@@ -172,6 +172,7 @@ class Validator(base.BaseValidator):
                 logger.warning(f"No responses from {batched_uids}.")
                 return
             try:
+                logger.info(f"Validating responses for {batched_uids}.")
                 (
                     valid_responses,
                     valid_uids,
