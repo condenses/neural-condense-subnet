@@ -52,6 +52,10 @@ class Validator(base.BaseValidator):
         """
         logger.info("Running epoch.")
         await self.miner_manager.sync()
+        try:
+            await self.miner_manager.report_metadata()
+        except Exception as e:
+            logger.error(f"Failed to report metadata & save-state: {e}")
         tasks = [
             self.loop.create_task(self._forward_tier(tier))
             for tier in constants.TIER_CONFIG
@@ -63,11 +67,6 @@ class Validator(base.BaseValidator):
         except Exception as e:
             logger.error(f"Error running epoch tasks: {e}")
             traceback.print_exc()
-
-        try:
-            await self.miner_manager.report_metadata()
-        except Exception as e:
-            logger.error(f"Failed to report metadata & save-state: {e}")
 
     async def _forward_tier(self, tier: str):
         """
