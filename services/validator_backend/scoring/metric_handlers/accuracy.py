@@ -23,8 +23,8 @@ def accuracy(
     expected_completion: str,
     tokenizer: AutoTokenizer,
     model: AutoModelForCausalLM,
-    positive_chunk: str,
-    negative_chunk: str,
+    positive_chunks: List[str],
+    negative_chunks: List[str],
     max_tokens: int = 256,
     context: str = "",
     **kwargs,
@@ -37,13 +37,13 @@ def accuracy(
     ).to(device=device, dtype=torch.long)
     context_length = context_ids.shape[1]
     num_seen_tokens = kv_cache._seen_tokens
-    logger.debug(f"Num seen tokens: {num_seen_tokens}")
+    logger.debug(f"condense-length", length=num_seen_tokens)
     if not filter_existance_checker.filter_existance(
         tokenizer=tokenizer,
         model=model,
         kv_cache=kv_cache,
-        positive_chunk=positive_chunk,
-        negative_chunk=negative_chunk,
+        positive_chunks=positive_chunks,
+        negative_chunks=negative_chunks,
         context_length=context_length,
     ):
         logger.warning("Existance check failed")

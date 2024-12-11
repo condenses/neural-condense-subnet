@@ -71,8 +71,8 @@ class ScoringService:
                     tokenizer=self.tokenizer,
                     model=self.model,
                     context=request.ground_truth_request.context,
-                    positive_chunk=request.ground_truth_request.positive_chunk,
-                    negative_chunk=request.ground_truth_request.negative_chunk,
+                    positive_chunks=request.ground_truth_request.positive_chunks,
+                    negative_chunks=request.ground_truth_request.negative_chunks,
                 )
                 end_time = time.time()
                 logger.info(

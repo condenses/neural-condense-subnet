@@ -5,6 +5,7 @@ import random
 from copy import deepcopy
 from semantic_text_splitter import TextSplitter
 
+
 class FilterExistanceChecker:
     def __init__(self):
         self.splitter = TextSplitter(256)
@@ -27,14 +28,16 @@ class FilterExistanceChecker:
             self.negative_dataset = self._load_negative_dataset()
             return self._get_negative_message()
 
-    def get_chunks(
-        self, context: str
-    ) -> Tuple[str, str]:
+    def get_chunks(self, context: str) -> Tuple[str, str]:
         # Test on positive case (text from conversation)
         chunks = self.splitter.chunks(context)
-        positive_chunk = random.choice(chunks)
+        n_chunks = len(chunks)
+        positive_chunks = []
+        positive_chunks.append(chunks[0])
+        positive_chunks.append(chunks[-1])
+        positive_chunks.append(chunks[n_chunks // 2])
         # Test on negative case (text not from conversation)
-        negative_chunk = random.choice(
-            self.splitter.chunks(self._get_negative_message())
-        )
-        return positive_chunk, negative_chunk
+        negative_chunks = [
+            random.choice(self.splitter.chunks(self._get_negative_message()))
+        ]
+        return positive_chunks, negative_chunks

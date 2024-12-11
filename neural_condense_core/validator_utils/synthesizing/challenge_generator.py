@@ -54,21 +54,21 @@ class ChallengeGenerator:
         max_context_length_in_chars: int = 10000,
     ) -> TextCompressProtocol:
         try:
-            context, challenge_question, challenge_answer = await self.task_to_builder[task](
-                max_context_length_in_chars
+            context, challenge_question, challenge_answer = await self.task_to_builder[
+                task
+            ](max_context_length_in_chars)
+            positive_chunks, negative_chunks = self.filter_checker.get_chunks(context)
+            synapse = self._build_protocol(
+                tokenizer, context, challenge_question, challenge_answer
             )
-            positive_chunk, negative_chunk = self.filter_checker.get_chunks(context)
-            synapse = self._build_protocol(tokenizer, context, challenge_question, challenge_answer)
-            synapse.positive_chunk = positive_chunk
-            synapse.negative_chunk = negative_chunk
+            synapse.positive_chunks = positive_chunks
+            synapse.negative_chunks = negative_chunks
         except Exception as e:
             raise e
         return synapse
 
     @retry(max_attempts=3)
-    async def _build_qa_conversation(
-        self, max_chars: int
-    ) -> Tuple[str, str, str]:
+    async def _build_qa_conversation(self, max_chars: int) -> Tuple[str, str, str]:
         context_qa_items = await self.synthesizer.get_qas(n=10)
         context = ""
         question_answer_pairs = []
@@ -115,4 +115,3 @@ class ChallengeGenerator:
             expected_completion=challenge_answer,
             messages=messages,
         )
-

@@ -21,8 +21,8 @@ class GroundTruthRequest(BaseModel):
     messages: List[dict]
     hidden_messages: List[dict]
     criterias: List[str]
-    positive_chunk: str
-    negative_chunk: str
+    positive_chunks: List[str]
+    negative_chunks: List[str]
 
 
 class BatchedScoringRequest(BaseModel):
