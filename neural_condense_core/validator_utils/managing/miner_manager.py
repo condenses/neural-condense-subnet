@@ -311,7 +311,7 @@ class MinerManager:
         """
         # Log metadata as pandas dataframe with uid, tier, and elo_rating
         metadata_dict = {
-            miner.uid: {"tier": miner.tier, "elo_rating": miner.elo_rating}
+            miner.uid: {"tier": miner.tier, "elo_rating": miner.score * 100}
             for miner in self.session.query(MinerMetadata).all()
         }
         metadata_df = pd.DataFrame(metadata_dict).T
