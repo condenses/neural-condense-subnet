@@ -1,11 +1,18 @@
 import torch
 import torch.nn.functional as F
-from transformers import AutoTokenizer, AutoModel, DynamicCache, AutoModelForCausalLM
+from transformers import (
+    AutoTokenizer,
+    AutoModel,
+    DynamicCache,
+    AutoModelForCausalLM,
+    TextGenerationPipeline,
+)
 import structlog
 from copy import deepcopy
 from typing import List
 from ..anti_exploitation.filter_existance import FilterExistanceChecker
 from ..utils import generate_answer
+from ..datatypes import GroundTruthRequest
 from openai import OpenAI
 
 
@@ -19,16 +26,18 @@ DEFAULT_VALUE = 0
 def accuracy(
     filter_existance_checker: FilterExistanceChecker,
     kv_cache: DynamicCache,
-    activation_prompt: str,
-    expected_completion: str,
+    ground_truth_request: GroundTruthRequest,
     tokenizer: AutoTokenizer,
     model: AutoModelForCausalLM,
-    positive_chunks: List[str],
-    negative_chunks: List[str],
+    judge_pipeline: TextGenerationPipeline,
     max_tokens: int = 256,
-    context: str = "",
     **kwargs,
 ) -> float:
+    activation_prompt = ground_truth_request.activation_prompt
+    expected_completion = ground_truth_request.expected_completion
+    context = ground_truth_request.context
+    positive_chunks = ground_truth_request.positive_chunks
+    negative_chunks = ground_truth_request.negative_chunks
     device = model.device
     context_ids = tokenizer.encode(
         context,
@@ -75,40 +84,19 @@ def accuracy(
     logger.debug(f"Activation prompt: {activation_prompt}")
     logger.debug(f"Completion: {completion}")
     logger.debug(f"Ground truth: {ground_truth}")
-    return get_accuracy_llm(completion, ground_truth, activation_prompt)
-
-
-def get_accuracy(completion: str, ground_truth: str, embed_model: AutoModel) -> float:
-    query_instruction = (
-        "Instruct: Given a text, retrieve the text that has similar meaning.\nQuery:"
-    )
-    queries = [ground_truth]
-    passages = [completion]
-    max_length = 1024
-
-    query_embeddings = embed_model.encode(
-        queries, instruction=query_instruction, max_length=max_length
-    )
-    passage_embeddings = embed_model.encode(
-        passages, instruction="", max_length=max_length
-    )
-    similarity = (query_embeddings @ passage_embeddings.T) * 100
-    similarity_percentage = int(similarity[0][0].item())
-    if similarity_percentage < 50:
-        score = 0.1
-    elif similarity_percentage < 80:
-        score = 0.5
-    else:
-        score = 1
-    logger.debug(f"Score: {score}, similarity: {similarity_percentage}")
-    return score
+    return get_accuracy_llm(completion, ground_truth, activation_prompt, judge_pipeline)
 
 
 def preprocess_batch(values: list[float]) -> list[float]:
     return [value if value is not None else DEFAULT_VALUE for value in values]
 
 
-def get_accuracy_llm(completion: str, ground_truth: str, question: str) -> float:
+def get_accuracy_llm(
+    completion: str,
+    ground_truth: str,
+    question: str,
+    judge_pipeline: TextGenerationPipeline,
+) -> float:
     messages = [
         {
             "role": "system",
@@ -121,13 +109,8 @@ You have to return 'yes' if the response is correct, 'no' if it is incorrect. Th
 """,
         },
     ]
-    response = OPENAI_CLIENT.chat.completions.create(
-        model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
-        messages=messages,
-        temperature=0,
-        max_tokens=16,
-    )
+    completion = judge_pipeline(messages)[0]["generated_text"]
     logger.debug(f"LLM Judge Messages: {messages}")
-    logger.debug(f"LLM Judge Response: {response.choices[0].message.content}")
-    is_correct = "yes" in response.choices[0].message.content.lower()
+    logger.debug(f"LLM Judge Response: {completion}")
+    is_correct = "yes" in completion.lower()
     return 1 if is_correct else 0.1

@@ -89,7 +89,7 @@ There are three compression algorithms available:
 ```bash
 export MINIO_ACCESS_KEY="your_minio_access_key"
 export MINIO_SECRET_KEY="your_minio_secret_key"
-export MINIO_BUCKET="condense_miner"
+export MINIO_BUCKET="condense"
 export MINIO_SERVER="your_minio_server"
 
 # Choose one of the following commands based on your preferred algorithm:

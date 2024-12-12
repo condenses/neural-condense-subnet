@@ -15,8 +15,8 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
 2. Restart your terminal and install Node.js by running the following command:
 
 ```bash
-nvm install 22
 export NVM_DIR="$HOME/.nvm"
+nvm install 22
 ```
 
 3. Install PM2 by running the following command:

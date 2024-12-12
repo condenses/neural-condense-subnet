@@ -77,6 +77,7 @@ pm2 start python --name condense_validator_backend \
 
 5. Run the validator script
 ```bash
+export HF_HUB_ENABLE_HF_TRANSFER=1
 pm2 start python --name condense_validator \
 -- -m neurons.validator \
 --netuid $val_netuid \
@@ -84,7 +85,6 @@ pm2 start python --name condense_validator \
 --wallet.name $val_wallet \
 --wallet.hotkey $val_hotkey \
 --axon.port $val_axon_port \
---validator.gate_port $val_gate_port \
 --validator.score_backend.host $val_backend_host \
 --validator.score_backend.port $val_backend_port \
 --validator.use_wandb
@@ -93,4 +93,16 @@ pm2 start python --name condense_validator \
 6. Run the auto update script, it will check for updates every 30 minutes
 ```bash
 pm2 start auto_update.sh --name "auto_updater"
+```
+
+7. Run Organic Server for using Organic API
+```bash
+pm2 start python --name condense_organic \
+-- -m services.validator_backend.organic.app:app \
+--netuid $val_netuid \
+--subtensor.network $val_subtensor_network \
+--wallet.name $val_wallet \
+--wallet.hotkey $val_hotkey \
+--axon.port $val_axon_port \
+--validator.gate_port $val_gate_port \
 ```

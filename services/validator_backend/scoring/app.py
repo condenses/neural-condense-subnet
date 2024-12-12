@@ -5,7 +5,6 @@ from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
     DynamicCache,
-    AutoModel,
 )
 from transformers import pipeline
 import random
@@ -45,6 +44,12 @@ class ScoringService:
         self.tokenizer = AutoTokenizer.from_pretrained(
             "Condense-AI/Mistral-7B-Instruct-v0.2"
         )
+        self.pipeline = pipeline(
+            "text-generation",
+            model="upstage/solar-pro-preview-instruct",
+            device=self.device,
+            torch_dtype=self.dtype,
+        )
         self.filter_existance_checker = FilterExistanceChecker()
 
     @torch.no_grad()
@@ -66,13 +71,10 @@ class ScoringService:
                 value = metric_handler(
                     filter_existance_checker=self.filter_existance_checker,
                     kv_cache=kv_cache,
-                    activation_prompt=request.ground_truth_request.activation_prompt,
-                    expected_completion=request.ground_truth_request.expected_completion,
-                    tokenizer=self.tokenizer,
                     model=self.model,
-                    context=request.ground_truth_request.context,
-                    positive_chunks=request.ground_truth_request.positive_chunks,
-                    negative_chunks=request.ground_truth_request.negative_chunks,
+                    tokenizer=self.tokenizer,
+                    ground_truth_request=request.ground_truth_request,
+                    judge_pipeline=self.judge_pipeline,
                 )
                 end_time = time.time()
                 logger.info(

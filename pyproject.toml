@@ -1,6 +1,6 @@
 [project]
 name = "neural-condense-subnet"
-version = "0.0.2"
+version = "0.0.3"
 description = "Neural Condense Subnet - Bittensor"
 authors = [
     {name = "toilaluan"}
