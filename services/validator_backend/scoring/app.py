@@ -5,6 +5,7 @@ from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
     DynamicCache,
+    TextGenerationPipeline,
 )
 from transformers import pipeline
 import random
@@ -44,7 +45,7 @@ class ScoringService:
         self.tokenizer = AutoTokenizer.from_pretrained(
             "Condense-AI/Mistral-7B-Instruct-v0.2"
         )
-        self.judge_pipeline = pipeline(
+        self.judge_pipeline = TextGenerationPipeline(
             "text-generation",
             model="upstage/solar-pro-preview-instruct",
             tokenizer="upstage/solar-pro-preview-instruct",
