@@ -2,7 +2,6 @@ from neural_condense_core import (
     base,
     validator_utils as vutils,
     constants,
-    __spec_version__,
     logger,
 )
 from neural_condense_core.protocol import TextCompressProtocol
@@ -10,26 +9,14 @@ import pandas as pd
 import bittensor as bt
 import random
 from transformers import AutoTokenizer
-import numpy as np
 import traceback
 import asyncio
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from concurrent.futures import ThreadPoolExecutor
 import time
 
 
 class Validator(base.BaseValidator):
-    """
-    Validator class that handles validation of miner responses and manages rewards.
-
-    Attributes:
-        tier_config (dict): Configuration for different tiers of miners
-        miner_manager (MinerManager): Manager for handling miner metadata and state
-        challenger (Challenger): Generates validation challenges for miners
-        organic_gate (OrganicGate): Optional gate for handling organic traffic
-    """
-
     def __init__(self):
-        """Initialize the validator with required components and configurations."""
         super().__init__()
         self.miner_manager = vutils.managing.MinerManager(
             uid=self.uid,
@@ -47,10 +34,6 @@ class Validator(base.BaseValidator):
         self.set_weights_executor = ThreadPoolExecutor(max_workers=1)
 
     async def start_epoch(self):
-        """
-        Main validation loop that processes miners across all tiers.
-        Syncs miner state and runs validation in parallel threads.
-        """
         logger.info("Running epoch.")
         await self.miner_manager.sync()
         try:
@@ -70,12 +53,6 @@ class Validator(base.BaseValidator):
             traceback.print_exc()
 
     async def _forward_tier(self, tier: str):
-        """
-        Process validation for a specific tier of miners.
-
-        Args:
-            tier (str): The tier level to process
-        """
         try:
             if constants.TIER_CONFIG[tier].incentive_percentage == 0:
                 logger.info(f"Tier {tier} has no incentive percentage.")
@@ -93,7 +70,6 @@ class Validator(base.BaseValidator):
                 int(rate_limit * constants.RPE_PERCENTAGE_FOR_SYNTHETIC),
                 1,
             )
-            sleep_per_set = constants.EPOCH_LENGTH / n_sets
             futures = []
         except Exception as e:
             logger.error(f"Error in _forward_tier: {e}")
@@ -153,15 +129,6 @@ class Validator(base.BaseValidator):
         ground_truth_synapse: TextCompressProtocol,
         task_config,
     ):
-        """
-        Process a batch of miners for validation.
-
-        Args:
-            tier (str): The tier level being processed
-            model_name (str): Name of the model to use for validation
-            batched_uids (list[int]): List of miner UIDs to validate
-            tokenizer: The tokenizer for the selected model
-        """
         try:
             dendrite = bt.dendrite(self.wallet)
             synapse = ground_truth_synapse.miner_synapse
@@ -243,7 +210,6 @@ class Validator(base.BaseValidator):
             logger.error(f"Error: {e}")
 
     def set_weights(self):
-        """Set weights for miners based on their performance."""
         try:
             self.current_block = self.subtensor.get_current_block()
         except OSError as e:
@@ -307,4 +273,6 @@ if __name__ == "__main__":
             if not validator.thread_set_weights.is_alive():
                 logger.info("Starting set weights thread.")
                 validator.thread_set_weights.start()
+            else:
+                logger.info("Set weights thread already running.")
             time.sleep(60)

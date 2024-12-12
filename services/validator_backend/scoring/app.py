@@ -7,7 +7,6 @@ from transformers import (
     DynamicCache,
     TextGenerationPipeline,
 )
-from transformers import pipeline
 import random
 import structlog
 import gc
@@ -64,7 +63,7 @@ class ScoringService:
 
     @torch.no_grad()
     def get_metrics(self, request: BatchedScoringRequest) -> dict[str, float]:
-        logger.info(f"Received request")
+        logger.info("Received request")
         criteria = random.choice(request.ground_truth_request.criterias)
         values = []
         metric_handler = metric_handlers[criteria]["handler"]

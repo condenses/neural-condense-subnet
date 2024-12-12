@@ -1,8 +1,6 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
 from datasets import load_dataset
-from typing import List, Tuple
+from typing import Tuple
 import random
-from copy import deepcopy
 from semantic_text_splitter import TextSplitter
 
 

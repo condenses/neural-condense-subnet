@@ -7,7 +7,7 @@ from ...protocol import TextCompressProtocol
 from ...logger import logger
 from ..synthesizing.challenge_generator import ChallengeGenerator
 from ..managing.miner_manager import MinerManager, ServingCounter, MinerMetadata
-from ...constants import SyntheticTaskConfig, TierConfig, constants
+from ...constants import SyntheticTaskConfig, TierConfig
 import asyncio
 import os
 import traceback
@@ -201,7 +201,7 @@ async def get_accuracies(
         "ground_truth_request": ground_truth_synapse.validator_payload
         | {"model_name": model_name, "criterias": task_config.criterias},
     }
-    logger.info(f"Sending payload to scoring backend")
+    logger.info("Sending payload to scoring backend")
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
@@ -226,6 +226,7 @@ async def get_accuracies(
     accuracies = scoring_response["metrics"]["accuracy"]
     accelerate_rewards = [r.accelerate_score for r in valid_responses]
     return accuracies, accelerate_rewards
+
 
 def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
     try:

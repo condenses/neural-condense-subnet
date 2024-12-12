@@ -4,6 +4,8 @@ import argparse
 import bittensor as bt
 from neural_condense_core.logger import logger
 import time
+
+
 def setup_config():
     parser = argparse.ArgumentParser()
     parser = add_common_config(parser)
@@ -11,21 +13,29 @@ def setup_config():
     config = bt.config(parser)
     logger.info(f"Config: {config}")
     return config
-    
+
+
 def setup_bittensor_objects(config: bt.config):
     wallet = bt.wallet(config=config)
     subtensor = bt.subtensor(config=config)
     metagraph = subtensor.metagraph(config.netuid)
     return wallet, metagraph
 
+
 def setup_miner_manager(config: bt.config, wallet, metagraph: bt.metagraph):
     neuron_uid = metagraph.hotkeys.index(wallet.hotkey.ss58_address)
-    miner_manager = vutils.managing.MinerManager(uid=neuron_uid, wallet=wallet, metagraph=metagraph, config=None)
+    miner_manager = vutils.managing.MinerManager(
+        uid=neuron_uid, wallet=wallet, metagraph=metagraph, config=None
+    )
     return miner_manager
 
+
 def setup_organic_gate(config: bt.config, miner_manager: vutils.managing.MinerManager):
-    organic_gate = vutils.monetize.OrganicGate(miner_manager=miner_manager, config=config)
+    organic_gate = vutils.monetize.OrganicGate(
+        miner_manager=miner_manager, config=config
+    )
     return organic_gate
+
 
 def main():
     config = setup_config()
@@ -33,6 +43,7 @@ def main():
     miner_manager = setup_miner_manager(config, wallet, metagraph)
     organic_gate = setup_organic_gate(config, miner_manager)
     organic_gate.start_server()
+
 
 if __name__ == "__main__":
     main()

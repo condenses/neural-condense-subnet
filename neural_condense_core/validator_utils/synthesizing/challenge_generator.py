@@ -3,15 +3,13 @@ import re
 import substrateinterface as st
 from .scheduler import Scheduler
 from .convo_generator import ConvoGenerator
-from .schemas import Message, QASchedulerConfig, ConversationSchedulerConfig
+from .schemas import QASchedulerConfig
 import random
 import os
-from typing import List, Tuple
+from typing import Tuple
 from ...protocol import TextCompressProtocol
-from ...constants import constants
 from .filter_chunker import FilterExistanceChecker
 from .utils import retry
-from copy import deepcopy
 
 CORCEL_API_KEY = os.getenv("CORCEL_API_KEY")
 CORCEL_BASE_URL = os.getenv(
@@ -29,9 +27,6 @@ class ChallengeGenerator:
         self.synthesizer = Scheduler(
             generator=self.generator,
             qa_config=QASchedulerConfig(n_qa_per_context=4, max_items=100),
-            convo_config=ConversationSchedulerConfig(
-                n_new_conversations=100, n_previous_conversations=2, max_items=100
-            ),
             refresh_time=60.0,
         )
         self.synthesizer.start()
@@ -41,10 +36,6 @@ class ChallengeGenerator:
             "question_answering": self._build_qa_conversation,
         }
         self.filter_checker = FilterExistanceChecker()
-        # for task in constants.SYNTHETIC_TASK_CONFIG:
-        #     assert (
-        #         task.task in self.task_to_builder
-        #     ), f"Task {task.task} not supported. Supported tasks: {list(self.task_to_builder.keys())}"
 
     @retry(max_attempts=3)
     async def generate_challenge(

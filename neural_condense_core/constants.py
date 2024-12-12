@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List
 import os
-from datetime import datetime
 
 
 class TierConfig(BaseModel):

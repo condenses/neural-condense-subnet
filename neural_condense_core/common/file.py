@@ -10,7 +10,10 @@ import asyncio
 import sys
 
 # Only clean tmp directory if running as validator
-if __name__ != "__main__" and os.path.basename(os.path.abspath(sys.argv[0])) == "validator.py":
+if (
+    __name__ != "__main__"
+    and os.path.basename(os.path.abspath(sys.argv[0])) == "validator.py"
+):
     os.makedirs("tmp", exist_ok=True)
     # Remove all files in the tmp directory
     for file in track(os.listdir("tmp"), description="Cleaning tmp directory"):

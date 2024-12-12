@@ -1,24 +1,12 @@
-from datasets import load_dataset, IterableDataset
-from pydantic import BaseModel
+from datasets import load_dataset
 
 
-class ContextItem(BaseModel):
-    context: str
-
-
-def load_fineweb_context_dataset() -> IterableDataset:
-    ds = load_dataset("gair-prox/FineWeb-pro", split="train", streaming=True)
-    ds = ds.filter(lambda x: 1024 <= len(x["text"]) <= 4096)
-    ds = ds.map(lambda x: {"context": x["text"]})
-    return ds
-
-
-def load_fineweb_math_corpus_dataset() -> IterableDataset:
+def load_wikipedia_science_dataset():
     ds = load_dataset(
-        "OpenCoder-LLM/fineweb-math-corpus",
-        split="train",
-        streaming=True,
+        "Laz4rz/wikipedia_science_chunked_small_rag_512", streaming=True, split="train"
     )
-    ds = ds.filter(lambda x: 256 <= len(x["text"]) <= 4096)
+    ds = ds.shuffle()
+    ds = ds.filter(lambda x: len(x["text"]) > 512)
     ds = ds.map(lambda x: {"context": x["text"]})
+    print("Loaded wikipedia science dataset")
     return ds

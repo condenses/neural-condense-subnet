@@ -3,8 +3,6 @@ from bittensor import Synapse
 from typing import Any, List
 import torch
 from transformers import DynamicCache
-import time
-from .common.base64 import ndarray_to_base64
 from .common.file import load_npy_from_url
 from .constants import TierConfig
 
