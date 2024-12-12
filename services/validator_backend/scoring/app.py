@@ -45,9 +45,18 @@ class ScoringService:
         self.tokenizer = AutoTokenizer.from_pretrained(
             "Condense-AI/Mistral-7B-Instruct-v0.2"
         )
+
+        j_tokenizer = AutoTokenizer.from_pretrained(
+            "upstage/solar-pro-preview-instruct"
+        )
+        j_model = AutoModelForCausalLM.from_pretrained(
+            "upstage/solar-pro-preview-instruct",
+            torch_dtype=self.dtype,
+            trust_remote_code=True,
+        )
         self.judge_pipeline = TextGenerationPipeline(
-            model="upstage/solar-pro-preview-instruct",
-            tokenizer="upstage/solar-pro-preview-instruct",
+            model=j_model,
+            tokenizer=j_tokenizer,
             device=self.device,
             torch_dtype=self.dtype,
             trust_remote_code=True,
