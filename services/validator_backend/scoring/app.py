@@ -49,6 +49,7 @@ class ScoringService:
             model="upstage/solar-pro-preview-instruct",
             device=self.device,
             torch_dtype=self.dtype,
+            trust_remote_code=True,
         )
         self.filter_existance_checker = FilterExistanceChecker()
 
