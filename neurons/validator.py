@@ -32,14 +32,16 @@ class Validator(base.BaseValidator):
             vutils.loop.initialize_wandb(self.dendrite, self.metagraph, self.uid)
 
         self.set_weights_executor = ThreadPoolExecutor(max_workers=1)
+        self.metadata_task = None
+        self.metadata_interval = 600  # 10 minutes in seconds
 
     async def start_epoch(self):
         logger.info("Running epoch.")
         await self.miner_manager.sync()
-        try:
-            await self.miner_manager.report_metadata()
-        except Exception as e:
-            logger.error(f"Failed to report metadata & save-state: {e}")
+        
+        if self.metadata_task is None or self.metadata_task.done():
+            self.metadata_task = self.loop.create_task(self._report_metadata_periodically())
+        
         tasks = [
             self.loop.create_task(self._forward_tier(tier))
             for tier in constants.TIER_CONFIG
@@ -51,6 +53,15 @@ class Validator(base.BaseValidator):
         except Exception as e:
             logger.error(f"Error running epoch tasks: {e}")
             traceback.print_exc()
+
+    async def _report_metadata_periodically(self):
+        while True:
+            try:
+                await self.miner_manager.report_metadata()
+                logger.info("Reported metadata successfully")
+            except Exception as e:
+                logger.error(f"Failed to report metadata: {e}")
+            await asyncio.sleep(self.metadata_interval)
 
     async def _forward_tier(self, tier: str):
         try:
@@ -275,4 +286,4 @@ if __name__ == "__main__":
                 validator.thread_set_weights.start()
             else:
                 logger.info("Set weights thread already running.")
-            time.sleep(60)
+            time.sleep(60 * 10)
