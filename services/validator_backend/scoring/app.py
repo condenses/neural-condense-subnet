@@ -44,7 +44,7 @@ class ScoringService:
         self.tokenizer = AutoTokenizer.from_pretrained(
             "Condense-AI/Mistral-7B-Instruct-v0.2"
         )
-        self.pipeline = pipeline(
+        self.judge_pipeline = pipeline(
             "text-generation",
             model="upstage/solar-pro-preview-instruct",
             device=self.device,
