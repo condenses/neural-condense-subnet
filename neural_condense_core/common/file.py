@@ -28,7 +28,10 @@ def _check_file_size(response: httpx.Response, max_size_mb: int) -> tuple[bool, 
     max_size_bytes = max_size_mb * 1024 * 1024
 
     if content_length > max_size_bytes:
-        return False, f"File too large: {content_length / (1024 * 1024):.1f}MB exceeds {max_size_mb}MB limit"
+        return (
+            False,
+            f"File too large: {content_length / (1024 * 1024):.1f}MB exceeds {max_size_mb}MB limit",
+        )
     return True, ""
 
 
@@ -42,17 +45,17 @@ def _download(url: str) -> tuple[str, float, str]:
     try:
         filename = _generate_filename(url)
         start_time = time.time()
-        
+
         hf_transfer.download(
             url=url,
             filename=filename,
-            max_files=128,  # Number of parallel downloads
+            max_files=4,  # Number of parallel downloads
             chunk_size=1024 * 1024,  # 1 MB chunks
             parallel_failures=2,
-            max_retries=5,
+            max_retries=3,
             headers=None,
         )
-        
+
         download_time = time.time() - start_time
         logger.info(f"Time taken to download: {download_time:.2f} seconds")
         return filename, download_time, ""
@@ -94,7 +97,12 @@ async def load_npy_from_url(
         async with httpx.AsyncClient() as client:
             response = await client.head(url)
             if response.status_code != 200:
-                return None, "", 0, f"Failed to fetch file info: HTTP {response.status_code}"
+                return (
+                    None,
+                    "",
+                    0,
+                    f"Failed to fetch file info: HTTP {response.status_code}",
+                )
 
             size_ok, error = _check_file_size(response, max_size_mb)
             if not size_ok:
@@ -104,13 +112,13 @@ async def load_npy_from_url(
         filename, download_time, error = await asyncio.to_thread(_download, url)
         if error:
             return None, "", 0, error
-            
+
         data, error = _load_and_cleanup(filename)
         if error:
             return None, "", 0, error
-            
+
         return data, filename, download_time, ""
-        
+
     except Exception as e:
         return None, "", 0, str(e)
 
