@@ -112,7 +112,7 @@ async def validate_responses(
         except RecursionError:
             return False, "Recursion limit exceeded"
         except Exception as e:
-            return False, str(e)
+            return False, f"Failed to verify: {str(e)}"
 
     results = []
     for response in responses:
@@ -250,4 +250,3 @@ def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
         )
     except Exception as e:
         logger.error(f"Starting wandb error: {e}")
-
