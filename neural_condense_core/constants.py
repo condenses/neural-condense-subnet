@@ -58,9 +58,9 @@ class Constants(BaseModel):
             timeout=32,
             accelerate_reward_scalar=0.1,
             supporting_models=["Condense-AI/Mistral-7B-Instruct-v0.2"],
-            max_condensed_tokens=1024,
+            max_condensed_tokens=1536,
             min_condensed_tokens=128,
-            max_context_length_in_chars=10000,
+            max_context_length_in_chars=15000,
         ),
         "inference_0": TierConfig(
             incentive_percentage=0.0,
