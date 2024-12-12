@@ -68,7 +68,6 @@ class ServingCounter:
             tier=tier,
             uid=uid,
         )
-        self.expire_time = constants.DATABASE_CONFIG.redis.expire_time
 
     def increment(self) -> bool:
         """
@@ -76,13 +75,15 @@ class ServingCounter:
 
         Uses atomic Redis INCR operation and sets expiry on first increment.
 
+        Reset the counter after EPOCH_LENGTH seconds.
+
         Returns:
             bool: True if under rate limit, False if exceeded
         """
         count = self.redis_client.incr(self.key)
 
         if count == 1:
-            self.redis_client.expire(self.key, self.expire_time)
+            self.redis_client.expire(self.key, constants.EPOCH_LENGTH)
 
         if count <= self.rate_limit:
             return True
@@ -369,8 +370,6 @@ class MinerManager:
             counter = ServingCounter(
                 self.rate_limit_per_tier[tier], miner.uid, tier, self.redis_client
             )
-            if self.is_main_process:
-                counter.redis_client.set(counter.key, 0)
             counters[tier][miner.uid] = counter
 
         return counters
