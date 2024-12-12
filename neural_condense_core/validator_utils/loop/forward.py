@@ -251,20 +251,3 @@ def initialize_wandb(dendrite: bt.dendrite, metagraph: bt.metagraph, uid: int):
     except Exception as e:
         logger.error(f"Starting wandb error: {e}")
 
-
-def get_batched_uids(
-    serving_counter: dict[int, ServingCounter], metadata: dict[int, MinerMetadata]
-) -> list[list[int]]:
-    uids = list(serving_counter.keys())
-    uids = sorted(uids, key=lambda uid: metadata[uid].elo_rating, reverse=True)
-    n_folds = random.choice([2, 3, 4])
-    group_size = max(2, len(uids) // n_folds)
-    groups = [uids[i : i + group_size] for i in range(0, len(uids), group_size)]
-    for group in groups:
-        random.shuffle(group)
-    uids = [uid for group in groups for uid in group]
-    pre_batched_uids = [
-        uids[i : i + ncc.constants.BATCH_SIZE]
-        for i in range(0, len(uids), ncc.constants.BATCH_SIZE)
-    ]
-    return pre_batched_uids

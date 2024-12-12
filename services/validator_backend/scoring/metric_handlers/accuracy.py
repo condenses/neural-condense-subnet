@@ -1,15 +1,11 @@
 import torch
-import torch.nn.functional as F
 from transformers import (
     AutoTokenizer,
-    AutoModel,
     DynamicCache,
     AutoModelForCausalLM,
     TextGenerationPipeline,
 )
 import structlog
-from copy import deepcopy
-from typing import List
 from ..anti_exploitation.filter_existance import FilterExistanceChecker
 from ..utils import generate_answer
 from ..datatypes import GroundTruthRequest
@@ -46,7 +42,7 @@ def accuracy(
     ).to(device=device, dtype=torch.long)
     context_length = context_ids.shape[1]
     num_seen_tokens = kv_cache._seen_tokens
-    logger.debug(f"condense-length", length=num_seen_tokens)
+    logger.debug("condense-length", length=num_seen_tokens)
     if not filter_existance_checker.filter_existance(
         tokenizer=tokenizer,
         model=model,
@@ -113,9 +109,7 @@ You have to return 'yes' if the response is correct, 'no' if it is incorrect. Th
         messages,
         do_sample=False,
         max_new_tokens=16,
-    )[0][
-        "generated_text"
-    ][-1]["content"]
+    )[0]["generated_text"][-1]["content"]
     logger.debug(f"LLM Judge Messages: {messages}")
     logger.debug(f"LLM Judge Response: {completion}")
     is_correct = "yes" in completion.lower()
