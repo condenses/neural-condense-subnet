@@ -69,6 +69,14 @@ class ScoringService:
         values = []
         metric_handler = metric_handlers[criteria]["handler"]
         preprocess_batch = metric_handlers[criteria]["preprocess_batch"]
+        logger.info(
+            "positive_chunks",
+            positive_chunks=request.ground_truth_request.positive_chunks,
+        )
+        logger.info(
+            "negative_chunks",
+            negative_chunks=request.ground_truth_request.negative_chunks,
+        )
         for miner_response in request.miner_responses:
             try:
                 miner_response.decode()

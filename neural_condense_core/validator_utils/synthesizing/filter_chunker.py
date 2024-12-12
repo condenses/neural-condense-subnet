@@ -8,7 +8,7 @@ from semantic_text_splitter import TextSplitter
 
 class FilterExistanceChecker:
     def __init__(self):
-        self.splitter = TextSplitter(256)
+        self.splitter = TextSplitter(512)
         self.negative_dataset = self._load_negative_dataset()
 
     def _load_negative_dataset(self):
@@ -16,7 +16,7 @@ class FilterExistanceChecker:
             "TIGER-Lab/Fineweb-Instruct", streaming=True, split="train"
         )
         negative_dataset = negative_dataset.shuffle()
-        negative_dataset = negative_dataset.filter(lambda x: len(x["response"]) > 100)
+        negative_dataset = negative_dataset.filter(lambda x: len(x["response"]) > 1024)
         negative_dataset = negative_dataset.map(lambda x: {"text": x["response"]})
         negative_dataset = iter(negative_dataset)
         return negative_dataset
