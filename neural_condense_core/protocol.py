@@ -71,6 +71,8 @@ class TextCompressProtocol(Synapse):
         )
         response.download_time = download_time
         response.local_filename = filename
+        if not compressed_kv:
+            return False, f"Failed to load url: {error}. {download_time} seconds. {filename}"
         try:
             tensor = torch.from_numpy(compressed_kv)
             kv_cache = DynamicCache.from_legacy_cache(tensor)
