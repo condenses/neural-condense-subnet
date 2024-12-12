@@ -47,6 +47,7 @@ class ScoringService:
         self.judge_pipeline = pipeline(
             "text-generation",
             model="upstage/solar-pro-preview-instruct",
+            tokenizer="upstage/solar-pro-preview-instruct",
             device=self.device,
             torch_dtype=self.dtype,
             trust_remote_code=True,
