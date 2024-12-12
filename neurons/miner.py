@@ -4,6 +4,7 @@ from typing import Tuple
 import bittensor as bt
 import time
 import traceback
+import redis
 
 
 class Miner(ncc.base.BaseMiner):
@@ -11,6 +12,13 @@ class Miner(ncc.base.BaseMiner):
         super().__init__()
         self.blacklist_fns.append(self.blacklist_fn)
         self.forward_fns.append(self.forward_text_compress)
+        self.redis_config = ncc.constants.DATABASE_CONFIG.redis
+        self.redis = redis.Redis(
+            host=self.redis_config.host,
+            port=self.redis_config.port,
+            db=self.redis_config.db,
+            decode_responses=True,
+        )
         self.setup_logging()
         self._initialize_rate_limits()
 
@@ -19,9 +27,14 @@ class Miner(ncc.base.BaseMiner):
         Initializes the rate limits for the miners.
         """
         self.rate_limits = {
-            uid: ncc.validator_utils.managing.ServingCounter(rate_limit)
+            uid: ncc.validator_utils.managing.ServingCounter(
+                rate_limit=rate_limit,
+                uid=uid,
+                tier=self.config.miner.tier,
+                redis_client=self.redis,
+            )
             for uid, rate_limit in ncc.common.build_rate_limit(
-                self.metagraph, self.config
+                self.metagraph, self.config, tier=self.config.miner.tier
             ).items()
         }
 
