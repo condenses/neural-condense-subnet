@@ -46,7 +46,6 @@ class ScoringService:
             "Condense-AI/Mistral-7B-Instruct-v0.2"
         )
         self.judge_pipeline = TextGenerationPipeline(
-            "text-generation",
             model="upstage/solar-pro-preview-instruct",
             tokenizer="upstage/solar-pro-preview-instruct",
             device=self.device,
