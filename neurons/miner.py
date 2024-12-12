@@ -37,6 +37,11 @@ class Miner(ncc.base.BaseMiner):
                 self.metagraph, self.config, tier=self.config.miner.tier
             ).items()
         }
+        for k, v in self.rate_limits.items():
+            v.reset_counter()
+            bt.logging.info(
+                f"Reset rate limit for {k}: {v.get_current_count()}/{v.rate_limit}"
+            )
 
     def run(self):
         self.setup_axon()

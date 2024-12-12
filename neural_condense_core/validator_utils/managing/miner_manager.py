@@ -93,6 +93,9 @@ class ServingCounter:
     def get_current_count(self):
         return self.redis_client.get(self.key)
 
+    def reset_counter(self):
+        self.redis_client.set(self.key, 0)
+
 
 class MinerManager:
     """
