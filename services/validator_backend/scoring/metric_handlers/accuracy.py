@@ -9,10 +9,7 @@ import structlog
 from ..anti_exploitation.filter_existance import FilterExistanceChecker
 from ..utils import generate_answer
 from ..datatypes import GroundTruthRequest
-from openai import OpenAI
 
-
-OPENAI_CLIENT = OpenAI(base_url="https://api.together.xyz/v1")
 
 logger = structlog.get_logger("accuracy")
 
@@ -109,7 +106,9 @@ You have to return 'yes' if the response is correct, 'no' if it is incorrect. Th
         messages,
         do_sample=False,
         max_new_tokens=16,
-    )[0]["generated_text"][-1]["content"]
+    )[0][
+        "generated_text"
+    ][-1]["content"]
     logger.debug(f"LLM Judge Messages: {messages}")
     logger.debug(f"LLM Judge Response: {completion}")
     is_correct = "yes" in completion.lower()
