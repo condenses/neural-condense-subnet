@@ -109,7 +109,13 @@ You have to return 'yes' if the response is correct, 'no' if it is incorrect. Th
 """,
         },
     ]
-    completion = judge_pipeline(messages)[0]["generated_text"]
+    completion = judge_pipeline(
+        messages,
+        do_sample=False,
+        max_new_tokens=16,
+    )[0][
+        "generated_text"
+    ][-1]["content"]
     logger.debug(f"LLM Judge Messages: {messages}")
     logger.debug(f"LLM Judge Response: {completion}")
     is_correct = "yes" in completion.lower()
