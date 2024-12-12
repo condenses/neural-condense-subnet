@@ -110,7 +110,7 @@ class Miner(ncc.base.BaseMiner):
             return True, "Stake too low."
         allowed = self.rate_limits[uid].increment()
         bt.logging.info(
-            f"Rate limit: {uid} {self.rate_limits[uid].counter}/{self.rate_limits[uid].rate_limit}"
+            f"Rate limit: {uid} {self.rate_limits[uid].get_current_count()}/{self.rate_limits[uid].rate_limit}"
         )
         if not allowed:
             return True, "Rate limit exceeded."

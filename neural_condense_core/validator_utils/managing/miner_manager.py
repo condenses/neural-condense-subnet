@@ -90,6 +90,9 @@ class ServingCounter:
         logger.info(f"Rate limit exceeded for {self.key}")
         return False
 
+    def get_current_count(self):
+        return self.redis_client.get(self.key)
+
 
 class MinerManager:
     """
