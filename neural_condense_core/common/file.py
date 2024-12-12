@@ -8,6 +8,7 @@ from rich.progress import track
 from ..logger import logger
 import asyncio
 import sys
+import uuid
 
 # Only clean tmp directory if running as validator
 if (
@@ -51,11 +52,11 @@ async def load_npy_from_url(url: str, max_size_mb: int = 1024):
 
         # Define parameters for hf_transfer
         def _download(url):
-            filename = os.path.join("tmp", url.split("/")[-1])
+            filename = os.path.join("tmp", str(uuid.uuid4()) + "_" + url.split("/")[-1])
             chunk_size = 1024 * 1024  # 1 MB chunks
-            max_files = 16  # Number of parallel downloads
+            max_files = 128  # Number of parallel downloads
             parallel_failures = 2
-            max_retries = 3
+            max_retries = 5
 
             start_time = time.time()
             hf_transfer.download(
@@ -73,8 +74,8 @@ async def load_npy_from_url(url: str, max_size_mb: int = 1024):
 
         filename, download_time = await asyncio.to_thread(_download, url)
 
-        data = _load_and_cleanup(filename)
-        return data, filename, download_time, ""
+        data, error = _load_and_cleanup(filename)
+        return data, filename, download_time, error
     except Exception as e:
         return None, "", 0, str(e)
 
@@ -85,7 +86,7 @@ def _load_and_cleanup(filename: str):
         with open(filename, "rb") as f:
             buffer = io.BytesIO(f.read())
             data = np.load(buffer)
-        return data.astype(np.float32)
+        return data.astype(np.float32), ""
     except Exception as e:
         logger.error(f"Error loading NPY file: {e}")
-        return None
+        return None, str(e)
