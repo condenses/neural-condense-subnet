@@ -10,78 +10,58 @@ import asyncio
 import sys
 import uuid
 
-# Only clean tmp directory if running as validator
-if (
-    __name__ != "__main__"
-    and os.path.basename(os.path.abspath(sys.argv[0])) == "validator.py"
-):
-    os.makedirs("tmp", exist_ok=True)
-    # Remove all files in the tmp directory
-    for file in track(os.listdir("tmp"), description="Cleaning tmp directory"):
-        os.remove(os.path.join("tmp", file))
+
+def _clean_tmp_directory():
+    """Clean the tmp directory if running as validator."""
+    if (
+        __name__ != "__main__"
+        and os.path.basename(os.path.abspath(sys.argv[0])) == "validator.py"
+    ):
+        os.makedirs("tmp", exist_ok=True)
+        for file in track(os.listdir("tmp"), description="Cleaning tmp directory"):
+            os.remove(os.path.join("tmp", file))
 
 
-async def load_npy_from_url(url: str, max_size_mb: int = 1024):
-    """
-    Load a `.npy` file from a URL using the hf_transfer library for efficient downloading.
+def _check_file_size(response: httpx.Response, max_size_mb: int) -> tuple[bool, str]:
+    """Check if file size is within limits."""
+    content_length = int(response.headers.get("content-length", 0))
+    max_size_bytes = max_size_mb * 1024 * 1024
 
-    Args:
-        url (str): URL of the `.npy` file.
-        max_size_mb (int): Maximum allowed file size in megabytes.
+    if content_length > max_size_bytes:
+        return False, f"File too large: {content_length / (1024 * 1024):.1f}MB exceeds {max_size_mb}MB limit"
+    return True, ""
 
-    Returns:
-        tuple: A tuple containing the loaded data as a NumPy array and an error message (empty if no error occurred).
-    """
+
+def _generate_filename(url: str) -> str:
+    """Generate a unique filename for downloaded file."""
+    return os.path.join("tmp", str(uuid.uuid4()) + "_" + url.split("/")[-1])
+
+
+def _download(url: str) -> tuple[str, float, str]:
+    """Download file using hf_transfer."""
     try:
-        # Check file size using an HTTP HEAD request
-        async with httpx.AsyncClient() as client:
-            response = await client.head(url)
-            if response.status_code != 200:
-                return None, f"Failed to fetch file info: HTTP {response.status_code}"
-
-            # Get content length in bytes
-            content_length = int(response.headers.get("content-length", 0))
-            max_size_bytes = max_size_mb * 1024 * 1024
-
-            # Check if file exceeds the size limit
-            if content_length > max_size_bytes:
-                return (
-                    None,
-                    f"File too large: {content_length / (1024 * 1024):.1f}MB exceeds {max_size_mb}MB limit",
-                )
-
-        # Define parameters for hf_transfer
-        def _download(url):
-            filename = os.path.join("tmp", str(uuid.uuid4()) + "_" + url.split("/")[-1])
-            chunk_size = 1024 * 1024  # 1 MB chunks
-            max_files = 128  # Number of parallel downloads
-            parallel_failures = 2
-            max_retries = 5
-
-            start_time = time.time()
-            hf_transfer.download(
-                url=url,
-                filename=filename,
-                max_files=max_files,
-                chunk_size=chunk_size,
-                parallel_failures=parallel_failures,
-                max_retries=max_retries,
-                headers=None,  # Add headers if needed
-            )
-            end_time = time.time()
-            logger.info(f"Time taken to download: {end_time - start_time:.2f} seconds")
-            return filename, end_time - start_time
-
-        filename, download_time = await asyncio.to_thread(_download, url)
-
-        data, error = _load_and_cleanup(filename)
-        return data, filename, download_time, error
+        filename = _generate_filename(url)
+        start_time = time.time()
+        
+        hf_transfer.download(
+            url=url,
+            filename=filename,
+            max_files=128,  # Number of parallel downloads
+            chunk_size=1024 * 1024,  # 1 MB chunks
+            parallel_failures=2,
+            max_retries=5,
+            headers=None,
+        )
+        
+        download_time = time.time() - start_time
+        logger.info(f"Time taken to download: {download_time:.2f} seconds")
+        return filename, download_time, ""
     except Exception as e:
-        return None, "", 0, str(e)
+        return "", 0, str(e)
 
 
-def _load_and_cleanup(filename: str):
-    """Helper function to handle blocking operations in a thread pool."""
+def _load_and_cleanup(filename: str) -> tuple[np.ndarray | None, str]:
+    """Load NPY file and convert to float32."""
     try:
         with open(filename, "rb") as f:
             buffer = io.BytesIO(f.read())
@@ -90,3 +70,50 @@ def _load_and_cleanup(filename: str):
     except Exception as e:
         logger.error(f"Error loading NPY file: {e}")
         return None, str(e)
+
+
+async def load_npy_from_url(
+    url: str, max_size_mb: int = 1024
+) -> tuple[np.ndarray | None, str, float, str]:
+    """
+    Load a `.npy` file from a URL using the hf_transfer library for efficient downloading.
+
+    Args:
+        url (str): URL of the `.npy` file.
+        max_size_mb (int): Maximum allowed file size in megabytes.
+
+    Returns:
+        tuple: (data, filename, download_time, error_message)
+            - data: Loaded NumPy array or None if error
+            - filename: Local filename where data was saved
+            - download_time: Time taken to download in seconds
+            - error_message: Empty string if successful, error description if failed
+    """
+    try:
+        # Check file size using HTTP HEAD request
+        async with httpx.AsyncClient() as client:
+            response = await client.head(url)
+            if response.status_code != 200:
+                return None, "", 0, f"Failed to fetch file info: HTTP {response.status_code}"
+
+            size_ok, error = _check_file_size(response, max_size_mb)
+            if not size_ok:
+                return None, "", 0, error
+
+        # Download and process file
+        filename, download_time, error = await asyncio.to_thread(_download, url)
+        if error:
+            return None, "", 0, error
+            
+        data, error = _load_and_cleanup(filename)
+        if error:
+            return None, "", 0, error
+            
+        return data, filename, download_time, ""
+        
+    except Exception as e:
+        return None, "", 0, str(e)
+
+
+# Clean tmp directory on module load if running as validator
+_clean_tmp_directory()
