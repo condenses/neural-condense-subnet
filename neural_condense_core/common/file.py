@@ -37,7 +37,6 @@ def _generate_filename(url: str) -> str:
     """Generate a unique filename for downloaded file."""
     return os.path.join("tmp", str(uuid.uuid4()) + "_" + url.split("/")[-1])
 
-
 async def _download(url: str) -> tuple[str, float, str]:
     """Download file using aiohttp."""
     try:
@@ -50,16 +49,16 @@ async def _download(url: str) -> tuple[str, float, str]:
                     return "", 0, f"Failed to download: HTTP {response.status}"
 
                 total_size = int(response.headers.get("content-length", 0))
-                with Progress() as progress:
-                    download_task = progress.add_task(
-                        f"[cyan]Downloading {url}...", total=total_size
-                    )
-                    with open(filename, "wb") as f:
-                        async for chunk in response.content.iter_chunked(
-                            1024 * 1024
-                        ):  # 1MB chunks
-                            f.write(chunk)
-                            progress.update(download_task, advance=len(chunk))
+                downloaded = 0
+                with open(filename, "wb") as f:
+                    async for chunk in response.content.iter_chunked(
+                        1024 * 1024
+                    ):  # 1MB chunks
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size:
+                            percent = downloaded * 100 / total_size
+                            logger.info(f"Downloaded {percent:.1f}% of {url}")
 
         download_time = time.time() - start_time
         logger.info(f"Time taken to download: {download_time:.2f} seconds")
