@@ -55,11 +55,11 @@ async def _download(url: str) -> tuple[str, float, str]:
             url=url,
             filename=filename,
             max_files=10,  # Number of parallel downloads
-            chunk_size=2 * 1024 * 1024,  # 1 MB chunks
+            chunk_size=1024 * 1024,  # 1 MB chunks
             parallel_failures=3,
             max_retries=5,
             headers=None,
-            show_progress=True,
+            show_progress=False,
         )
 
         download_time = time.time() - start_time
