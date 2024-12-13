@@ -38,10 +38,12 @@ class Validator(base.BaseValidator):
     async def start_epoch(self):
         logger.info("Running epoch.")
         await self.miner_manager.sync()
-        
+
         if self.metadata_task is None or self.metadata_task.done():
-            self.metadata_task = self.loop.create_task(self._report_metadata_periodically())
-        
+            self.metadata_task = self.loop.create_task(
+                self._report_metadata_periodically()
+            )
+
         tasks = [
             self.loop.create_task(self._forward_tier(tier))
             for tier in constants.TIER_CONFIG
@@ -101,7 +103,7 @@ class Validator(base.BaseValidator):
             for _ in range(n_sets)
         ]
 
-        sleep_per_set = constants.EPOCH_LENGTH / n_sets / 2
+        sleep_per_set = constants.EPOCH_LENGTH / n_sets
 
         logger.info(f"Prepared {len(ground_truth_synapses)} ground truth synapses.")
 
