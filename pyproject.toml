@@ -32,6 +32,7 @@ dependencies = [
     "einops==0.8.0",
     "sqlalchemy>=2.0.36",
     "openai>=1.57.2",
+    "firerequests>=0.1.1",
 ]
 
 [project.urls]
