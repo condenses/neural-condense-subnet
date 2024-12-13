@@ -35,7 +35,7 @@ class ChallengeGenerator:
         self.task_to_builder = {
             "question_answering": self._build_qa_conversation,
         }
-        self.filter_checker = FilterExistanceChecker()
+        self.filter_checker = FilterExistanceChecker(chunk_size=256)
 
     @retry(max_attempts=3)
     async def generate_challenge(

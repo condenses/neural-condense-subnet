@@ -5,8 +5,8 @@ from semantic_text_splitter import TextSplitter
 
 
 class FilterExistanceChecker:
-    def __init__(self):
-        self.splitter = TextSplitter(512)
+    def __init__(self, chunk_size: int = 256):
+        self.splitter = TextSplitter(chunk_size)
         self.negative_dataset = self._load_negative_dataset()
 
     def _load_negative_dataset(self):
@@ -29,11 +29,8 @@ class FilterExistanceChecker:
     def get_chunks(self, context: str) -> Tuple[str, str]:
         # Test on positive case (text from conversation)
         chunks = self.splitter.chunks(context)
-        n_chunks = len(chunks)
-        positive_chunks = []
-        positive_chunks.append(chunks[0])
-        positive_chunks.append(chunks[-1])
-        positive_chunks.append(chunks[n_chunks // 2])
+        # Get random 2 chunks
+        positive_chunks = random.sample(chunks, 2)
         # Test on negative case (text not from conversation)
         negative_chunks = [
             random.choice(self.splitter.chunks(self._get_negative_message()))
