@@ -10,8 +10,9 @@ import asyncio
 import sys
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from firerequests import FireRequests
 
-THREAD_POOL = ThreadPoolExecutor(max_workers=20)  # Allow up to 20 threads
+fire_downloader = FireRequests()
 
 
 def _clean_tmp_directory():
@@ -43,21 +44,22 @@ def _generate_filename(url: str) -> str:
     return os.path.join("tmp", str(uuid.uuid4()) + "_" + url.split("/")[-1])
 
 
-def _download(url: str) -> tuple[str, float, str]:
+async def _download(url: str) -> tuple[str, float, str]:
     """Download file using hf_transfer."""
     debug_start_time = time.time()
     try:
         filename = _generate_filename(url)
         start_time = time.time()
 
-        hf_transfer.download(
+        await fire_downloader.download_file(
             url=url,
             filename=filename,
-            max_files=4,  # Number of parallel downloads
-            chunk_size=1024 * 1024,  # 1 MB chunks
-            parallel_failures=2,
-            max_retries=3,
+            max_files=10,  # Number of parallel downloads
+            chunk_size=2 * 1024 * 1024,  # 1 MB chunks
+            parallel_failures=3,
+            max_retries=5,
             headers=None,
+            show_progress=True,
         )
 
         download_time = time.time() - start_time
@@ -113,10 +115,7 @@ async def load_npy_from_url(
                 return None, "", 0, error
 
         # Download and process file in thread pool asyncio
-        loop = asyncio.get_running_loop()
-        filename, download_time, error = await loop.run_in_executor(
-            THREAD_POOL, _download, url
-        )
+        filename, download_time, error = await _download(url)
         if error:
             return None, "", 0, error
 
