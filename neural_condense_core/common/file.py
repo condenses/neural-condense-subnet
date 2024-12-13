@@ -37,6 +37,7 @@ def _generate_filename(url: str) -> str:
     """Generate a unique filename for downloaded file."""
     return os.path.join("tmp", str(uuid.uuid4()) + "_" + url.split("/")[-1])
 
+
 async def _download(url: str) -> tuple[str, float, str]:
     """Download file using aiohttp."""
     try:
@@ -58,10 +59,11 @@ async def _download(url: str) -> tuple[str, float, str]:
                         downloaded += len(chunk)
                         if total_size:
                             percent = downloaded * 100 / total_size
-                            logger.info(f"Downloaded {percent:.1f}% of {url}")
 
         download_time = time.time() - start_time
-        logger.info(f"Time taken to download: {download_time:.2f} seconds")
+        logger.info(
+            f"Time taken to download: {download_time:.2f} seconds. File size: {total_size / (1024 * 1024):.1f}MB"
+        )
         return filename, download_time, ""
     except Exception as e:
         return "", 0, str(e)
@@ -117,6 +119,12 @@ async def load_npy_from_url(
         filename, download_time, error = await _download(url)
         if error:
             return None, "", 0, error
+
+        if not filename:
+            return None, "", 0, "Download failed: Empty filename received"
+
+        if not os.path.exists(filename):
+            return None, "", 0, f"Downloaded file not found at {filename}"
 
         data, error = _load_and_cleanup(filename)
         if error:
