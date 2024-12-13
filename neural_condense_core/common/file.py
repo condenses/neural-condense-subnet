@@ -45,6 +45,7 @@ def _generate_filename(url: str) -> str:
 
 def _download(url: str) -> tuple[str, float, str]:
     """Download file using hf_transfer."""
+    debug_start_time = time.time()
     try:
         filename = _generate_filename(url)
         start_time = time.time()
@@ -54,7 +55,7 @@ def _download(url: str) -> tuple[str, float, str]:
             filename=filename,
             max_files=4,  # Number of parallel downloads
             chunk_size=1024 * 1024,  # 1 MB chunks
-            parallel_failures=3,
+            parallel_failures=2,
             max_retries=3,
             headers=None,
         )
@@ -63,7 +64,7 @@ def _download(url: str) -> tuple[str, float, str]:
         logger.info(f"Time taken to download: {download_time:.2f} seconds")
         return filename, download_time, ""
     except Exception as e:
-        return "", 0, str(e)
+        return "", time.time() - debug_start_time, "Download failed: " + str(e)
 
 
 def _load_and_cleanup(filename: str) -> tuple[np.ndarray | None, str]:
