@@ -114,8 +114,20 @@ class Validator(base.BaseValidator):
             total_uids = list(serving_counter.keys())
             random.shuffle(total_uids)
             batched_uids = [total_uids[i : i + 4] for i in range(0, len(total_uids), 4)]
-            futures = []
+
             for uids in batched_uids:
+                start_time = time.time()
+                # Wait if we have too many pending futures
+                pending_futures = [f for f in futures if not f.done()]
+                while len(pending_futures) >= 10:
+                    logger.info(
+                        f"Waiting for {len(pending_futures)} futures to complete."
+                    )
+                    await asyncio.sleep(1)
+                    # Clean up completed futures
+                    futures = [f for f in futures if not f.done()]
+                    pending_futures = [f for f in futures if not f.done()]
+
                 logger.info(
                     "Processing batch",
                     uids=uids,
