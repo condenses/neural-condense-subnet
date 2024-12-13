@@ -1,10 +1,9 @@
-import hf_transfer
 import numpy as np
 import io
 import time
-import httpx
+import aiohttp
 import os
-from rich.progress import track
+from rich.progress import track, Progress
 from ..logger import logger
 import asyncio
 import sys
@@ -22,9 +21,8 @@ def _clean_tmp_directory():
             os.remove(os.path.join("tmp", file))
 
 
-def _check_file_size(response: httpx.Response, max_size_mb: int) -> tuple[bool, str]:
+def _check_file_size(content_length: int, max_size_mb: int) -> tuple[bool, str]:
     """Check if file size is within limits."""
-    content_length = int(response.headers.get("content-length", 0))
     max_size_bytes = max_size_mb * 1024 * 1024
 
     if content_length > max_size_bytes:
@@ -40,21 +38,28 @@ def _generate_filename(url: str) -> str:
     return os.path.join("tmp", str(uuid.uuid4()) + "_" + url.split("/")[-1])
 
 
-def _download(url: str) -> tuple[str, float, str]:
-    """Download file using hf_transfer."""
+async def _download(url: str) -> tuple[str, float, str]:
+    """Download file using aiohttp."""
     try:
         filename = _generate_filename(url)
         start_time = time.time()
 
-        hf_transfer.download(
-            url=url,
-            filename=filename,
-            max_files=4,  # Number of parallel downloads
-            chunk_size=1024 * 1024,  # 1 MB chunks
-            parallel_failures=2,
-            max_retries=3,
-            headers=None,
-        )
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    return "", 0, f"Failed to download: HTTP {response.status}"
+
+                total_size = int(response.headers.get("content-length", 0))
+                with Progress() as progress:
+                    download_task = progress.add_task(
+                        f"[cyan]Downloading {url}...", total=total_size
+                    )
+                    with open(filename, "wb") as f:
+                        async for chunk in response.content.iter_chunked(
+                            1024 * 1024
+                        ):  # 1MB chunks
+                            f.write(chunk)
+                            progress.update(download_task, advance=len(chunk))
 
         download_time = time.time() - start_time
         logger.info(f"Time taken to download: {download_time:.2f} seconds")
@@ -79,7 +84,7 @@ async def load_npy_from_url(
     url: str, max_size_mb: int = 1024
 ) -> tuple[np.ndarray | None, str, float, str]:
     """
-    Load a `.npy` file from a URL using the hf_transfer library for efficient downloading.
+    Load a `.npy` file from a URL using aiohttp for efficient downloading.
 
     Args:
         url (str): URL of the `.npy` file.
@@ -94,22 +99,23 @@ async def load_npy_from_url(
     """
     try:
         # Check file size using HTTP HEAD request
-        async with httpx.AsyncClient() as client:
-            response = await client.head(url)
-            if response.status_code != 200:
-                return (
-                    None,
-                    "",
-                    0,
-                    f"Failed to fetch file info: HTTP {response.status_code}",
-                )
+        async with aiohttp.ClientSession() as session:
+            async with session.head(url) as response:
+                if response.status != 200:
+                    return (
+                        None,
+                        "",
+                        0,
+                        f"Failed to fetch file info: HTTP {response.status}",
+                    )
 
-            size_ok, error = _check_file_size(response, max_size_mb)
-            if not size_ok:
-                return None, "", 0, error
+                content_length = int(response.headers.get("content-length", 0))
+                size_ok, error = _check_file_size(content_length, max_size_mb)
+                if not size_ok:
+                    return None, "", 0, error
 
         # Download and process file
-        filename, download_time, error = await asyncio.to_thread(_download, url)
+        filename, download_time, error = await _download(url)
         if error:
             return None, "", 0, error
 

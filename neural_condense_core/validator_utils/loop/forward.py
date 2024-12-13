@@ -104,7 +104,7 @@ async def validate_responses(
         try:
             # Add timeout to prevent hanging
             is_valid, reason = await asyncio.wait_for(
-                TextCompressProtocol.verify(response, tier_config), timeout=256
+                TextCompressProtocol.verify(response, tier_config), timeout=360
             )
             return is_valid, reason
         except asyncio.TimeoutError:
@@ -114,11 +114,8 @@ async def validate_responses(
         except Exception as e:
             return False, f"Failed to verify: {str(e)}"
 
-    results = []
-    for response in responses:
-        verify_result = await verify_single_response(response)
-        results.append(verify_result)
-
+    verify_tasks = [verify_single_response(response) for response in responses]
+    results = await asyncio.gather(*verify_tasks)
     # Process results maintaining order
     for uid, (is_valid, reason), response in zip(uids, results, responses):
         if is_valid:
