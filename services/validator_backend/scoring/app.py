@@ -61,8 +61,9 @@ class ScoringService:
             "negative_chunks",
             negative_chunks=request.ground_truth_request.negative_chunks,
         )
-        for miner_response in request.miner_responses:
+        for miner_response, uid in zip(request.miner_responses, request.valid_uids):
             try:
+                logger.info(f"UID: {uid}")
                 miner_response.decode()
                 kv_cache = DynamicCache.from_legacy_cache(
                     torch.from_numpy(miner_response.compressed_kv).to(

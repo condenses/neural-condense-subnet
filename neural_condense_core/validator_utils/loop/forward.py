@@ -151,6 +151,7 @@ async def process_and_score_responses(
         task_config=task_config,
         timeout=timeout,
         config=config,
+        valid_uids=valid_uids,
     )
     scores = [
         (
@@ -195,11 +196,13 @@ async def get_accuracies(
     task_config: SyntheticTaskConfig,
     timeout: int = 240,
     config: bt.config = None,
+    valid_uids: list[int] = None,
 ) -> tuple[list, list]:
     payload = {
         "miner_responses": [{"filename": r.local_filename} for r in valid_responses],
         "ground_truth_request": ground_truth_synapse.validator_payload
         | {"model_name": model_name, "criterias": task_config.criterias},
+        "valid_uids": valid_uids,
     }
     logger.info("Sending payload to scoring backend")
     async with httpx.AsyncClient() as client:

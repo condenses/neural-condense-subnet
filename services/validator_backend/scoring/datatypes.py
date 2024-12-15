@@ -28,6 +28,7 @@ class GroundTruthRequest(BaseModel):
 class BatchedScoringRequest(BaseModel):
     miner_responses: List[MinerResponse]
     ground_truth_request: GroundTruthRequest
+    valid_uids: List[int]
 
 
 def load_npy_from_filename(filename: str) -> np.ndarray:
