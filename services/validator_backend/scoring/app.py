@@ -44,21 +44,6 @@ class ScoringService:
         self.tokenizer = AutoTokenizer.from_pretrained(
             "Condense-AI/Mistral-7B-Instruct-v0.2"
         )
-
-        j_tokenizer = AutoTokenizer.from_pretrained(
-            "upstage/solar-pro-preview-instruct"
-        )
-        j_model = AutoModelForCausalLM.from_pretrained(
-            "upstage/solar-pro-preview-instruct",
-            torch_dtype=self.dtype,
-            trust_remote_code=True,
-        )
-        self.judge_pipeline = TextGenerationPipeline(
-            model=j_model,
-            tokenizer=j_tokenizer,
-            device=self.device,
-            torch_dtype=self.dtype,
-        )
         self.filter_existance_checker = FilterExistanceChecker()
 
     @torch.no_grad()
@@ -91,7 +76,6 @@ class ScoringService:
                     model=self.model,
                     tokenizer=self.tokenizer,
                     ground_truth_request=request.ground_truth_request,
-                    judge_pipeline=self.judge_pipeline,
                 )
                 end_time = time.time()
                 logger.info(

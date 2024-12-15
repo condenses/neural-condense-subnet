@@ -9,7 +9,10 @@ import structlog
 from ..anti_exploitation.filter_existance import FilterExistanceChecker
 from ..utils import generate_answer
 from ..datatypes import GroundTruthRequest
+from openai import OpenAI
 
+CLIENT = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL"))
+MODEL = os.getenv("OPENAI_MODEL")
 
 logger = structlog.get_logger("accuracy")
 
@@ -22,7 +25,6 @@ def accuracy(
     ground_truth_request: GroundTruthRequest,
     tokenizer: AutoTokenizer,
     model: AutoModelForCausalLM,
-    judge_pipeline: TextGenerationPipeline,
     max_tokens: int = 256,
     **kwargs,
 ) -> float:
@@ -77,7 +79,7 @@ def accuracy(
     logger.debug(f"Activation prompt: {activation_prompt}")
     logger.debug(f"Completion: {completion}")
     logger.debug(f"Ground truth: {ground_truth}")
-    return get_accuracy_llm(completion, ground_truth, activation_prompt, judge_pipeline)
+    return get_accuracy_llm(completion, ground_truth, activation_prompt)
 
 
 def preprocess_batch(values: list[float]) -> list[float]:
@@ -88,27 +90,42 @@ def get_accuracy_llm(
     completion: str,
     ground_truth: str,
     question: str,
-    judge_pipeline: TextGenerationPipeline,
 ) -> float:
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful assistant that evaluates the correctness of a response to a question based on the ground truth.",
+            "content": "You are a strict and objective evaluator tasked with scoring the correctness of a response to a question. Your job is to compare the response with the ground truth and determine if the response has the same meaning as the ground truth, regardless of exact wording.",
         },
         {
             "role": "user",
-            "content": f"""Please evaluate the correctness of the following response to the question based on the ground truth.\n\n**Question**: {question}\n\n**Response**: {completion}\n\n**Ground truth**: {ground_truth}
-You have to return 'yes' if the response is correct, 'no' if it is incorrect. The correct response should be have same meaning as the ground truth, don't need to be exactly the same. Please just return only 'yes' or 'no', don't need to explain.
+            "content": f"""
+Evaluate the correctness of the provided response based on the question and the ground truth. 
+
+Here is the information you will use for evaluation:
+1. **Question**: {question}
+2. **Response**: {completion}
+3. **Ground Truth**: {ground_truth}
+
+**Evaluation Criteria**:
+- The response is **correct** if it conveys the same meaning as the ground truth. Minor differences in phrasing are acceptable, but the content must align fully with the intent and details of the ground truth.
+- The response is **incorrect** if it:
+  - Contradicts the ground truth.
+  - Omits critical information from the ground truth.
+  - Includes incorrect, unrelated, or fabricated information.
+
+**Response Format**:
+- Return only 'yes' if the response is correct.
+- Return only 'no' if the response is incorrect.
+- Do not provide explanations, reasoning, or additional commentary.
+
 """,
         },
     ]
-    completion = judge_pipeline(
-        messages,
-        do_sample=False,
-        max_new_tokens=16,
-    )[0][
-        "generated_text"
-    ][-1]["content"]
+    completion = CLIENT.chat.completions.create(
+        model=MODEL or "gpt-4o-mini",
+        messages=messages,
+        max_tokens=16,
+    )
     logger.debug(f"LLM Judge Messages: {messages}")
     logger.debug(f"LLM Judge Response: {completion}")
     is_correct = "yes" in completion.lower()
