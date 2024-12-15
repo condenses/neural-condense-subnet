@@ -127,7 +127,7 @@ Here is the information you will use for evaluation:
         model=MODEL or "gpt-4o-mini",
         messages=messages,
         max_tokens=16,
-    )
+    ).choices[0].message.content
     logger.debug(f"LLM Judge Messages: {messages}")
     logger.debug(f"LLM Judge Response: {completion}")
     is_correct = "yes" in completion.lower()
