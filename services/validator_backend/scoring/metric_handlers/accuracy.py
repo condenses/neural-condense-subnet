@@ -10,9 +10,11 @@ from ..anti_exploitation.filter_existance import FilterExistanceChecker
 from ..utils import generate_answer
 from ..datatypes import GroundTruthRequest
 from openai import OpenAI
+import os
 
 CLIENT = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL"))
 MODEL = os.getenv("OPENAI_MODEL")
+print(f"Using model: {MODEL}")
 
 logger = structlog.get_logger("accuracy")
 
