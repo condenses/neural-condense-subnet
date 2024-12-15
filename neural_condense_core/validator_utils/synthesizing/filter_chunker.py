@@ -11,11 +11,15 @@ class FilterExistanceChecker:
 
     def _load_negative_dataset(self):
         negative_dataset = load_dataset(
-            "TIGER-Lab/Fineweb-Instruct", streaming=True, split="train"
+            "Skelebor/book_titles_and_descriptions_en_clean",
+            streaming=True,
+            split="train",
         )
         negative_dataset = negative_dataset.shuffle()
-        negative_dataset = negative_dataset.filter(lambda x: len(x["response"]) > 1024)
-        negative_dataset = negative_dataset.map(lambda x: {"text": x["response"]})
+        negative_dataset = negative_dataset.filter(
+            lambda x: len(x["description"]) > 1024
+        )
+        negative_dataset = negative_dataset.map(lambda x: {"text": x["description"]})
         negative_dataset = iter(negative_dataset)
         return negative_dataset
 
