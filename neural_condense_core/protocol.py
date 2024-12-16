@@ -29,6 +29,7 @@ class UtilData(BaseModel):
     compressed_length: int = 0
     download_time: float = 0.0
     bonus_compress_size: float = 0.0
+    bonus_time: float = 0.0
     local_filename: str = ""
 
 
@@ -52,7 +53,7 @@ class TextCompressProtocol(Synapse):
 
     @property
     def accelerate_score(self) -> float:
-        return (self.util_data.bonus_compress_size + self.util_data.bonus_time) / 2
+        return (self.util_data.bonus_compress_size + self.bonus_time) / 2
 
     @property
     def bonus_time(self) -> float:
