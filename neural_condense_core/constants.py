@@ -156,7 +156,7 @@ class Constants(BaseModel):
     )
 
     CHAT_TEMPLATES: Dict[str, ChatTemplate] = {
-        "mistral-7b-instruct-v0.2": ChatTemplate(
+        "Mistral-7B-Instruct-v0.2": ChatTemplate(
             bos_token="<s>",
             eos_token="</s>",
             user_start_token="[INST]",
