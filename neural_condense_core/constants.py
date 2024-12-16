@@ -3,6 +3,22 @@ from typing import List
 import os
 
 
+class ChatTemplate(BaseModel):
+    # Example of Mistral-7B-Instruct-v0.2
+    bos_token: str = "<s>"
+    eos_token: str = "</s>"
+    user_start_token: str = "[INST]"
+    user_end_token: str = "[/INST]"
+    assistant_start_token: str = ""  # No specific start token for the assistant
+    assistant_end_token: str = ""  # No specific end token for the assistant
+
+    def apply_context_template(self, context: str):
+        return f"{self.bos_token}{self.user_start_token}{context}"
+
+    def apply_question_template(self, question: str):
+        return f"\n\n{question}{self.user_end_token}{self.assistant_start_token}"
+
+
 class TierConfig(BaseModel):
     incentive_percentage: float
     requests_per_epoch: int
@@ -138,6 +154,17 @@ class Constants(BaseModel):
             ),
         )
     )
+
+    CHAT_TEMPLATES = {
+        "mistral-7b-instruct-v0.2": ChatTemplate(
+            bos_token="<s>",
+            eos_token="</s>",
+            user_start_token="[INST]",
+            user_end_token="[/INST]",
+            assistant_start_token="",
+            assistant_end_token="",
+        ),
+    }
 
     # Adjust values based on NETWORK environment variable
     def __init__(self, **data):

@@ -196,11 +196,12 @@ async def get_accuracies(
     timeout: int = 240,
     config: bt.config = None,
 ) -> tuple[list, list]:
-    payload = {
-        "miner_responses": [{"filename": r.local_filename} for r in valid_responses],
-        "ground_truth_request": ground_truth_synapse.validator_payload
-        | {"model_name": model_name, "criterias": task_config.criterias},
-    }
+    payload = TextCompressProtocol.get_scoring_payload(
+        responses=valid_responses,
+        ground_truth_synapse=ground_truth_synapse,
+        target_model=model_name,
+        criterias=task_config.criterias,
+    )
     logger.info("Sending payload to scoring backend")
     async with httpx.AsyncClient() as client:
         try:
@@ -224,7 +225,7 @@ async def get_accuracies(
         scoring_response = response.json()
 
     accuracies = scoring_response["metrics"]["accuracy"]
-    accelerate_rewards = [r.accelerate_score for r in valid_responses]
+    accelerate_rewards = [r.util_data.accelerate_score for r in valid_responses]
     return accuracies, accelerate_rewards
 
 

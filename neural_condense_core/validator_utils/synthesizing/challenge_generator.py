@@ -6,9 +6,10 @@ from .convo_generator import ConvoGenerator
 from .schemas import QASchedulerConfig
 import random
 import os
-from typing import Tuple
+from typing import Tuple, List
 from ...protocol import TextCompressProtocol
 from .filter_chunker import FilterExistanceChecker
+from ...constants import constants, ChatTemplate
 from .utils import retry
 
 CORCEL_API_KEY = os.getenv("CORCEL_API_KEY")
@@ -40,27 +41,31 @@ class ChallengeGenerator:
     @retry(max_attempts=3)
     async def generate_challenge(
         self,
-        tokenizer: AutoTokenizer,
+        model_name: str,
         task: str = "question_answering",
         max_context_length_in_chars: int = 10000,
     ) -> TextCompressProtocol:
+        chat_template = constants.CHAT_TEMPLATES[model_name]
         try:
             context, challenge_question, challenge_answer = await self.task_to_builder[
                 task
             ](max_context_length_in_chars)
             positive_chunks, negative_chunks = self.filter_checker.get_chunks(context)
             synapse = self._build_protocol(
-                tokenizer, context, challenge_question, challenge_answer
+                chat_template,
+                context,
+                challenge_question,
+                challenge_answer,
+                positive_chunks,
+                negative_chunks,
             )
-            synapse.positive_chunks = positive_chunks
-            synapse.negative_chunks = negative_chunks
         except Exception as e:
             raise e
         return synapse
 
     @retry(max_attempts=3)
     async def _build_qa_conversation(self, max_chars: int) -> Tuple[str, str, str]:
-        context_qa_items = await self.synthesizer.get_qas(n=10)
+        context_qa_items = await self.synthesizer.get_qas(n=20)
         context = ""
         question_answer_pairs = []
         for qa_item in context_qa_items:
@@ -71,38 +76,37 @@ class ChallengeGenerator:
             answers = qa_item.answers
             question_answer_pairs.extend(list(zip(questions, answers)))
         random.shuffle(question_answer_pairs)
-        challenge_question, challenge_answer = question_answer_pairs.pop()
+        challenge_qa_pairs = random.sample(question_answer_pairs, 3)
+        challenge_questions = [qa_pair[0] for qa_pair in challenge_qa_pairs]
+        challenge_answers = [qa_pair[1] for qa_pair in challenge_qa_pairs]
 
-        return context, challenge_question, challenge_answer
+        return context, challenge_questions, challenge_answers
 
     def _build_protocol(
         self,
-        tokenizer: AutoTokenizer,
+        chat_template: ChatTemplate,
         context: str,
-        challenge_question: str,
-        challenge_answer: str,
+        challenge_questions: List[str],
+        challenge_answers: List[str],
+        positive_chunks: List[str],
+        negative_chunks: List[str],
     ) -> TextCompressProtocol:
-        messages = [
-            {
-                "role": "user",
-                "content": f"{context}{self.start_activation_token}\n\nRead the provided information and answer the following question, the answer should be retrieved from the provided information: {challenge_question}",
-            },
-            {
-                "role": "assistant",
-                "content": f"{self.end_activation_token}{challenge_answer}",
-            },
+        formatted_context = chat_template.apply_context_template(context)
+        formatted_questions = [
+            chat_template.apply_question_template(question)
+            for question in challenge_questions
         ]
-        prompt = tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=False
-        )
 
-        context, activation_prompt, _ = re.split(
-            f"{re.escape(self.start_activation_token)}|{re.escape(self.end_activation_token)}",
-            prompt,
-        )
-        return TextCompressProtocol(
-            context=context,
-            activation_prompt=activation_prompt,
-            expected_completion=challenge_answer,
-            messages=messages,
+        return TextCompressProtocol.model_validate(
+            {
+                "task_data": {
+                    "original_context": context,
+                    "challenge_questions": formatted_questions,
+                    "challenge_answers": challenge_answers,
+                    "formatted_questions": formatted_questions,
+                    "positive_chunks": positive_chunks,
+                    "negative_chunks": negative_chunks,
+                },
+                "context": formatted_context,
+            }
         )
