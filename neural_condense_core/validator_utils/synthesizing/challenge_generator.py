@@ -101,7 +101,7 @@ class ChallengeGenerator:
             {
                 "task_data": {
                     "original_context": context,
-                    "challenge_questions": formatted_questions,
+                    "challenge_questions": challenge_questions,
                     "challenge_answers": challenge_answers,
                     "formatted_questions": formatted_questions,
                     "positive_chunks": positive_chunks,
