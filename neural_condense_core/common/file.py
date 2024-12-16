@@ -15,7 +15,7 @@ from firerequests import FireRequests
 fire_downloader = FireRequests()
 
 
-def _clean_tmp_directory():
+def clean_tmp_directory():
     """Clean the tmp directory if running as validator."""
     if (
         __name__ != "__main__"
@@ -130,4 +130,4 @@ async def load_npy_from_url(
 
 
 # Clean tmp directory on module load if running as validator
-_clean_tmp_directory()
+clean_tmp_directory()

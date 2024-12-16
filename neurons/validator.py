@@ -3,6 +3,7 @@ from neural_condense_core import (
     validator_utils as vutils,
     constants,
     logger,
+    common,
 )
 from neural_condense_core.protocol import TextCompressProtocol
 import pandas as pd
@@ -37,6 +38,7 @@ class Validator(base.BaseValidator):
 
     async def start_epoch(self):
         logger.info("Running epoch.")
+        common.clean_tmp_directory()
         await self.miner_manager.sync()
 
         if self.metadata_task is None or self.metadata_task.done():
