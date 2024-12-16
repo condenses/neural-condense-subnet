@@ -47,7 +47,7 @@ async def prepare_synapse(
     """
     try:
         synapse = await challenge_generator.generate_challenge(
-            tokenizer=tokenizer,
+            model_name=model_name,
             task=task_config.task,
             max_context_length_in_chars=tier_config.max_context_length_in_chars,
         )

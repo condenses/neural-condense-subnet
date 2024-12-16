@@ -45,7 +45,7 @@ class ChallengeGenerator:
         task: str = "question_answering",
         max_context_length_in_chars: int = 10000,
     ) -> TextCompressProtocol:
-        chat_template = constants.CHAT_TEMPLATES[model_name]
+        chat_template = constants.CHAT_TEMPLATES[model_name.split("/")[-1]]
         try:
             context, challenge_question, challenge_answer = await self.task_to_builder[
                 task
