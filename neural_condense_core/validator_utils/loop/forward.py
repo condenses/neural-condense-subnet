@@ -216,7 +216,9 @@ async def get_accuracies(
             try:
                 os.remove(r.util_data.local_filename)
             except Exception as e:
-                logger.error(f"Error removing local file {r.util_data.local_filename}: {e}")
+                logger.error(
+                    f"Error removing local file {r.util_data.local_filename}: {e}"
+                )
         logger.info("Removed all local files")
         if response.status_code != 200:
             raise Exception(
@@ -225,7 +227,7 @@ async def get_accuracies(
         scoring_response = response.json()
 
     accuracies = scoring_response["metrics"]["accuracy"]
-    accelerate_rewards = [r.util_data.accelerate_score for r in valid_responses]
+    accelerate_rewards = [r.accelerate_score for r in valid_responses]
     return accuracies, accelerate_rewards
 
 
