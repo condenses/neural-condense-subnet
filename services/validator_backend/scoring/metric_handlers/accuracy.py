@@ -9,7 +9,7 @@ import structlog
 from ..anti_exploitation.filter_existance import FilterExistanceChecker
 from ..utils import generate_answer
 from neural_condense_core.protocol import TaskData
-
+from copy import deepcopy
 
 logger = structlog.get_logger("accuracy")
 
@@ -73,12 +73,13 @@ def accuracy(
         ).input_ids.to(device=device, dtype=torch.long)
         n_expected_completion_tokens = expected_completion_ids.shape[1]
         max_new_tokens = int(n_expected_completion_tokens * 1.5)
-
+        _kv_cache = deepcopy(kv_cache)
+        logger.debug("kv_length", length=_kv_cache._seen_tokens)
         completion = generate_answer(
             model=model,
             tokenizer=tokenizer,
             question_ids=question_ids,
-            cache=kv_cache,
+            cache=_kv_cache,
             context_length=context_length,
             max_new_tokens=max_new_tokens,
         )
