@@ -3,39 +3,62 @@ from bittensor import Synapse
 from typing import Any, List
 import torch
 from transformers import DynamicCache
+from pydantic import BaseModel
 from .common.file import load_npy_from_url
 from .constants import TierConfig
+import numpy as np
+import io
 
 
 class Metadata(Synapse):
     metadata: dict = {}
 
 
-class TextCompressProtocol(Synapse):
-    context: str = ""
-    compressed_kv_url: str = ""
-    compressed_kv_b64: str = ""
-    compressed_kv: Any = None
-    compressed_length: int = 0
-
-    expected_completion: str = ""
-    messages: List[dict] = []
-    hidden_messages: List[dict] = []
-    activation_prompt: str = ""
-    target_model: str = ""
-    local_filename: str = ""
-    download_time: float = 0.0
-    bonus_compress_size: float = 0.0
+class TaskData(BaseModel):
+    original_context: str = ""
+    challenge_questions: List[str] = []
+    challenge_answers: List[str] = []
+    formatted_questions: List[str] = []
     negative_chunks: List[str] = []
     positive_chunks: List[str] = []
 
+
+class UtilData(BaseModel):
+    compressed_kv_b64: str = ""
+    compressed_length: int = 0
+    download_time: float = 0.0
+    bonus_compress_size: float = 0.0
+    local_filename: str = ""
+
+
+class MinerResponse(BaseModel):
+    filename: str = ""
+
+
+class BatchedScoringRequest(BaseModel):
+    miner_responses: List[MinerResponse] = []
+    task_data: TaskData = TaskData()
+    target_model: str = ""
+    criterias: List[str] = []
+
+
+class TextCompressProtocol(Synapse):
+    context: str = ""
+    target_model: str = ""
+    compressed_kv_url: str = ""
+    util_data: UtilData = UtilData()
+    task_data: TaskData = TaskData()
+
     @property
     def accelerate_score(self) -> float:
-        return (self.bonus_compress_size + self.bonus_time) / 2
+        return (self.util_data.bonus_compress_size + self.util_data.bonus_time) / 2
 
     @property
     def bonus_time(self) -> float:
-        return min(0, (self.dendrite.process_time + self.download_time) / self.timeout)
+        return 1 - max(
+            1,
+            (self.dendrite.process_time + self.util_data.download_time) / self.timeout,
+        )
 
     @property
     def miner_payload(self) -> dict:
@@ -50,14 +73,25 @@ class TextCompressProtocol(Synapse):
     @property
     def validator_payload(self) -> dict:
         return {
-            "context": self.context,
-            "expected_completion": self.expected_completion,
-            "activation_prompt": self.activation_prompt,
-            "messages": self.messages,
-            "hidden_messages": self.hidden_messages,
-            "positive_chunks": self.positive_chunks,
-            "negative_chunks": self.negative_chunks,
+            "task_data": self.task_data.model_dump(),
+            "util_data": self.util_data.model_dump(),
         }
+
+    @staticmethod
+    def get_scoring_payload(
+        responses: List["TextCompressProtocol"],
+        ground_truth_synapse: "TextCompressProtocol",
+        target_model: str,
+        criterias: List[str],
+    ) -> BatchedScoringRequest:
+        return BatchedScoringRequest(
+            miner_responses=[
+                {"filename": r.util_data.local_filename} for r in responses
+            ],
+            task_data=ground_truth_synapse.task_data,
+            target_model=target_model,
+            criterias=criterias,
+        )
 
     @staticmethod
     async def verify(
@@ -69,8 +103,8 @@ class TextCompressProtocol(Synapse):
         compressed_kv, filename, download_time, error = await load_npy_from_url(
             response.compressed_kv_url
         )
-        response.download_time = download_time
-        response.local_filename = filename
+        response.util_data.download_time = download_time
+        response.util_data.local_filename = filename
         if compressed_kv is None:
             return (
                 False,
@@ -89,10 +123,10 @@ class TextCompressProtocol(Synapse):
         ):
             return False, "Compressed tokens are not within the expected range."
 
-        response.bonus_compress_size = 1 - (
+        response.util_data.bonus_compress_size = 1 - (
             kv_cache._seen_tokens / tier_config.max_condensed_tokens
         )
-        response.compressed_length = kv_cache._seen_tokens
+        response.util_data.compressed_length = kv_cache._seen_tokens
         del kv_cache
         del compressed_kv
         return True, ""

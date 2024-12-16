@@ -8,7 +8,7 @@ from transformers import (
 import structlog
 from ..anti_exploitation.filter_existance import FilterExistanceChecker
 from ..utils import generate_answer
-from ..datatypes import GroundTruthRequest
+from neural_condense_core.protocol import TaskData
 
 
 logger = structlog.get_logger("accuracy")
@@ -19,18 +19,20 @@ DEFAULT_VALUE = 0
 def accuracy(
     filter_existance_checker: FilterExistanceChecker,
     kv_cache: DynamicCache,
-    ground_truth_request: GroundTruthRequest,
+    task_data: TaskData,
     tokenizer: AutoTokenizer,
     model: AutoModelForCausalLM,
     judge_pipeline: TextGenerationPipeline,
     max_tokens: int = 256,
     **kwargs,
 ) -> float:
-    activation_prompt = ground_truth_request.activation_prompt
-    expected_completion = ground_truth_request.expected_completion
-    context = ground_truth_request.context
-    positive_chunks = ground_truth_request.positive_chunks
-    negative_chunks = ground_truth_request.negative_chunks
+    context = task_data.context
+    positive_chunks = task_data.positive_chunks
+    negative_chunks = task_data.negative_chunks
+    formatted_questions = task_data.formatted_questions
+    questions = task_data.questions
+    answers = task_data.answers
+
     device = model.device
     context_ids = tokenizer.encode(
         context,
@@ -51,33 +53,43 @@ def accuracy(
         logger.warning("Existance check failed")
         return 0
 
-    expected_completion_ids = tokenizer(
-        expected_completion,
-        return_tensors="pt",
-        add_special_tokens=False,
-    ).input_ids.to(device=device, dtype=torch.long)
-    n_expected_completion_tokens = expected_completion_ids.shape[1]
-    max_new_tokens = int(n_expected_completion_tokens * 1.5)
-    prompt_ids = tokenizer(
-        activation_prompt,
-        return_tensors="pt",
-        add_special_tokens=False,
-        max_length=max_tokens,
-    ).input_ids.to(device=device, dtype=torch.long)
-
-    completion = generate_answer(
-        model=model,
-        tokenizer=tokenizer,
-        question_ids=prompt_ids,
-        cache=kv_cache,
-        context_length=context_length,
-        max_new_tokens=max_new_tokens,
-    )
-    ground_truth = expected_completion.strip()
-    logger.debug(f"Activation prompt: {activation_prompt}")
-    logger.debug(f"Completion: {completion}")
-    logger.debug(f"Ground truth: {ground_truth}")
-    return get_accuracy_llm(completion, ground_truth, activation_prompt, judge_pipeline)
+    questions_ids = [
+        tokenizer(
+            question,
+            return_tensors="pt",
+            add_special_tokens=False,
+            max_length=max_tokens,
+        ).input_ids.to(device=device, dtype=torch.long)
+        for question in formatted_questions
+    ]
+    accuracies = []
+    for question_ids, formatted_question, answer, question in zip(
+        questions_ids, formatted_questions, answers, questions
+    ):
+        expected_completion_ids = tokenizer(
+            answer,
+            return_tensors="pt",
+            add_special_tokens=False,
+        ).input_ids.to(device=device, dtype=torch.long)
+        n_expected_completion_tokens = expected_completion_ids.shape[1]
+        max_new_tokens = int(n_expected_completion_tokens * 1.5)
+        
+        completion = generate_answer(
+            model=model,
+            tokenizer=tokenizer,
+            question_ids=question_ids,
+            cache=kv_cache,
+            context_length=context_length,
+            max_new_tokens=max_new_tokens,
+        )
+        ground_truth = answer.strip()
+        logger.debug(f"Question: {formatted_question}")
+        logger.debug(f"Completion: {completion}")
+        logger.debug(f"Ground truth: {ground_truth}")
+        accuracy = get_accuracy_llm(completion, ground_truth, question, judge_pipeline)
+        accuracies.append(accuracy)
+    logger.info(f"Accuracies: {accuracies}")
+    return sum(accuracies) / len(accuracies)
 
 
 def preprocess_batch(values: list[float]) -> list[float]:

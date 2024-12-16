@@ -10,11 +10,13 @@ from transformers import (
 import random
 import structlog
 import gc
-from .datatypes import BatchedScoringRequest
+from neural_condense_core.protocol import BatchedScoringRequest
 import traceback
 from .metric_handlers import metric_handlers
 from .anti_exploitation.filter_existance import FilterExistanceChecker
 import time
+import numpy as np
+import io
 
 gc.enable()
 structlog.configure(
@@ -28,6 +30,12 @@ structlog.configure(
 )
 
 logger = structlog.get_logger("Validator-Backend")
+
+
+def load_compressed_kv(filename: str) -> np.ndarray:
+    with open(filename, "rb") as f:
+        buffer = io.BytesIO(f.read())
+        return np.load(buffer).astype(np.float32)
 
 
 class ScoringService:
@@ -64,23 +72,22 @@ class ScoringService:
     @torch.no_grad()
     def get_metrics(self, request: BatchedScoringRequest) -> dict[str, float]:
         logger.info("Received request")
-        criteria = random.choice(request.ground_truth_request.criterias)
+        criteria = random.choice(request.criterias)
         values = []
         metric_handler = metric_handlers[criteria]["handler"]
         preprocess_batch = metric_handlers[criteria]["preprocess_batch"]
         logger.info(
             "positive_chunks",
-            positive_chunks=request.ground_truth_request.positive_chunks,
+            positive_chunks=request.task_data.positive_chunks,
         )
         logger.info(
             "negative_chunks",
-            negative_chunks=request.ground_truth_request.negative_chunks,
+            negative_chunks=request.task_data.negative_chunks,
         )
         for miner_response in request.miner_responses:
             try:
-                miner_response.decode()
                 kv_cache = DynamicCache.from_legacy_cache(
-                    torch.from_numpy(miner_response.compressed_kv).to(
+                    torch.from_numpy(load_compressed_kv(miner_response.filename)).to(
                         device=self.device, dtype=self.dtype
                     )
                 )
@@ -90,7 +97,7 @@ class ScoringService:
                     kv_cache=kv_cache,
                     model=self.model,
                     tokenizer=self.tokenizer,
-                    ground_truth_request=request.ground_truth_request,
+                    task_data=request.task_data,
                     judge_pipeline=self.judge_pipeline,
                 )
                 end_time = time.time()
