@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Dict
 import os
 
 
@@ -155,7 +155,7 @@ class Constants(BaseModel):
         )
     )
 
-    CHAT_TEMPLATES = {
+    CHAT_TEMPLATES: Dict[str, ChatTemplate] = {
         "mistral-7b-instruct-v0.2": ChatTemplate(
             bos_token="<s>",
             eos_token="</s>",
