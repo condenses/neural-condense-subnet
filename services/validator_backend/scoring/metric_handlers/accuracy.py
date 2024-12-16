@@ -26,12 +26,12 @@ def accuracy(
     max_tokens: int = 256,
     **kwargs,
 ) -> float:
-    context = task_data.context
+    context = task_data.formatted_context
     positive_chunks = task_data.positive_chunks
     negative_chunks = task_data.negative_chunks
     formatted_questions = task_data.formatted_questions
-    questions = task_data.questions
-    answers = task_data.answers
+    questions = task_data.challenge_questions
+    answers = task_data.challenge_answers
 
     device = model.device
     context_ids = tokenizer.encode(
@@ -73,7 +73,7 @@ def accuracy(
         ).input_ids.to(device=device, dtype=torch.long)
         n_expected_completion_tokens = expected_completion_ids.shape[1]
         max_new_tokens = int(n_expected_completion_tokens * 1.5)
-        
+
         completion = generate_answer(
             model=model,
             tokenizer=tokenizer,
