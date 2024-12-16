@@ -15,6 +15,7 @@ class Metadata(Synapse):
 
 
 class TaskData(BaseModel):
+    formatted_context: str = ""
     original_context: str = ""
     challenge_questions: List[str] = []
     challenge_answers: List[str] = []

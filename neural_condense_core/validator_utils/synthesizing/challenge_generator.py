@@ -106,6 +106,7 @@ class ChallengeGenerator:
                     "challenge_answers": challenge_answers,
                     "formatted_questions": formatted_questions,
                     "positive_chunks": positive_chunks,
+                    "formatted_context": formatted_context,
                     "negative_chunks": negative_chunks,
                 },
                 "context": formatted_context,
