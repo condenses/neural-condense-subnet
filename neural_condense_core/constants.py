@@ -13,10 +13,10 @@ class ChatTemplate(BaseModel):
     assistant_end_token: str = ""  # No specific end token for the assistant
 
     def apply_context_template(self, context: str):
-        return f"{self.bos_token}{self.user_start_token}{context}"
+        return f"{self.bos_token} {self.user_start_token} {context}"
 
     def apply_question_template(self, question: str):
-        return f"\n\n{question}{self.user_end_token}{self.assistant_start_token}"
+        return f"\n\n{question} {self.user_end_token} {self.assistant_start_token}"
 
 
 class TierConfig(BaseModel):
