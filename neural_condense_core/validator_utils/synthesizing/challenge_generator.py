@@ -59,7 +59,6 @@ class ChallengeGenerator:
                 positive_chunks,
                 negative_chunks,
             )
-            print(synapse)
         except Exception as e:
             raise e
         return synapse
