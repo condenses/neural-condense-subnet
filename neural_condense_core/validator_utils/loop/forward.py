@@ -214,9 +214,9 @@ async def get_accuracies(
             logger.error(f"Error sending payload to scoring backend: {e}")
         for r in valid_responses:
             try:
-                os.remove(r.local_filename)
+                os.remove(r.util_data.local_filename)
             except Exception as e:
-                logger.error(f"Error removing local file {r.local_filename}: {e}")
+                logger.error(f"Error removing local file {r.util_data.local_filename}: {e}")
         logger.info("Removed all local files")
         if response.status_code != 200:
             raise Exception(
