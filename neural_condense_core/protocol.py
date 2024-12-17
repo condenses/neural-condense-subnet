@@ -57,7 +57,7 @@ class TextCompressProtocol(Synapse):
 
     @property
     def bonus_time(self) -> float:
-        return 1 - max(
+        return 1 - min(
             1,
             (self.dendrite.process_time + self.util_data.download_time) / self.timeout,
         )
