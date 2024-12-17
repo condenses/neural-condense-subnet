@@ -125,7 +125,6 @@ You have to return 'yes' if the response is correct, 'no' if it is incorrect. Th
     )[0][
         "generated_text"
     ][-1]["content"]
-    logger.debug(f"LLM Judge Messages: {messages}")
     logger.debug(f"LLM Judge Response: {completion}")
     is_correct = "yes" in completion.lower()
-    return 1 if is_correct else 0.1
+    return 1 if is_correct else 0
