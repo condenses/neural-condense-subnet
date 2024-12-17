@@ -41,11 +41,6 @@ class Validator(base.BaseValidator):
         common.clean_tmp_directory()
         await self.miner_manager.sync()
 
-        if self.metadata_task is None or self.metadata_task.done():
-            self.metadata_task = self.loop.create_task(
-                self._report_metadata_periodically()
-            )
-
         tasks = [
             self.loop.create_task(self._forward_tier(tier))
             for tier in constants.TIER_CONFIG
@@ -58,14 +53,12 @@ class Validator(base.BaseValidator):
             logger.error(f"Error running epoch tasks: {e}")
             traceback.print_exc()
 
-    async def _report_metadata_periodically(self):
-        while True:
-            try:
-                await self.miner_manager.report_metadata()
-                logger.info("Reported metadata successfully")
-            except Exception as e:
-                logger.error(f"Failed to report metadata: {e}")
-            await asyncio.sleep(self.metadata_interval)
+    async def report_metadata(self):
+        try:
+            await self.miner_manager.report_metadata()
+            logger.info("Reported metadata successfully")
+        except Exception as e:
+            logger.error(f"Failed to report metadata: {e}")
 
     async def _forward_tier(self, tier: str):
         try:
@@ -146,7 +139,12 @@ class Validator(base.BaseValidator):
                 )
                 futures.append(future)
                 await asyncio.sleep(sleep_per_set / len(batched_uids))
-        await asyncio.gather(*futures, return_exceptions=True)
+            await asyncio.gather(*futures, return_exceptions=True)
+            logger.info(f"Finished processing batch {i}/{n_sets}.")
+            logger.info(f"Setting weights for batch {i}/{n_sets}.")
+            await self.report_metadata()
+            self.set_weights()
+        logger.info("Finished processing all batches.")
 
     async def _forward_batch(
         self,
@@ -281,12 +279,14 @@ class Validator(base.BaseValidator):
                     uids=uint_uids,
                     weights=uint_weights,
                 )
-                result = future.result(timeout=120)
+                success, msg = future.result(timeout=120)
+                if not success:
+                    logger.error(f"Failed to set weights: {msg}")
             except Exception as e:
                 logger.error(f"Failed to set weights: {e}")
                 traceback.print_exc()
 
-            logger.info(f"Set weights result: {result}")
+            logger.info(f"Set weights result: {success}")
         else:
             logger.info(
                 f"Not setting weights because current block {self.current_block} is not greater than last update {self.last_update} + tempo {constants.SUBNET_TEMPO}"
@@ -297,9 +297,4 @@ if __name__ == "__main__":
     with Validator() as validator:
         while True:
             logger.info("validator_status", object=validator)
-            if not validator.thread_set_weights.is_alive():
-                logger.info("Starting set weights thread.")
-                validator.thread_set_weights.start()
-            else:
-                logger.info("Set weights thread already running.")
             time.sleep(60 * 10)

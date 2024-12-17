@@ -33,6 +33,6 @@ class FilterExistanceChecker:
         positive_chunks = random.sample(chunks, 2)
         # Test on negative case (text not from conversation)
         negative_chunks = [
-            random.choice(self.splitter.chunks(self._get_negative_message()))
+            random.sample(self.splitter.chunks(self._get_negative_message()), 2)
         ]
         return positive_chunks, negative_chunks

@@ -42,15 +42,18 @@ def accuracy(
     context_length = context_ids.shape[1]
     num_seen_tokens = kv_cache._seen_tokens
     logger.debug("condense-length", length=num_seen_tokens)
-    if not filter_existance_checker.filter_existance(
+    chunk_existance_accuracy: float = filter_existance_checker.filter_existance(
         tokenizer=tokenizer,
         model=model,
         kv_cache=kv_cache,
         positive_chunks=positive_chunks,
         negative_chunks=negative_chunks,
         context_length=context_length,
-    ):
-        logger.warning("Existance check failed")
+    )
+    if chunk_existance_accuracy <= 0.1:
+        logger.info(
+            f"Too low chunk existance accuracy, skipping scoring: {chunk_existance_accuracy}"
+        )
         return 0
 
     questions_ids = [
@@ -90,7 +93,7 @@ def accuracy(
         accuracy = get_accuracy_llm(completion, ground_truth, question, judge_pipeline)
         accuracies.append(accuracy)
     logger.info(f"Accuracies: {accuracies}")
-    return sum(accuracies) / len(accuracies)
+    return chunk_existance_accuracy * sum(accuracies) / len(accuracies)
 
 
 def preprocess_batch(values: list[float]) -> list[float]:
