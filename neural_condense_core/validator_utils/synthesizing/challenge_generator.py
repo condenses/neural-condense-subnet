@@ -76,7 +76,7 @@ class ChallengeGenerator:
             answers = qa_item.answers
             question_answer_pairs.extend(list(zip(questions, answers)))
         random.shuffle(question_answer_pairs)
-        challenge_qa_pairs = random.sample(question_answer_pairs, 3)
+        challenge_qa_pairs = random.sample(question_answer_pairs, 5)
         challenge_questions = [qa_pair[0] for qa_pair in challenge_qa_pairs]
         challenge_answers = [qa_pair[1] for qa_pair in challenge_qa_pairs]
 

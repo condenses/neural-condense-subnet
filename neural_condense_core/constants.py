@@ -137,9 +137,7 @@ class Constants(BaseModel):
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"
     REPORT_URL: str = "https://report.condenses.ai"
     ORGANIC_VERIFY_FREQUENCY: float = 0.1
-    TOP_PERCENTAGE_FOR_ALLOCATING_WEIGHTS: float = 0.3
-    EXPECTED_MEAN_SCORE: float = 0.75
-    EXPECTED_MAX_STD_SCORE: float = 0.1
+    TOP_PERCENTAGE_FOR_ALLOCATING_WEIGHTS: float = 0.45
 
     DATABASE_CONFIG: DatabaseConfig = Field(
         default_factory=lambda: DatabaseConfig(
