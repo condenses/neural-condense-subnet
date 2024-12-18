@@ -240,7 +240,6 @@ class MinerManager:
             return {}
 
         scores = apply_top_percentage_threshold(tier_scores, tier_uids, top_percentage)
-        scores = standardize_scores(scores, tier)
         scores = normalize_and_weight_scores(scores, tier)
 
         return dict(zip(tier_uids, scores))
