@@ -22,6 +22,7 @@ class TaskData(BaseModel):
     formatted_questions: List[str] = []
     negative_chunks: List[str] = []
     positive_chunks: List[str] = []
+    tier: str = ""
 
 
 class UtilData(BaseModel):
@@ -35,6 +36,7 @@ class UtilData(BaseModel):
 
 class MinerResponse(BaseModel):
     filename: str = ""
+    compressed_context: str = ""
 
 
 class BatchedScoringRequest(BaseModel):
@@ -86,14 +88,24 @@ class TextCompressProtocol(Synapse):
         target_model: str,
         criterias: List[str],
     ) -> BatchedScoringRequest:
-        return BatchedScoringRequest(
-            miner_responses=[
-                {"filename": r.util_data.local_filename} for r in responses
-            ],
-            task_data=ground_truth_synapse.task_data,
-            target_model=target_model,
-            criterias=criterias,
-        )
+        if ground_truth_synapse.task_data.tier != "universal":
+            return BatchedScoringRequest(
+                miner_responses=[
+                    {"filename": r.util_data.local_filename} for r in responses
+                ],
+                task_data=ground_truth_synapse.task_data,
+                target_model=target_model,
+                criterias=criterias,
+            )
+        else:
+            return BatchedScoringRequest(
+                miner_responses=[
+                    {"compressed_context": r.compressed_context} for r in responses
+                ],
+                task_data=ground_truth_synapse.task_data,
+                target_model=target_model,
+                criterias=criterias,
+            )
 
     @staticmethod
     async def verify(

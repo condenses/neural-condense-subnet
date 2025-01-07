@@ -65,9 +65,16 @@ class Validator(base.BaseValidator):
             if constants.TIER_CONFIG[tier].incentive_percentage == 0:
                 logger.info(f"Tier {tier} has no incentive percentage.")
                 return
-
-            model_name = random.choice(constants.TIER_CONFIG[tier].supporting_models)
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            if tier == "universal":
+                model_name = "universal"
+                tokenizer = AutoTokenizer.from_pretrained(
+                    "meta-llama/Meta-Llama-3-70B-Instruct"
+                )
+            else:
+                model_name = random.choice(
+                    constants.TIER_CONFIG[tier].supporting_models
+                )
+                tokenizer = AutoTokenizer.from_pretrained(model_name)
             serving_counter = self.miner_manager.serving_counter.get(tier, {})
 
             if not serving_counter:

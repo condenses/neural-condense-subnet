@@ -45,7 +45,10 @@ class ChallengeGenerator:
         task: str = "question_answering",
         max_context_length_in_chars: int = 10000,
     ) -> TextCompressProtocol:
-        chat_template = constants.CHAT_TEMPLATES[model_name.split("/")[-1]]
+        if model_name == "universal":
+            chat_template = None
+        else:
+            chat_template = constants.CHAT_TEMPLATES[model_name.split("/")[-1]]
         try:
             context, challenge_question, challenge_answer = await self.task_to_builder[
                 task
@@ -65,7 +68,7 @@ class ChallengeGenerator:
 
     @retry(max_attempts=3)
     async def _build_qa_conversation(self, max_chars: int) -> Tuple[str, str, str]:
-        context_qa_items = await self.synthesizer.get_qas(n=20)
+        context_qa_items = await self.synthesizer.get_qas(n=50)
         context = ""
         question_answer_pairs = []
         for qa_item in context_qa_items:
@@ -91,11 +94,15 @@ class ChallengeGenerator:
         positive_chunks: List[str],
         negative_chunks: List[str],
     ) -> TextCompressProtocol:
-        formatted_context = chat_template.apply_context_template(context)
-        formatted_questions = [
-            chat_template.apply_question_template(question)
-            for question in challenge_questions
-        ]
+        if chat_template is None:
+            formatted_context = context
+            formatted_questions = challenge_questions
+        else:
+            formatted_context = chat_template.apply_context_template(context)
+            formatted_questions = [
+                chat_template.apply_question_template(question)
+                for question in challenge_questions
+            ]
 
         return TextCompressProtocol.model_validate(
             {
