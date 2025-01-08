@@ -82,9 +82,9 @@ class Constants(BaseModel):
             requests_per_epoch=256,
             timeout=16,
             accelerate_reward_scalar=0.1,
-            supporting_models=[],
+            supporting_models=["meta-llama/Llama-3.1-8B-Instruct"],
             max_condensed_tokens=4096,
-            min_condensed_tokens=128,
+            min_condensed_tokens=1,
             max_context_length_in_chars=40000,
         ),
         "inference_0": TierConfig(

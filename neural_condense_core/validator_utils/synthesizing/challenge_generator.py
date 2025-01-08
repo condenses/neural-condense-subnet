@@ -42,10 +42,11 @@ class ChallengeGenerator:
     async def generate_challenge(
         self,
         model_name: str,
+        tier: str,
         task: str = "question_answering",
         max_context_length_in_chars: int = 10000,
     ) -> TextCompressProtocol:
-        if model_name == "universal":
+        if tier == "universal":
             chat_template = None
         else:
             chat_template = constants.CHAT_TEMPLATES[model_name.split("/")[-1]]

@@ -28,7 +28,7 @@ def get_task_config() -> SyntheticTaskConfig:
 
 async def prepare_synapse(
     challenge_generator: ChallengeGenerator,
-    tokenizer,
+    tier: str,
     task_config: SyntheticTaskConfig,
     tier_config: TierConfig,
     model_name: str,
@@ -48,10 +48,12 @@ async def prepare_synapse(
     try:
         synapse = await challenge_generator.generate_challenge(
             model_name=model_name,
+            tier=tier,
             task=task_config.task,
             max_context_length_in_chars=tier_config.max_context_length_in_chars,
         )
         synapse.target_model = model_name
+        synapse.tier = tier
     except Exception as e:
         logger.error(f"Error generating challenge: {e}")
         traceback.print_exc()
@@ -95,7 +97,11 @@ async def query_miners(
 
 
 async def validate_responses(
-    responses: list[TextCompressProtocol], uids: list[int], tier_config: TierConfig
+    responses: list[TextCompressProtocol],
+    uids: list[int],
+    tier_config: TierConfig,
+    tier: str,
+    tokenizer=None,
 ) -> tuple[list[TextCompressProtocol], list[int], list[int], list[str]]:
     valid_responses, valid_uids, invalid_uids, invalid_reasons = [], [], [], []
 
@@ -104,7 +110,8 @@ async def validate_responses(
         try:
             # Add timeout to prevent hanging
             is_valid, reason = await asyncio.wait_for(
-                TextCompressProtocol.verify(response, tier_config), timeout=360
+                TextCompressProtocol.verify(response, tier_config, tier, tokenizer),
+                timeout=360,
             )
             return is_valid, reason
         except asyncio.TimeoutError:
@@ -143,23 +150,30 @@ async def process_and_score_responses(
     config: bt.config = None,
     invalid_reasons: list[str] = [],
     timeout: int = 120,
+    tier: str = "",
 ) -> dict[str, list]:
-    accuracies, accelerate_rewards = await get_accuracies(
-        valid_responses=valid_responses,
-        ground_truth_synapse=ground_truth_synapse,
-        model_name=model_name,
-        task_config=task_config,
-        timeout=timeout,
-        config=config,
-    )
-    scores = [
-        (
-            accu * (1 - tier_config.accelerate_reward_scalar)
-            + accel * tier_config.accelerate_reward_scalar
+    if len(valid_responses) > 0:
+        accuracies, accelerate_rewards = await get_accuracies(
+            valid_responses=valid_responses,
+            ground_truth_synapse=ground_truth_synapse,
+            model_name=model_name,
+            task_config=task_config,
+            timeout=timeout,
+            config=config,
+            tier=tier,
         )
-        * (accu > 0)
-        for accu, accel in zip(accuracies, accelerate_rewards)
-    ] + [0] * len(invalid_uids)
+        scores = [
+            (
+                accu * (1 - tier_config.accelerate_reward_scalar)
+                + accel * tier_config.accelerate_reward_scalar
+            )
+            * (accu > 0)
+            for accu, accel in zip(accuracies, accelerate_rewards)
+        ] + [0] * len(invalid_uids)
+    else:
+        scores = [0] * len(valid_uids) + [0] * len(invalid_uids)
+        accuracies = []
+        accelerate_rewards = []
     total_uids = valid_uids + invalid_uids
     updated_scores, previous_scores = miner_manager.update_scores(
         scores=scores,
@@ -195,6 +209,7 @@ async def get_accuracies(
     task_config: SyntheticTaskConfig,
     timeout: int = 240,
     config: bt.config = None,
+    tier: str = "",
 ) -> tuple[list, list]:
     payload = TextCompressProtocol.get_scoring_payload(
         responses=valid_responses,
@@ -202,11 +217,15 @@ async def get_accuracies(
         target_model=model_name,
         criterias=task_config.criterias,
     ).model_dump()
-    logger.info("Sending payload to scoring backend")
+    if tier == "universal":
+        url = f"http://{config.validator.universal_score_backend.host}:{config.validator.universal_score_backend.port}/get_metrics"
+    else:
+        url = f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics"
+    logger.info(f"Sending payload to scoring backend: {url}")
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                f"http://{config.validator.score_backend.host}:{config.validator.score_backend.port}/get_metrics",
+                url,
                 json=payload,
                 timeout=timeout,
             )
@@ -214,7 +233,8 @@ async def get_accuracies(
             logger.error(f"Error sending payload to scoring backend: {e}")
         for r in valid_responses:
             try:
-                os.remove(r.util_data.local_filename)
+                if r.util_data.local_filename:
+                    os.remove(r.util_data.local_filename)
             except Exception as e:
                 logger.error(
                     f"Error removing local file {r.util_data.local_filename}: {e}"

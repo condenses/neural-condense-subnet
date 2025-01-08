@@ -86,6 +86,11 @@ class Miner(ncc.base.BaseMiner):
         )
         bt.logging.info(f"Context length: {len(synapse.context)}")
 
+        if self.config.miner.tier == "universal":
+            # TODO: replaced by llmlingua
+            synapse.compressed_context = synapse.context[:2000]
+            return synapse
+
         payload = synapse.miner_payload
 
         async with httpx.AsyncClient(timeout=synapse.timeout) as client:

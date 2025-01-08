@@ -38,6 +38,18 @@ def add_validator_config(parser: ArgumentParser):
         default=8089,
         help="The port of the score backend server.",
     )
+    parser.add_argument(
+        "--validator.universal_score_backend.host",
+        type=str,
+        default="localhost",
+        help="The host of the universal score backend server.",
+    )
+    parser.add_argument(
+        "--validator.universal_score_backend.port",
+        type=int,
+        default=8090,
+        help="The port of the universal score backend server.",
+    )
 
     parser.add_argument(
         "--validator.organic_client_url",
