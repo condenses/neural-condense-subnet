@@ -183,7 +183,7 @@ class Validator(base.BaseValidator):
                     uids=batched_uids,
                     tier_config=constants.TIER_CONFIG[tier],
                     tokenizer=tokenizer,
-                    tier=tier
+                    tier=tier,
                 )
             except Exception as e:
                 logger.error(f"Error validating responses: {e}")

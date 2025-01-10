@@ -86,11 +86,6 @@ class Miner(ncc.base.BaseMiner):
         )
         bt.logging.info(f"Context length: {len(synapse.context)}")
 
-        if self.config.miner.tier == "universal":
-            # TODO: replaced by llmlingua
-            synapse.compressed_context = synapse.context[:2000]
-            return synapse
-
         payload = synapse.miner_payload
 
         async with httpx.AsyncClient(timeout=synapse.timeout) as client:
@@ -99,9 +94,17 @@ class Miner(ncc.base.BaseMiner):
                 json=payload,
             )
             response = response.json()
-            compressed_kv_url = response["compressed_kv_url"]
-        bt.logging.info(f"Compressed & uploaded to {compressed_kv_url}")
-        return ncc.protocol.TextCompressProtocol(compressed_kv_url=compressed_kv_url)
+
+            if self.config.miner.tier == "universal":
+                synapse.compressed_context = response["compressed_prompt"]
+                return synapse
+
+            elif self.config.miner.tier == "research":
+                compressed_kv_url = response["compressed_kv_url"]
+                bt.logging.info(f"Compressed & uploaded to {compressed_kv_url}")
+                return ncc.protocol.TextCompressProtocol(
+                    compressed_kv_url=compressed_kv_url
+                )
 
     def blacklist_fn(
         self, synapse: ncc.protocol.TextCompressProtocol
