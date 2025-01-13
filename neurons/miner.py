@@ -96,7 +96,7 @@ class Miner(ncc.base.BaseMiner):
             response = response.json()
 
             if self.config.miner.tier == "universal":
-                synapse.compressed_context = response["compressed_prompt"]
+                synapse.compressed_context = response["compressed_context"]
                 return synapse
 
             elif self.config.miner.tier == "research":

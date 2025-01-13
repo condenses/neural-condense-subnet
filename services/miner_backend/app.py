@@ -11,6 +11,7 @@ from .utils import upload_to_minio
 import argparse
 
 logger = structlog.get_logger()
+logger.info("This will show in Uvicorn logs")
 
 
 class CompressionService:

@@ -4,6 +4,7 @@ import structlog
 import argparse
 
 logger = structlog.get_logger()
+logger.info("This will show in Uvicorn logs")
 
 
 class CompressionService:
@@ -51,9 +52,9 @@ def create_app(algorithm):
             return jsonify({"error": "Missing 'context' in request"}), 400
 
         try:
-            compressed_prompt = service.compress_context(context)
+            compressed_context = service.compress_context(context)
             return jsonify(
-                {"target_model": target_model, "compressed_prompt": compressed_prompt}
+                {"target_model": target_model, "compressed_context": compressed_context}
             )
         except Exception as e:
             logger.exception("compression_failed", error=str(e))

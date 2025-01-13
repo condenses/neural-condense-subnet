@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 import numpy as np
-from openai import OpenAI
+from together import Together
 from typing import List
 import logging
 from pydantic import BaseModel
+from neural_condense_core import logger
 
 
 class TaskData(BaseModel):
@@ -37,12 +38,12 @@ class BatchedScoringRequest(BaseModel):
     criterias: List[str] = []
 
 
-logger = logging.getLogger("uvicorn")
+# logger = logging.getLogger("uvicorn")
 logger.info("This will show in Uvicorn logs")
 
 app = FastAPI()
 
-openai_client = OpenAI(base_url="https://api.together.xyz/v1")
+openai_client = Together()
 
 
 @app.post("/get_metrics")
