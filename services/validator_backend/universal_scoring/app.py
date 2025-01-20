@@ -39,7 +39,7 @@ class BatchedScoringRequest(BaseModel):
 
 
 # logger = logging.getLogger("uvicorn")
-logger.info("This will show in Uvicorn logs")
+logger.info("This will show in Universal Validator Backend logs")
 
 app = FastAPI()
 
@@ -53,6 +53,7 @@ async def get_metrics(item: BatchedScoringRequest):
     model = item.target_model
     if model == "meta-llama/Llama-3.1-8B-Instruct":
         model = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-128K"
+
     compressed_contexts = [
         item.miner_responses[i].compressed_context
         for i in range(len(item.miner_responses))

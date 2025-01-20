@@ -58,13 +58,14 @@
 
 | **Tier**       | **Purpose**                           | **Context Size**         | **Incentive Percentage**     | **Supporting Models**               |
 |----------------|---------------------------------------|---------------------------|---------------|--------------------------------------|
-| `research`     | Warmup tier for new LLM model releases | Up to 10000 characters                  | `100%`  | `mistralai/Mistral-7B-Instruct-v0.2` |
+| `research`     | Optimize text-to-kv cache for a specific model | Up to 10000 characters                  | `60%`  | `mistralai/Mistral-7B-Instruct-v0.2` |
+| `universal`     | Compress text representation for various models | Up to 10000 characters                  | `40%`  | `mistralai/Llama-3.1-8B-Instruct` |
 | `inference_0`  | Optimized for **long context** in popular LLMs | Up to 15000 characters       | `0%`         | `mistralai/Mistral-7B-Instruct-v0.2` |
 | `inference_1`  | Optimized for **very long context** in popular LLMs | Up to 20000 characters       | `0%`         | `mistralai/Mistral-7B-Instruct-v0.2` |
 
 *Supporting models can be flexibly added based on tailored need.*
 
-On the early launch of the subnet, we distribute all the incentives to the research tier to encourage miners to join the network and be familiar with the subnet. The subnet owner will gradually distribute the incentives to the inference tiers as the subnet grows.
+On the early launch of the subnet, we distribute all the incentives to the research & universal tier to encourage miners to join the network and be familiar with the subnet. The subnet owner will gradually distribute the incentives to the inference tiers as the subnet grows.
 
 <div align="center">
 <img src="https://github.com/user-attachments/assets/b661ed8e-fc8a-45e3-ad78-6001dae93b21" alt="realese-circle" width="75%">

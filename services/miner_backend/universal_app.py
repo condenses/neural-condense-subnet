@@ -4,7 +4,7 @@ import structlog
 import argparse
 
 logger = structlog.get_logger()
-logger.info("This will show in Uvicorn logs")
+logger.info("This will show in Universal Miner Backend logs")
 
 
 class CompressionService:
@@ -43,6 +43,7 @@ def create_app(algorithm):
 
     @app.route("/condense", methods=["POST"])
     def compress_endpoint():
+        logger.info("Join compression endpoint")
         """Endpoint for compressing context"""
         data = request.get_json()
         context = data.get("context")
