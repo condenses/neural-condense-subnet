@@ -10,6 +10,7 @@
 - CUDA, NVIDIA Driver installed
 - Internet connection with at least 4Gbps
 - PM2 install (see [Guide to install PM2](./pm2.md))
+- Obtain TogetherAI API Key: https://api.together.ai/settings/api-keys
 
 ## What does a Validator do?
 
@@ -91,6 +92,7 @@ pm2 start python --name condense_validator_universal_backend \
 5. Run the validator script
 ```bash
 export HF_HUB_ENABLE_HF_TRANSFER=1
+export OPENAI_API_KEY=your_together_api_key
 pm2 start python --name condense_validator \
 -- -m neurons.validator \
 --netuid $val_netuid \

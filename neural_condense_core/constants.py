@@ -85,7 +85,7 @@ class Constants(BaseModel):
             supporting_models=["meta-llama/Llama-3.1-8B-Instruct"],
             max_condensed_tokens=4096,
             min_condensed_tokens=1,
-            max_context_length_in_chars=40000,
+            max_context_length_in_chars=15000,
         ),
         "inference_0": TierConfig(
             incentive_percentage=0.0,
@@ -147,7 +147,7 @@ class Constants(BaseModel):
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"
     REPORT_URL: str = "https://report.condenses.ai"
     ORGANIC_VERIFY_FREQUENCY: float = 0.1
-    TOP_PERCENTAGE_FOR_ALLOCATING_WEIGHTS: float = 0.45
+    TOP_PERCENTAGE_FOR_ALLOCATING_WEIGHTS: float = 1.0
 
     DATABASE_CONFIG: DatabaseConfig = Field(
         default_factory=lambda: DatabaseConfig(
