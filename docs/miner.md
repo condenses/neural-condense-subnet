@@ -25,7 +25,7 @@ We (subnet owner) provide some baselines for miners. But miners have to research
 
 So basically, there are somethings that a miner has to do:
 
-1. Select a TIER: we have 4 tiers: research, universal, inference_0, inference_1. Each tier is tailored for different API need, example `inference_0` for long text and `inference_1` for very long text. You can see the details in the miner's config file: `neural_condense_core/constants.py` or at the [README.md](../README.md) doc.
+1. Select a TIER: we have 2 tiers: research, universal. You can see the details in the miner's config file: `neural_condense_core/constants.py` or at the [README.md](../README.md) doc.
 
 2. Implement your own algorithm or pick one of our baseline algorithms. You can find the baseline algorithms in the `services/miner_backend/` folder.
 The schema of backend api is very simple: `Validator` sends you a dictionary with the `context: str` and `target_model: str`.
