@@ -9,7 +9,6 @@ from .constants import TierConfig
 import numpy as np
 import io
 
-
 class Metadata(Synapse):
     metadata: dict = {}
 
@@ -120,14 +119,18 @@ class TextCompressProtocol(Synapse):
         tier: str,
         tokenizer=None,
     ) -> tuple[bool, str]:
-        print(tier)
+        print(f"Verifying tier: {tier}")
         if tier == "universal":
             condensed_tokens = tokenizer.encode(response.compressed_context)
             n_condensed_tokens = len(condensed_tokens)
-            if n_condensed_tokens < tier_config.min_condensed_tokens:
-                return False, "Compressed tokens are less than the minimum expected."
-            if n_condensed_tokens > tier_config.max_condensed_tokens:
-                return False, "Compressed tokens are more than the maximum expected."
+
+            if not (
+                tier_config.min_condensed_tokens
+                <= n_condensed_tokens
+                <= tier_config.max_condensed_tokens
+            ):
+                return False, "Compressed tokens are not within the expected range."
+
             response.util_data.bonus_compress_size = 1 - (
                 n_condensed_tokens / tier_config.max_condensed_tokens
             )

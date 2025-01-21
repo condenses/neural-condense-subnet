@@ -106,6 +106,7 @@ class Validator(base.BaseValidator):
                 f"Processing set {i}/{n_sets} then sleeping for {sleep_per_set} seconds."
             )
             total_uids = list(serving_counter.keys())
+            logger.info(f"Total uids: {total_uids}")
             random.shuffle(total_uids)
             batched_uids = [total_uids[i : i + 4] for i in range(0, len(total_uids), 4)]
 
@@ -190,7 +191,9 @@ class Validator(base.BaseValidator):
                 traceback.print_exc()
                 return
             try:
-                logger.info("Processing and scoring responses.")
+                logger.info(
+                    f"Processing and scoring responses for valid_uids: {valid_uids}"
+                )
                 start_time = time.time()
                 logs, total_uids = await vutils.loop.process_and_score_responses(
                     miner_manager=self.miner_manager,

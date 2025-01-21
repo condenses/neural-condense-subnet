@@ -84,7 +84,7 @@ class Constants(BaseModel):
             accelerate_reward_scalar=0.1,
             supporting_models=["meta-llama/Llama-3.1-8B-Instruct"],
             max_condensed_tokens=4096,
-            min_condensed_tokens=1,
+            min_condensed_tokens=512,
             max_context_length_in_chars=15000,
         ),
         "inference_0": TierConfig(
