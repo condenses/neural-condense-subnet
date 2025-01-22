@@ -51,7 +51,7 @@ async def get_metrics(item: BatchedScoringRequest):
     logger.info(f"Received scoring request for model: {item.target_model}")
 
     model = item.target_model
-    if model == "meta-llama/Llama-3.1-8B-Instruct":
+    if "Llama-3.1-8B-Instruct" in model:
         model = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-128K"
 
     compressed_contexts = [
