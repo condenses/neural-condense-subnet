@@ -82,6 +82,7 @@ pm2 start python --name condense_validator_research_backend \
 
 To run the universal tier backend, run:
 ```bash
+export TOGETHER_API_KEY=your_together_api_key
 pm2 start python --name condense_validator_universal_backend \
 -- -m gunicorn services.validator_backend.universal_scoring.app:app \
 --workers 1 -k uvicorn.workers.UvicornWorker \
@@ -92,7 +93,6 @@ pm2 start python --name condense_validator_universal_backend \
 5. Run the validator script
 ```bash
 export HF_HUB_ENABLE_HF_TRANSFER=1
-export OPENAI_API_KEY=your_together_api_key
 pm2 start python --name condense_validator \
 -- -m neurons.validator \
 --netuid $val_netuid \
