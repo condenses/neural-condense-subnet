@@ -125,10 +125,9 @@ class TextCompressProtocol(Synapse):
         print(f"Verifying tier: {tier}")
         if tier == "universal":
             condensed_tokens = tokenizer.encode(response.compressed_context)
+            original_tokens = tokenizer.encode(ground_truth_synapse.context)
             n_condensed_tokens = len(condensed_tokens)
-            compress_rate = n_condensed_tokens / len(
-                tokenizer.encode(ground_truth_synapse.context)
-            )
+            compress_rate = n_condensed_tokens / len(original_tokens)
             logger.info(f"Compress rate: {compress_rate}")
             if not (
                 tier_config.min_compress_rate

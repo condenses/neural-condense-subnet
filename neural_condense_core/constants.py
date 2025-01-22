@@ -89,7 +89,7 @@ class Constants(BaseModel):
             min_condensed_tokens=512,
             max_context_length_in_chars=15000,
             max_compress_rate=0.8,
-            min_compress_rate=0.3,
+            min_compress_rate=0.1,
         ),
     }
 

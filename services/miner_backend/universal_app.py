@@ -32,7 +32,7 @@ class CompressionService:
             )
         elif self.algorithm == "llmlingua-2":
             compressed_prompt = self.compressor.compress_prompt(
-                context, rate=0.33, force_tokens=["\n", "?"]
+                context, rate=0.7, force_tokens=["\n", "?"]
             )
         return compressed_prompt["compressed_prompt"]
 
