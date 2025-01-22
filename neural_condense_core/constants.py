@@ -84,7 +84,7 @@ class Constants(BaseModel):
             requests_per_epoch=256,
             timeout=16,
             accelerate_reward_scalar=0.1,
-            supporting_models=["unsloth/Llama-3.1-8B-Instruct"],
+            supporting_models=["unsloth/Meta-Llama-3.1-8B-Instruct"],
             max_condensed_tokens=-1,
             min_condensed_tokens=-1,
             max_context_length_in_chars=15000,
