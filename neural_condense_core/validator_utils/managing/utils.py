@@ -60,9 +60,9 @@ def normalize_and_weight_scores(scores: np.ndarray, tier: str) -> np.ndarray:
     if current_datetime < target_datetime:
         logger.info("Using early incentive scaling")
         if tier == "research":
-            scale = 0.95
+            scale = 0.9
         elif tier == "universal":
-            scale = 0.05
+            scale = 0.1
     else:
         logger.info("Using stable incentive scaling")
         scale = constants.TIER_CONFIG[tier].incentive_percentage
