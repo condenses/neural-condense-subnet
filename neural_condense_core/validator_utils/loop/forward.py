@@ -102,6 +102,7 @@ async def validate_responses(
     tier_config: TierConfig,
     tier: str,
     tokenizer=None,
+    ground_truth_synapse: TextCompressProtocol = None,
 ) -> tuple[list[TextCompressProtocol], list[int], list[int], list[str]]:
     valid_responses, valid_uids, invalid_uids, invalid_reasons = [], [], [], []
 
@@ -110,7 +111,13 @@ async def validate_responses(
         try:
             # Add timeout to prevent hanging
             is_valid, reason = await asyncio.wait_for(
-                TextCompressProtocol.verify(response, tier_config, tier, tokenizer),
+                TextCompressProtocol.verify(
+                    response,
+                    tier_config,
+                    tier,
+                    tokenizer,
+                    ground_truth_synapse,
+                ),
                 timeout=360,
             )
             return is_valid, reason

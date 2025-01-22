@@ -8,6 +8,8 @@ from .common.file import load_npy_from_url
 from .constants import TierConfig
 import numpy as np
 import io
+from loguru import logger
+
 
 class Metadata(Synapse):
     metadata: dict = {}
@@ -118,22 +120,27 @@ class TextCompressProtocol(Synapse):
         tier_config: TierConfig,
         tier: str,
         tokenizer=None,
+        ground_truth_synapse: "TextCompressProtocol" = None,
     ) -> tuple[bool, str]:
         print(f"Verifying tier: {tier}")
         if tier == "universal":
             condensed_tokens = tokenizer.encode(response.compressed_context)
             n_condensed_tokens = len(condensed_tokens)
-
-            if not (
-                tier_config.min_condensed_tokens
-                <= n_condensed_tokens
-                <= tier_config.max_condensed_tokens
-            ):
-                return False, "Compressed tokens are not within the expected range."
-
-            response.util_data.bonus_compress_size = 1 - (
-                n_condensed_tokens / tier_config.max_condensed_tokens
+            compress_rate = n_condensed_tokens / len(
+                tokenizer.encode(ground_truth_synapse.context)
             )
+            logger.info(f"Compress rate: {compress_rate}")
+            if not (
+                tier_config.min_compress_rate
+                <= compress_rate
+                <= tier_config.max_compress_rate
+            ):
+                return (
+                    False,
+                    f"Compressed tokens are not within the expected range. {compress_rate}. Valid range: {tier_config.min_compress_rate} to {tier_config.max_compress_rate}",
+                )
+
+            response.util_data.bonus_compress_size = 1 - compress_rate
             response.util_data.compressed_length = n_condensed_tokens
             return True, ""
         else:
