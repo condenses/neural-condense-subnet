@@ -51,4 +51,20 @@ def normalize_and_weight_scores(scores: np.ndarray, tier: str) -> np.ndarray:
     if total > 0:
         scores = scores / total
 
-    return scores * constants.TIER_CONFIG[tier].incentive_percentage
+    # --Smoothing Update---
+    from datetime import datetime
+
+    current_datetime = datetime.now()
+    target_datetime = datetime(2025, 1, 24, 12, 0, 0)
+
+    if current_datetime < target_datetime:
+        logger.info("Using early incentive scaling")
+        if tier == "research":
+            scale = 0.95
+        elif tier == "universal":
+            scale = 0.05
+    else:
+        logger.info("Using stable incentive scaling")
+        scale = constants.TIER_CONFIG[tier].incentive_percentage
+
+    return scores * scale

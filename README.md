@@ -59,33 +59,17 @@
 | **Tier**       | **Purpose**                           | **Context Size**         | **Incentive Percentage**     | **Supporting Models**               |
 |----------------|---------------------------------------|---------------------------|---------------|--------------------------------------|
 | `research`     | Optimize text-to-kv cache for a specific model | Up to 15000 characters                  | `60%`  | `mistralai/Mistral-7B-Instruct-v0.2` |
-| `universal`     | Compress text representation for various models | Up to 15000 characters                  | `40%`  | `mistralai/Llama-3.1-8B-Instruct` |
+| `universal`     | Compress text representation for various models | Up to 15000 characters                  | `40%`  | `meta-llama/Llama-3.1-8B-Instruct` |
 
 
 *Supporting models can be flexibly added based on tailored need.*
 
-On the early launch of the subnet, we distribute all the incentives to the research & universal tier to encourage miners to join the network and be familiar with the subnet. The subnet owner will gradually distribute the incentives to the inference tiers as the subnet grows.
-
 <div align="center">
 <img src="https://github.com/user-attachments/assets/b661ed8e-fc8a-45e3-ad78-6001dae93b21" alt="realese-circle" width="75%">
 </div>
-
---- 
-
-
-### 🔒 Subnet as a Data Encryption Layer for Bittensor
-- **Neural Encrypted Conversations:** The subnet offers an additional benefit regarding privacy. If users or companies utilize a subnet to transform their context into condensed tokens before sending them to other LLM services, this approach can help prevent context leaks. The transformation increases the computational complexity, making it more difficult for unauthorized entities to extract the original context.
 
 
 ## 📚 Documentation
 - **Setup for miners**: [Miner Setup](./docs/miner.md)
 - **Setup for validators**: [Validator Setup](./docs/validator.md)
 - **Mechanism**: [Mechanism](./docs/mechanism.md)
-
-### 🗺️ Roadmap
-- [x] Launch the subnet with `Mistral-7B-Instruct-v0.2` as target decoder model and full monetization/organic functionality
-- [x] Enhance challenge generator with LLM-augmented task generation
-- [x] Release baseline compressor model trainer for miners
-- [ ] Implement KV-Cache-level compression alongside token-level compression
-- [ ] Enable inference tier and incentive distribution
-- [ ] Support additional SOTA LLM models across different sizes
