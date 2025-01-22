@@ -75,7 +75,7 @@ def accuracy(
             add_special_tokens=False,
         ).input_ids.to(device=device, dtype=torch.long)
         n_expected_completion_tokens = expected_completion_ids.shape[1]
-        max_new_tokens = int(n_expected_completion_tokens * 1.5)
+        max_new_tokens = max(int(n_expected_completion_tokens * 1.5), 8)
         _kv_cache = deepcopy(kv_cache)
         logger.debug("kv_length", length=_kv_cache._seen_tokens)
         completion = generate_answer(
