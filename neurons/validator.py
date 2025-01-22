@@ -185,6 +185,7 @@ class Validator(base.BaseValidator):
                     tier_config=constants.TIER_CONFIG[tier],
                     tokenizer=tokenizer,
                     tier=tier,
+                    ground_truth_synapse=ground_truth_synapse,
                 )
             except Exception as e:
                 logger.error(f"Error validating responses: {e}")
