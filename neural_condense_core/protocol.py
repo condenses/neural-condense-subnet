@@ -8,7 +8,7 @@ from .common.file import load_npy_from_url
 from .constants import TierConfig
 import numpy as np
 import io
-from loguru import logger
+from neural_condense_core.logger import logger
 
 
 class Metadata(Synapse):
