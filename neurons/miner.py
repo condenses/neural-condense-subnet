@@ -94,9 +94,17 @@ class Miner(ncc.base.BaseMiner):
                 json=payload,
             )
             response = response.json()
-            compressed_kv_url = response["compressed_kv_url"]
-        bt.logging.info(f"Compressed & uploaded to {compressed_kv_url}")
-        return ncc.protocol.TextCompressProtocol(compressed_kv_url=compressed_kv_url)
+
+            if self.config.miner.tier == "universal":
+                synapse.compressed_context = response["compressed_context"]
+                return synapse
+
+            elif self.config.miner.tier == "research":
+                compressed_kv_url = response["compressed_kv_url"]
+                bt.logging.info(f"Compressed & uploaded to {compressed_kv_url}")
+                return ncc.protocol.TextCompressProtocol(
+                    compressed_kv_url=compressed_kv_url
+                )
 
     def blacklist_fn(
         self, synapse: ncc.protocol.TextCompressProtocol

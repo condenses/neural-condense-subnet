@@ -65,7 +65,6 @@ class Validator(base.BaseValidator):
             if constants.TIER_CONFIG[tier].incentive_percentage == 0:
                 logger.info(f"Tier {tier} has no incentive percentage.")
                 return
-
             model_name = random.choice(constants.TIER_CONFIG[tier].supporting_models)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             serving_counter = self.miner_manager.serving_counter.get(tier, {})
@@ -90,7 +89,7 @@ class Validator(base.BaseValidator):
         ground_truth_synapses = [
             await vutils.loop.prepare_synapse(
                 challenge_generator=self.challenge_generator,
-                tokenizer=tokenizer,
+                tier=tier,
                 task_config=task_config,
                 tier_config=constants.TIER_CONFIG[tier],
                 model_name=model_name,
@@ -107,6 +106,7 @@ class Validator(base.BaseValidator):
                 f"Processing set {i}/{n_sets} then sleeping for {sleep_per_set} seconds."
             )
             total_uids = list(serving_counter.keys())
+            logger.info(f"Total uids: {total_uids}")
             random.shuffle(total_uids)
             batched_uids = [total_uids[i : i + 4] for i in range(0, len(total_uids), 4)]
 
@@ -135,6 +135,7 @@ class Validator(base.BaseValidator):
                         uids,
                         ground_truth_synapse,
                         task_config,
+                        tokenizer,
                     )
                 )
                 futures.append(future)
@@ -153,6 +154,7 @@ class Validator(base.BaseValidator):
         batched_uids: list[int],
         ground_truth_synapse: TextCompressProtocol,
         task_config,
+        tokenizer=None,
     ):
         try:
             dendrite = bt.dendrite(self.wallet)
@@ -171,6 +173,7 @@ class Validator(base.BaseValidator):
                 return
             try:
                 logger.info(f"Validating responses for {batched_uids}.")
+                logger.info(responses[0].compressed_context)
                 (
                     valid_responses,
                     valid_uids,
@@ -180,13 +183,17 @@ class Validator(base.BaseValidator):
                     responses=responses,
                     uids=batched_uids,
                     tier_config=constants.TIER_CONFIG[tier],
+                    tokenizer=tokenizer,
+                    tier=tier,
                 )
             except Exception as e:
                 logger.error(f"Error validating responses: {e}")
                 traceback.print_exc()
                 return
             try:
-                logger.info("Processing and scoring responses.")
+                logger.info(
+                    f"Processing and scoring responses for valid_uids: {valid_uids}"
+                )
                 start_time = time.time()
                 logs, total_uids = await vutils.loop.process_and_score_responses(
                     miner_manager=self.miner_manager,
@@ -200,6 +207,7 @@ class Validator(base.BaseValidator):
                     config=self.config,
                     invalid_reasons=invalid_reasons,
                     timeout=300,
+                    tier=tier,
                 )
                 end_time = time.time()
                 logger.info(

@@ -68,13 +68,23 @@ class DatabaseConfig(BaseModel):
 class Constants(BaseModel):
     TIER_CONFIG: dict[str, TierConfig] = {
         "research": TierConfig(
-            incentive_percentage=1.0,
+            incentive_percentage=0.6,
             requests_per_epoch=256,
             timeout=32,
             accelerate_reward_scalar=0.1,
             supporting_models=["Condense-AI/Mistral-7B-Instruct-v0.2"],
             max_condensed_tokens=1536,
             min_condensed_tokens=128,
+            max_context_length_in_chars=15000,
+        ),
+        "universal": TierConfig(
+            incentive_percentage=0.4,
+            requests_per_epoch=256,
+            timeout=16,
+            accelerate_reward_scalar=0.1,
+            supporting_models=["meta-llama/Llama-3.1-8B-Instruct"],
+            max_condensed_tokens=4096,
+            min_condensed_tokens=512,
             max_context_length_in_chars=15000,
         ),
         "inference_0": TierConfig(
@@ -137,7 +147,7 @@ class Constants(BaseModel):
     ORGANIC_CLIENT_URL: str = "https://ncs-client.condenses.ai"
     REPORT_URL: str = "https://report.condenses.ai"
     ORGANIC_VERIFY_FREQUENCY: float = 0.1
-    TOP_PERCENTAGE_FOR_ALLOCATING_WEIGHTS: float = 0.45
+    TOP_PERCENTAGE_FOR_ALLOCATING_WEIGHTS: float = 1.0
 
     DATABASE_CONFIG: DatabaseConfig = Field(
         default_factory=lambda: DatabaseConfig(

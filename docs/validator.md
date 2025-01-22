@@ -10,6 +10,7 @@
 - CUDA, NVIDIA Driver installed
 - Internet connection with at least 4Gbps
 - PM2 install (see [Guide to install PM2](./pm2.md))
+- Obtain TogetherAI API Key: https://api.together.ai/settings/api-keys
 
 ## What does a Validator do?
 
@@ -60,6 +61,8 @@ val_wallet="my_wallet"
 val_hotkey="my_hotkey"
 val_backend_host="localhost"
 val_backend_port=8080
+val_universal_backend_host="localhost"
+val_universal_backend_port=8090
 val_axon_port=12345
 val_gate_port=12346
 val_netuid=47
@@ -67,17 +70,29 @@ val_subtensor_network="finney"
 ```
 
 4. Run the validator backend.
+***NOTE***: You have to run **both** the research and universal tier backend.
+To run the research tier backend, run:
 ```bash
-pm2 start python --name condense_validator_backend \
+pm2 start python --name condense_validator_research_backend \
 -- -m gunicorn services.validator_backend.scoring.app:app \
 --workers 1 \
 --bind $val_backend_host:$val_backend_port \
 --timeout 0
 ```
 
+To run the universal tier backend, run:
+```bash
+pm2 start python --name condense_validator_universal_backend \
+-- -m gunicorn services.validator_backend.universal_scoring.app:app \
+--workers 1 -k uvicorn.workers.UvicornWorker \
+--bind $val_universal_backend_host:$val_universal_backend_port \
+--timeout 0
+```
+
 5. Run the validator script
 ```bash
 export HF_HUB_ENABLE_HF_TRANSFER=1
+export OPENAI_API_KEY=your_together_api_key
 pm2 start python --name condense_validator \
 -- -m neurons.validator \
 --netuid $val_netuid \
@@ -87,6 +102,8 @@ pm2 start python --name condense_validator \
 --axon.port $val_axon_port \
 --validator.score_backend.host $val_backend_host \
 --validator.score_backend.port $val_backend_port \
+--validator.universal_score_backend.host $val_universal_backend_host \
+--validator.universal_score_backend.port $val_universal_backend_port \
 --validator.use_wandb
 ```
 

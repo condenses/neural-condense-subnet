@@ -9,7 +9,6 @@ from .constants import TierConfig
 import numpy as np
 import io
 
-
 class Metadata(Synapse):
     metadata: dict = {}
 
@@ -35,6 +34,7 @@ class UtilData(BaseModel):
 
 class MinerResponse(BaseModel):
     filename: str = ""
+    compressed_context: str = ""
 
 
 class BatchedScoringRequest(BaseModel):
@@ -47,7 +47,9 @@ class BatchedScoringRequest(BaseModel):
 class TextCompressProtocol(Synapse):
     context: str = ""
     target_model: str = ""
+    tier: str = ""
     compressed_kv_url: str = ""
+    compressed_context: str = ""
     util_data: UtilData = UtilData()
     task_data: TaskData = TaskData()
 
@@ -57,10 +59,14 @@ class TextCompressProtocol(Synapse):
 
     @property
     def bonus_time(self) -> float:
-        return 1 - min(
-            1,
-            (self.dendrite.process_time + self.util_data.download_time) / self.timeout,
-        )
+        if self.tier == "universal":
+            return 1 - min(1, self.dendrite.process_time / self.timeout)
+        else:
+            return 1 - min(
+                1,
+                (self.dendrite.process_time + self.util_data.download_time)
+                / self.timeout,
+            )
 
     @property
     def miner_payload(self) -> dict:
@@ -77,6 +83,7 @@ class TextCompressProtocol(Synapse):
         return {
             "task_data": self.task_data.model_dump(),
             "util_data": self.util_data.model_dump(),
+            "tier": self.tier,
         }
 
     @staticmethod
@@ -86,49 +93,80 @@ class TextCompressProtocol(Synapse):
         target_model: str,
         criterias: List[str],
     ) -> BatchedScoringRequest:
-        return BatchedScoringRequest(
-            miner_responses=[
-                {"filename": r.util_data.local_filename} for r in responses
-            ],
-            task_data=ground_truth_synapse.task_data,
-            target_model=target_model,
-            criterias=criterias,
-        )
+        if ground_truth_synapse.tier != "universal":
+            return BatchedScoringRequest(
+                miner_responses=[
+                    {"filename": r.util_data.local_filename} for r in responses
+                ],
+                task_data=ground_truth_synapse.task_data,
+                target_model=target_model,
+                criterias=criterias,
+            )
+        else:
+            return BatchedScoringRequest(
+                miner_responses=[
+                    {"compressed_context": r.compressed_context} for r in responses
+                ],
+                task_data=ground_truth_synapse.task_data,
+                target_model=target_model,
+                criterias=criterias,
+            )
 
     @staticmethod
     async def verify(
-        response: "TextCompressProtocol", tier_config: TierConfig
+        response: "TextCompressProtocol",
+        tier_config: TierConfig,
+        tier: str,
+        tokenizer=None,
     ) -> tuple[bool, str]:
-        if not re.match(r"^https?://.*\.npy$", response.compressed_kv_url):
-            return False, "Compressed KV URL must use HTTP or HTTPS."
+        print(f"Verifying tier: {tier}")
+        if tier == "universal":
+            condensed_tokens = tokenizer.encode(response.compressed_context)
+            n_condensed_tokens = len(condensed_tokens)
 
-        compressed_kv, filename, download_time, error = await load_npy_from_url(
-            response.compressed_kv_url
-        )
-        response.util_data.download_time = download_time
-        response.util_data.local_filename = filename
-        if compressed_kv is None:
-            return (
-                False,
-                f"Failed to load url: {error}. {download_time} seconds. {filename}",
+            if not (
+                tier_config.min_condensed_tokens
+                <= n_condensed_tokens
+                <= tier_config.max_condensed_tokens
+            ):
+                return False, "Compressed tokens are not within the expected range."
+
+            response.util_data.bonus_compress_size = 1 - (
+                n_condensed_tokens / tier_config.max_condensed_tokens
             )
-        try:
-            tensor = torch.from_numpy(compressed_kv)
-            kv_cache = DynamicCache.from_legacy_cache(tensor)
-        except Exception as e:
-            return False, f"{error} -> {str(e)}"
+            response.util_data.compressed_length = n_condensed_tokens
+            return True, ""
+        else:
+            if not re.match(r"^https?://.*\.npy$", response.compressed_kv_url):
+                return False, "Compressed KV URL must use HTTP or HTTPS."
 
-        if not (
-            tier_config.min_condensed_tokens
-            <= kv_cache._seen_tokens
-            <= tier_config.max_condensed_tokens
-        ):
-            return False, "Compressed tokens are not within the expected range."
+            compressed_kv, filename, download_time, error = await load_npy_from_url(
+                response.compressed_kv_url
+            )
+            response.util_data.download_time = download_time
+            response.util_data.local_filename = filename
+            if compressed_kv is None:
+                return (
+                    False,
+                    f"Failed to load url: {error}. {download_time} seconds. {filename}",
+                )
+            try:
+                tensor = torch.from_numpy(compressed_kv)
+                kv_cache = DynamicCache.from_legacy_cache(tensor)
+            except Exception as e:
+                return False, f"{error} -> {str(e)}"
 
-        response.util_data.bonus_compress_size = 1 - (
-            kv_cache._seen_tokens / tier_config.max_condensed_tokens
-        )
-        response.util_data.compressed_length = kv_cache._seen_tokens
-        del kv_cache
-        del compressed_kv
-        return True, ""
+            if not (
+                tier_config.min_condensed_tokens
+                <= kv_cache._seen_tokens
+                <= tier_config.max_condensed_tokens
+            ):
+                return False, "Compressed tokens are not within the expected range."
+
+            response.util_data.bonus_compress_size = 1 - (
+                kv_cache._seen_tokens / tier_config.max_condensed_tokens
+            )
+            response.util_data.compressed_length = kv_cache._seen_tokens
+            del kv_cache
+            del compressed_kv
+            return True, ""

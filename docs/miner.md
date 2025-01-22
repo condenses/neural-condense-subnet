@@ -25,13 +25,15 @@ We (subnet owner) provide some baselines for miners. But miners have to research
 
 So basically, there are somethings that a miner has to do:
 
-1. Select a TIER: we have 3 tiers: research, inference_0, inference_1. Each tier is tailored for different API need, example `inference_0` for long text and `inference_1` for very long text. You can see the details in the miner's config file: `neural_condense_core/constants.py` or at the [README.md](../README.md) doc.
+1. Select a TIER: we have 2 tiers: research, universal. You can see the details in the miner's config file: `neural_condense_core/constants.py` or at the [README.md](../README.md) doc.
 
 2. Implement your own algorithm or pick one of our baseline algorithms. You can find the baseline algorithms in the `services/miner_backend/` folder.
 The schema of backend api is very simple: `Validator` sends you a dictionary with the `context: str` and `target_model: str`.
+- For `research` tier:
 Miner runs their own backend that results in KV Cache of the target LLM model. Then miner uploads the KV Cache to the `minio` storage and returns the `minio` path to the `Validator`.
-- `past_key_values: Tuple[Tuple[torch.FloatTensor]]` is the format of the KV Cache. It would be loaded into the LLM using `torch.DynamicCache.from_legacy_cache(past_key_values)`.
-
+  - `past_key_values: Tuple[Tuple[torch.FloatTensor]]` is the format of the KV Cache. It would be loaded into the LLM using `torch.DynamicCache.from_legacy_cache(past_key_values)`.
+- For `universal` tier:
+Miner runs their own backend that results in compressed text representation and returns the compressed text to the `Validator` as an attribute of `SynapseResponse`.
 
 
 3. After having a competitive backend, you need to measure it to meet speed and load defined in the tier. **Our baselines are required to use GPU**.
@@ -40,13 +42,13 @@ Miner runs their own backend that results in KV Cache of the target LLM model. T
 
 ## Steps to setup a Miner
 
-1. Clone the repository
+### 1. Clone the repository
 ```bash
 git clone https://github.com/condenses/neural-condense-subnet
 cd neural-condense-subnet
 ```
 
-2. Install the dependencies
+### 2. Install the dependencies
 ```bash
 pip install uv
 uv sync --prerelease=allow
@@ -54,7 +56,7 @@ uv sync --prerelease=allow
 . scripts/install_redis.sh
 ```
 
-3. Config your wallet, backend, etc... Below just an example:
+### 3. Config your wallet, backend, etc... Below just an example:
 
 **Parameters**
 - `--miner.tier` - The selected tier should be suitable with your backend.
@@ -70,7 +72,7 @@ uv sync --prerelease=allow
 
 **Define bash variable in your terminal**
 ```bash
-miner_tier="inference_0"
+miner_tier="research" # or "universal"
 miner_wallet="my_wallet"
 miner_hotkey="my_hotkey"
 miner_backend_host="localhost"
@@ -80,7 +82,10 @@ miner_netuid=47
 miner_subtensor_network="finney"
 ```
 
-4. Run the miner backend. You have to collect the `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_SERVER` from the minio setup (see [minio.md](./minio.md)).
+### 4. Run the miner backend. <br>
+
+#### 4.a. Research tier: <br>
+You have to collect the `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_SERVER` from the minio setup (see [minio.md](./minio.md)).
 
 There are three compression algorithms available:
 - `kvpress`: Basic KV-cache compression
@@ -125,8 +130,17 @@ You can also run the backend directly without PM2 for testing:
 ```bash
 python -m gunicorn "services.miner_backend.app:create_app('kvpress')" --bind 0.0.0.0:8080
 ```
+#### 4.b. Universal tier:
+You can check the default `llmlingua-2` model in the `services.miner_backend.universal_app` folder, and develop your own model to further improve the performance.
+```bash
+pm2 start python --name miner_universal_backend \
+	-- -m gunicorn "services.miner_backend.universal_app:create_app('llmlingua-2')" \
+	--timeout 120 \
+	--bind 0.0.0.0:8080
+```
 
-5. Run the mining script
+
+### 5. Run the mining script
 ```bash
 pm2 start python --name condense_miner \
 -- -m neurons.miner \

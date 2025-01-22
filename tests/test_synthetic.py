@@ -25,7 +25,10 @@ def benchmark_challenger(
         dict: Summary of benchmark results including average time per task and statistics on context length.
     """
     # Load tokenizer and initialize Challenger instance
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    if model_name == "universal":
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
     challenger = validator_utils.synthesizing.ChallengeGenerator(None)
 
     # Define task types and initialize logs
@@ -33,7 +36,7 @@ def benchmark_challenger(
         "question_answering",
         # "causal_conversation",
         # "reconstruct_conversation",
-        "trivial_qa_conversation",
+        # "trivial_qa_conversation",
     ]
     time_logs = {task: 0 for task in tasks}
     error_count = 0
@@ -53,7 +56,7 @@ def benchmark_challenger(
                 # Generate protocol using Challenger
                 protocol = asyncio.run(
                     challenger.generate_challenge(
-                        tokenizer=tokenizer,
+                        model_name=model_name,
                         task=task,
                         max_context_length_in_chars=max_characters,
                     )
@@ -63,9 +66,7 @@ def benchmark_challenger(
                 item = {
                     "task": task,
                     "id": i,
-                    "context": protocol.context,
-                    "activation_prompt": protocol.activation_prompt,
-                    "expected_completion": protocol.expected_completion,
+                    "data": protocol.validator_payload,
                     "model_id": model_name,
                     "max_characters": max_characters,
                 }
@@ -74,8 +75,12 @@ def benchmark_challenger(
                 time_logs[task] += time.time() - start_time
 
                 # Store context length and token count for analysis
-                context_lengths.append(len(item["context"]))
-                tokens = tokenizer.encode(item["context"])
+                context_lengths.append(
+                    len(item["data"]["task_data"]["formatted_context"])
+                )
+                tokens = tokenizer.encode(
+                    item["data"]["task_data"]["formatted_context"]
+                )
                 token_counts.append(len(tokens))
 
                 # Add item to dataset items
@@ -138,9 +143,9 @@ def benchmark_challenger(
 
 # Run benchmark
 benchmark_results = benchmark_challenger(
-    n_iterations=1000,
-    max_characters=20000,
-    model_name="Condense-AI/Mistral-7B-Instruct-v0.2",
+    n_iterations=100,
+    max_characters=40000,
+    model_name="universal",
 )
 
 print("\nBenchmarking completed. Results:", benchmark_results)
