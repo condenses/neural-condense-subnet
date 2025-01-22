@@ -52,10 +52,10 @@ def normalize_and_weight_scores(scores: np.ndarray, tier: str) -> np.ndarray:
         scores = scores / total
 
     # --Smoothing Update---
-    from datetime import datetime
+    from datetime import datetime, timezone
 
-    current_datetime = datetime.now()
-    target_datetime = datetime(2025, 1, 24, 12, 0, 0)
+    current_datetime = datetime.now(timezone.utc)
+    target_datetime = datetime(2025, 1, 24, 12, 0, 0, tzinfo=timezone.utc)
 
     if current_datetime < target_datetime:
         logger.info("Using early incentive scaling")
