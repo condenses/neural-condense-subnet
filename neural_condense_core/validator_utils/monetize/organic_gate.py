@@ -25,7 +25,7 @@ class OrganicPayload(pydantic.BaseModel):
 class OrganicResponse(pydantic.BaseModel):
     compressed_kv_url: str
     miner_uid: int = -1
-    compressed_text: str
+    compressed_context: str
 
 
 class RegisterPayload(pydantic.BaseModel):
@@ -153,7 +153,7 @@ class OrganicGate:
             raise HTTPException(status_code=503, detail="Validator error.")
 
         return OrganicResponse(
-            compressed_kv_url=response.compressed_kv_url, miner_uid=targeted_uid, compressed_text=response.compressed_text
+            compressed_kv_url=response.compressed_kv_url, miner_uid=targeted_uid, compressed_text=response.compressed_context
         )
 
     async def _organic_validating(self, response, tier):
