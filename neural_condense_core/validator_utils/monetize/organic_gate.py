@@ -153,7 +153,7 @@ class OrganicGate:
             raise HTTPException(status_code=503, detail="Validator error.")
 
         return OrganicResponse(
-            compressed_kv_url=response.compressed_kv_url, miner_uid=targeted_uid, compressed_text=response.compressed_context
+            compressed_kv_url=response.compressed_kv_url, miner_uid=targeted_uid, compressed_context=response.compressed_context
         )
 
     async def _organic_validating(self, response, tier):
