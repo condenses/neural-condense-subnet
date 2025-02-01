@@ -43,17 +43,19 @@ logger.info("This will show in Universal Validator Backend logs")
 
 app = FastAPI()
 
-openai_client = Together()
+# openai_client = Together()
+from openai import OpenAI
+
+openai_client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+)
 
 
 @app.post("/get_metrics")
 async def get_metrics(item: BatchedScoringRequest):
     logger.info(f"Received scoring request for model: {item.target_model}")
 
-    model = item.target_model
-    if "Llama-3.1-8B-Instruct" in model:
-        model = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-128K"
-
+    model = "liquid/lfm-7b"
     compressed_contexts = [
         item.miner_responses[i].compressed_context
         for i in range(len(item.miner_responses))
