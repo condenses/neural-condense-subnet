@@ -57,7 +57,7 @@ class TextCompressProtocol(Synapse):
 
     @property
     def accelerate_score(self) -> float:
-        return (self.util_data.bonus_compress_size + self.bonus_time) / 2
+        return self.util_data.bonus_compress_size
 
     @property
     def bonus_time(self) -> float:
