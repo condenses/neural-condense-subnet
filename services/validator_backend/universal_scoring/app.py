@@ -42,9 +42,7 @@ app = FastAPI()
 
 from openai import OpenAI
 
-openai_client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-)
+openai_client = Together()
 
 # Create a thread pool for CPU-bound tasks
 thread_pool = ThreadPoolExecutor()
@@ -86,7 +84,9 @@ async def process_single_miner_response(
 async def get_metrics(item: BatchedScoringRequest):
     logger.info(f"Received scoring request for model: {item.target_model}")
 
-    model = "liquid/lfm-7b"
+    model = item.target_model
+    if "Llama-3.1-8B-Instruct" in model:
+        model = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-128K"
     compressed_contexts = [
         resp.compressed_context for resp in item.miner_responses
     ]
