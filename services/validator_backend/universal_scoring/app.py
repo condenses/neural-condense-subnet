@@ -328,7 +328,7 @@ Do not provide any additional explanation or justification. Your entire response
         text = response.choices[0].message.content.strip().lower()
         words = text.split()
         result = "yes" in words and not ("no" in words or "not" in words)
-        logger.info(f"Trick detected: {result}")
+        logger.info(f"Trick detected: {result} : {compressed_context[:100]}...")
         return result
     except Exception as e:
         logger.error(f"Error detecting trick: {str(e)}")
