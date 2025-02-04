@@ -60,6 +60,7 @@ async def get_metrics(item: BatchedScoringRequest):
         item.miner_responses[i].compressed_context
         for i in range(len(item.miner_responses))
     ]
+    original_context=item.task_data.original_context
     questions = item.task_data.challenge_questions
     ground_truths = item.task_data.challenge_answers
     negative_chunks = item.task_data.negative_chunks
