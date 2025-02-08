@@ -83,7 +83,7 @@ class Constants(BaseModel):
             incentive_percentage=0.4,
             requests_per_epoch=256,
             timeout=16,
-            accelerate_reward_scalar=0.1,
+            accelerate_reward_scalar=0.2,
             supporting_models=["unsloth/Meta-Llama-3.1-8B-Instruct"],
             max_condensed_tokens=-1,
             min_condensed_tokens=-1,

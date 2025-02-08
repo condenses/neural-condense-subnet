@@ -190,12 +190,14 @@ async def process_and_score_responses(
         f"{round(previous_scores[i], 3)} -> {round(updated_scores[i], 3)}"
         for i in range(len(previous_scores))
     ]
+    compression_rates = [r.util_data.bonus_compress_size for r in valid_responses]
     logs = {
         "uid": total_uids,
         "accuracy": accuracies + [0] * len(invalid_uids),
         "accelerate_reward": accelerate_rewards + [0] * len(invalid_uids),
         "score_change": score_changes,
         "invalid_reasons": [""] * len(valid_uids) + invalid_reasons,
+        "compression_rates": compression_rates + [0] * len(invalid_uids),
     }
     return logs, total_uids
 
