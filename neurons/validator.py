@@ -96,6 +96,11 @@ class Validator(base.BaseValidator):
             )
             for _ in range(n_sets)
         ]
+        synapse_to_score = [1] * (n_sets // 2) + [0] * (n_sets - n_sets // 2)
+        ground_truth_synapses = [
+            (synapse, is_score)
+            for synapse, is_score in zip(ground_truth_synapses, synapse_to_score)
+        ]
 
         sleep_per_set = constants.EPOCH_LENGTH / n_sets
 
@@ -156,6 +161,7 @@ class Validator(base.BaseValidator):
         task_config,
         tokenizer=None,
     ):
+        ground_truth_synapse, is_score = ground_truth_synapse
         try:
             dendrite = bt.dendrite(self.wallet)
             synapse = ground_truth_synapse.miner_synapse
@@ -167,7 +173,8 @@ class Validator(base.BaseValidator):
                 synapse=synapse,
                 timeout=constants.TIER_CONFIG[tier].timeout,
             )
-
+            if not is_score:
+                return
             if not responses:
                 logger.warning(f"No responses from {batched_uids}.")
                 return
