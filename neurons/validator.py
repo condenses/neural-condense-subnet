@@ -96,10 +96,10 @@ class Validator(base.BaseValidator):
             )
             for _ in range(n_sets)
         ]
-        synapse_to_score = [1] * (n_sets // 2) + [0] * (n_sets - n_sets // 2)
+        scoring_masks = [1] * (n_sets // 2) + [0] * (n_sets - n_sets // 2)
         ground_truth_synapses = [
             (synapse, is_score)
-            for synapse, is_score in zip(ground_truth_synapses, synapse_to_score)
+            for synapse, is_score in zip(ground_truth_synapses, scoring_masks)
         ]
 
         sleep_per_set = constants.EPOCH_LENGTH / n_sets
