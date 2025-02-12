@@ -56,7 +56,7 @@ def normalize_and_weight_scores(scores: np.ndarray, tier: str) -> np.ndarray:
 
     start_decay_datetime = datetime(2025, 2, 12, 12, 0, 0, tzinfo=timezone.utc)
     current_datetime = datetime.now(timezone.utc)
-    delta_days = (current_datetime - start_decay_datetime).days
+    delta_days = max(0, (current_datetime - start_decay_datetime).days)
     decay_value = min(delta_days / 25, 1)
     research_scale = constants.TIER_CONFIG["research"].incentive_percentage * (
         1 - decay_value
@@ -64,6 +64,7 @@ def normalize_and_weight_scores(scores: np.ndarray, tier: str) -> np.ndarray:
     universal_scale = 1 - research_scale
     logger.info(
         "decaying research incentive",
+        delta_days=delta_days,
         decay_value=decay_value,
         research_scale=research_scale,
         universal_scale=universal_scale,
