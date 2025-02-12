@@ -52,19 +52,25 @@ def normalize_and_weight_scores(scores: np.ndarray, tier: str) -> np.ndarray:
         scores = scores / total
 
     # --Smoothing Update---
-    from datetime import datetime, timezone
+    from datetime import datetime, timezone, timedelta
 
+    start_decay_datetime = datetime(2025, 2, 12, 12, 0, 0, tzinfo=timezone.utc)
     current_datetime = datetime.now(timezone.utc)
-    target_datetime = datetime(2025, 1, 24, 12, 0, 0, tzinfo=timezone.utc)
-
-    if current_datetime < target_datetime:
-        logger.info("Using early incentive scaling")
-        if tier == "research":
-            scale = 0.9
-        elif tier == "universal":
-            scale = 0.1
-    else:
-        logger.info("Using stable incentive scaling")
-        scale = constants.TIER_CONFIG[tier].incentive_percentage
+    delta_days = (current_datetime - start_decay_datetime).days
+    decay_value = min(delta_days / 25, 1)
+    research_scale = constants.TIER_CONFIG["research"].incentive_percentage * (
+        1 - decay_value
+    )
+    universal_scale = 1 - research_scale
+    logger.info(
+        "decaying research incentive",
+        decay_value=decay_value,
+        research_scale=research_scale,
+        universal_scale=universal_scale,
+    )
+    if tier == "research":
+        scale = research_scale
+    elif tier == "universal":
+        scale = universal_scale
 
     return scores * scale
