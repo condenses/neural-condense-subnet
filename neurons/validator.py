@@ -46,9 +46,11 @@ class Validator(base.BaseValidator):
             for tier in constants.TIER_CONFIG
         ]
         try:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            await asyncio.wait_for(
+                asyncio.gather(*tasks, return_exceptions=True), timeout=600
+            )
         except asyncio.TimeoutError as e:
-            logger.warning(f"Epoch tasks timed out: {e}")
+            logger.warning(f"Epoch tasks timed out after 10 minutes: {e}")
         except Exception as e:
             logger.error(f"Error running epoch tasks: {e}")
             traceback.print_exc()
