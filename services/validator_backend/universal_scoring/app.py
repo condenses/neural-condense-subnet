@@ -342,7 +342,7 @@ Non-Adversarial Changes (Do Not Flag):
         ]
         response = await asyncio.to_thread(
             lambda: openai_client.chat.completions.create(
-                model=model, messages=messages, temperature=0
+                model="meta-llama/Llama-3.3-70B-Instruct-Turbo", messages=messages, temperature=0
             )
         )
         text = response.choices[0].message.content.strip().lower()
