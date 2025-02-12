@@ -70,7 +70,7 @@ class DatabaseConfig(BaseModel):
 class Constants(BaseModel):
     TIER_CONFIG: dict[str, TierConfig] = {
         "research": TierConfig(
-            incentive_percentage=0.6,
+            incentive_percentage=0.5,
             requests_per_epoch=256,
             timeout=32,
             accelerate_reward_scalar=0.1,
@@ -80,7 +80,7 @@ class Constants(BaseModel):
             max_context_length_in_chars=15000,
         ),
         "universal": TierConfig(
-            incentive_percentage=0.4,
+            incentive_percentage=0.5,
             requests_per_epoch=256,
             timeout=16,
             accelerate_reward_scalar=0.2,
