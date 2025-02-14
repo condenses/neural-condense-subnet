@@ -17,7 +17,7 @@ def setup_config():
 
 def setup_bittensor_objects(config: bt.config):
     wallet = bt.wallet(config=config)
-    subtensor = bt.subtensor(chain_endpoint="finney")
+    subtensor = bt.subtensor(network="finney")
     metagraph = subtensor.metagraph(config.netuid)
     return wallet, metagraph
 
