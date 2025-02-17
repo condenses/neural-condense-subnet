@@ -4,7 +4,10 @@ from typing import Tuple
 import bittensor as bt
 import time
 import traceback
+import random
 import redis
+import structlog
+logger = structlog.get_logger()
 
 
 class Miner(ncc.base.BaseMiner):
@@ -43,6 +46,27 @@ class Miner(ncc.base.BaseMiner):
             bt.logging.info(
                 f"Reset rate limit for {k}: {v.get_current_count()}/{v.rate_limit}"
             )
+    
+    def retry_sync_metagraph(self):
+        r"""
+        Retry logic for metagraph sync.
+        """
+        sync_success = False
+        retry_count = 0
+        max_retries = 100
+
+        while not sync_success and retry_count < max_retries:
+            try:
+                self.metagraph.sync()
+                sync_success = True
+            except Exception as e:
+                retry_count += 1
+                if retry_count == max_retries:
+                    bt.logging.error(f"Failed to sync metagraph after {max_retries} attempts: {e}")
+                    raise
+                sleep_time = random.uniform(2, 5)
+                bt.logging.warning(f"Metagraph sync failed, attempt {retry_count}/{max_retries}. Retrying in {sleep_time:.1f}s")
+                time.sleep(sleep_time)
 
     def run(self):
         self.setup_axon()
@@ -51,8 +75,10 @@ class Miner(ncc.base.BaseMiner):
         while True:
             try:
                 # Periodically update our knowledge of the network graph.
+                if step % 600 == 0:
+                    self.retry_sync_metagraph()
+
                 if step % 60 == 0:
-                    self.metagraph.sync()
                     self._initialize_rate_limits()
                     log = (
                         f"Block: {self.metagraph.block.item()} | "
