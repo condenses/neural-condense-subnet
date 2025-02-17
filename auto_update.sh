@@ -25,6 +25,7 @@ update_repo() {
         uv sync --prerelease=allow
         
         pm2 restart condense_validator_backend
+        pm2 restart condense_validator_universal_backend
         pm2 restart condense_validator
 
         # check if condense_validator is errored, if yes, restart
