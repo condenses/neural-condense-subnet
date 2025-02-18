@@ -10,7 +10,7 @@ requires-python = ">=3.10,<4.0"
 dependencies = [
     "transformers==4.45.2",
     "bittensor==9.0.0",
-    "accelerate==1.0.1",
+    "accelerate",
     "datasets==2.21.0",
     "pre-commit==4.0.1",
     "peft==0.13.2",
@@ -36,7 +36,6 @@ dependencies = [
     "llmlingua>=0.2.2",
     "together>=1.3.11",
     "substrate-interface==1.7.11",
-    "vllm",
 ]
 
 [project.urls]
