@@ -2,6 +2,7 @@ from fastapi import FastAPI
 import numpy as np
 from typing import List
 import logging
+from together import Together
 from pydantic import BaseModel
 from neural_condense_core import logger
 import asyncio
@@ -45,10 +46,10 @@ logger.info("This will show in Universal Validator Backend logs")
 
 app = FastAPI()
 
-from openai import OpenAI
 
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
+openai_client = Together(
+    base_url="http://localhost:8000/v1",
+)
 # Create a thread pool for CPU-bound tasks
 thread_pool = ThreadPoolExecutor()
 
@@ -97,7 +98,7 @@ async def get_metrics(item: BatchedScoringRequest):
 
     model = item.target_model
     if "Llama-3.1-8B-Instruct" in model:
-        model = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-128K"
+        model = "unsloth/Llama-3.1-8B-Instruct"
     compressed_contexts = [resp.compressed_context for resp in item.miner_responses]
     original_context = item.task_data.original_context
     questions = item.task_data.challenge_questions
@@ -342,7 +343,7 @@ Non-Adversarial Changes (Do Not Flag):
         ]
         response = await asyncio.to_thread(
             lambda: openai_client.chat.completions.create(
-                model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-128K",
+                model="unsloth/Llama-3.1-8B-Instruct",
                 messages=messages,
                 temperature=0,
             )
