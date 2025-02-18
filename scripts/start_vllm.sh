@@ -1,0 +1,1 @@
+pm2 start --name vllm "vllm serve unsloth/Llama-3.1-8B-Instruct"

@@ -47,7 +47,7 @@ app = FastAPI()
 
 from openai import OpenAI
 
-openai_client = Together()
+openai_client = OpenAI()
 
 # Create a thread pool for CPU-bound tasks
 thread_pool = ThreadPoolExecutor()
@@ -342,7 +342,9 @@ Non-Adversarial Changes (Do Not Flag):
         ]
         response = await asyncio.to_thread(
             lambda: openai_client.chat.completions.create(
-                model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-128K", messages=messages, temperature=0
+                model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo-128K",
+                messages=messages,
+                temperature=0,
             )
         )
         text = response.choices[0].message.content.strip().lower()
