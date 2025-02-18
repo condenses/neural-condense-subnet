@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 import numpy as np
-from together import Together
 from typing import List
 import logging
 from pydantic import BaseModel
 from neural_condense_core import logger
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import os
 
 
 # Keeping the original model classes
@@ -47,7 +47,7 @@ app = FastAPI()
 
 from openai import OpenAI
 
-openai_client = OpenAI()
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Create a thread pool for CPU-bound tasks
 thread_pool = ThreadPoolExecutor()
