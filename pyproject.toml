@@ -10,7 +10,7 @@ requires-python = ">=3.10,<4.0"
 dependencies = [
     "transformers==4.45.2",
     "bittensor==9.0.0",
-    "accelerate==1.0.1",
+    "accelerate",
     "datasets==2.21.0",
     "pre-commit==4.0.1",
     "peft==0.13.2",
