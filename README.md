@@ -20,7 +20,7 @@ For detailed instructions on setting up and running a validator node:
 
 ### ⛏️ Miner Node Setup
 For detailed instructions on setting up and running a miner node:
-[Miner Documentation](https://github.com/condenses/subnet-mining)
+[Miner Documentation](https://github.com/condenses/subnet-miner)
 
 ### 📊 Dashboard
 For monitoring miner's performance:
